@@ -91,3 +91,5 @@ export function applyMigrations(
 
   return { applied };
 }
+
+export * from "./backup.js";
