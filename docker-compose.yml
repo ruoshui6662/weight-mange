@@ -1,0 +1,27 @@
+services:
+  nutrition-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nutrition-tracker:dev
+    container_name: nutrition-tracker
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      PORT: "3000"
+      DB_PATH: /data/db/app.sqlite
+      AUTH_MODE: ${AUTH_MODE:-password}
+    healthcheck:
+      test: ["CMD", "node", "/app/scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

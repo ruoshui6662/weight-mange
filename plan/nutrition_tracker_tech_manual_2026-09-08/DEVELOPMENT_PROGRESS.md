@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 07:35 +08:00
+> 最后更新：2026-09-09 07:45 +08:00
 
 ## 1. 当前快照
 
@@ -12,8 +12,8 @@
 | 项目阶段 | M0 可验证基础实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M0 — 可验证基础 |
-| 当前焦点 | M0-007 可执行容器与 CI |
-| 下一步 | 补 Dockerfile、Compose、health/readiness 和 CI 基线；Docker CLI 恢复后执行真实 smoke |
+| 当前焦点 | M0-007 可执行容器与 CI（环境阻塞） |
+| 下一步 | 在具备 Docker CLI/Buildx 的环境运行真实 build、启动、health 和多架构 smoke；通过后再关闭 M0 |
 | 当前阻塞 | BLK-005：Docker CLI 未安装，M0-002 的多架构验证暂缓 |
 | 业务代码 | 尚未开始 |
 | Git | 已初始化 `main`；基线提交 `6ae1c95`；全局提交身份未配置，提交使用一次性 `Codex <codex@local>` 身份 |
@@ -75,14 +75,16 @@
 
 ### M0-007 — 可执行容器与 CI
 
-- 状态：`IN_PROGRESS`
+- 状态：`BLOCKED`
 - 开始时间：2026-09-09 07:35 +08:00
+- 阻塞时间：2026-09-09 07:45 +08:00
 - 操作者：Codex
 - 依赖：M0-004/005/006
 - 计划变更：补 non-root 多阶段 Dockerfile、Compose、health/readiness、SIGTERM 和 CI 基线
 - 计划验收：Docker build/run/smoke、数据目录持久化、健康检查和构建门禁
-- 当前进展：Docker CLI 尚未安装；先写静态配置与可在本地执行的 health/readiness 契约
-- 下一步：先写容器配置静态验收测试，再实现 Dockerfile 与 CI workflow
+- 当前进展：已完成 Dockerfile、Compose、healthcheck、SIGTERM 关闭路径和 CI buildx 配置；构建后 API smoke 返回 health/readiness 200
+- 阻塞/风险：Docker CLI 与 Buildx 不存在，不能验证真实镜像构建、non-root 运行和 amd64/arm64
+- 下一步：安装 Docker Desktop，或在 CI/具备 Docker 的主机执行 `pnpm docker:smoke` 与多架构 build
 
 ## 4. DOC 任务板
 
@@ -102,7 +104,7 @@
 | M0-004 | Schema 与 migration 基线 | `DONE` | M0-002/003 | EVD-M0-004-A |
 | M0-005 | Backup/restore 最小闭环 | `DONE` | M0-004 | EVD-M0-005-A |
 | M0-006 | 首次初始化与鉴权 | `DONE` | M0-003/004 | EVD-M0-006-A |
-| M0-007 | 可执行容器与 CI | `IN_PROGRESS` | M0-004/005/006 | Docker smoke + graceful shutdown |
+| M0-007 | 可执行容器与 CI | `BLOCKED` | M0-004/005/006 | 静态配置已完成；真实 Docker smoke 待 BLK-005 解除 |
 
 M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有当前里程碑进入实施时，才把其任务复制到本页活动任务板，避免顶部状态被远期细节淹没。
 
@@ -147,6 +149,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-004-A | M0-004 | 2026-09-09 07:20 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；4 test files、16 tests passed；core/profile/session/idempotency/job schema 与约束已验证 |
 | EVD-M0-005-A | M0-005 | 2026-09-09 07:27 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test`、`pnpm test:integration`、`pnpm docker:smoke` | 全部 exit 0；5 test files、18 tests passed；backup manifest、checksum、integrity_check 与损坏恢复保护已验证 |
 | EVD-M0-006-A | M0-006 | 2026-09-09 07:35 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；6 test files、22 tests passed；bootstrap once、scrypt hash、credential errors、session expiry/revocation、cookie defaults 已验证 |
+| EVD-M0-007-A | M0-007 | 2026-09-09 07:45 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke`；构建后 API smoke | 代码门禁 exit 0；6 test files、22 tests passed；API `/healthz` 与 `/readyz` 均 200；`docker:smoke` 明确报告 Docker CLI 缺失，任务保持 BLOCKED |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -200,6 +203,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 07:27 +08:00 | Codex | 开始 M0-006 | 进入首次初始化与鉴权，先固定 bootstrap once、密码与 session 生命周期边界 |
 | 2026-09-09 07:35 +08:00 | Codex | 完成 M0-006 | 一次性 bootstrap、scrypt password hash、统一凭据错误、DB session、过期/撤销和 cookie defaults 全量门禁通过；新增 EVD-M0-006-A；BLK-002 解除 |
 | 2026-09-09 07:35 +08:00 | Codex | 开始 M0-007 | 进入 Dockerfile、Compose、health/readiness 与 CI 静态基线；真实 Docker smoke 仍受 BLK-005 影响 |
+| 2026-09-09 07:45 +08:00 | Codex | M0-007 静态基线完成但受阻 | Dockerfile/Compose/healthcheck/CI 与 API health/readiness smoke 已通过；Docker CLI/Buildx 缺失，新增 EVD-M0-007-A，M0 保持 IN_PROGRESS |
 
 ## 11. 交接摘要
 
