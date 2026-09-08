@@ -6,7 +6,7 @@ import { backup, DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 
-import { openDatabase } from "../src/index.js";
+import { applyMigrations, openDatabase } from "../src/index.js";
 
 const temporaryPaths: string[] = [];
 
@@ -50,6 +50,56 @@ describe("SQLite driver baseline", () => {
     expect(sqlite.prepare("SELECT name FROM food_search WHERE food_search MATCH ?").all("馒头")).toEqual([
       { name: "馒头" },
     ]);
+  });
+
+  it("uses WAL for a file-backed database", () => {
+    const directory = mkdtempSync(join(tmpdir(), "nutrition-db-wal-"));
+    temporaryPaths.push(directory);
+    const databasePath = join(directory, "app.sqlite");
+    const { sqlite } = openDatabase(databasePath);
+
+    expect(sqlite.prepare("PRAGMA journal_mode").get()).toEqual({
+      journal_mode: "wal",
+    });
+    sqlite.close();
+  });
+
+  it("applies migrations once and rejects checksum drift", () => {
+    const { sqlite } = openDatabase(":memory:");
+    const migrations = [
+      {
+        version: "0001",
+        sql: "CREATE TABLE migration_sample (id INTEGER PRIMARY KEY)",
+      },
+    ];
+
+    expect(applyMigrations(sqlite, migrations, { now: () => 1000 })).toEqual({
+      applied: ["0001"],
+    });
+    expect(applyMigrations(sqlite, migrations, { now: () => 2000 })).toEqual({
+      applied: [],
+    });
+    expect(() =>
+      applyMigrations(
+        sqlite,
+        [{ version: "0001", sql: "CREATE TABLE migration_sample (id INTEGER PRIMARY KEY, changed INTEGER)" }],
+        { now: () => 3000 },
+      ),
+    ).toThrow("MIGRATION_CHECKSUM_MISMATCH");
+  });
+
+  it("rolls back a failed migration without recording it", () => {
+    const { sqlite } = openDatabase(":memory:");
+
+    expect(() =>
+      applyMigrations(
+        sqlite,
+        [{ version: "0001", sql: "CREATE TABLE broken (id INTEGER PRIMARY KEY); SELECT * FROM missing" }],
+        { now: () => 1000 },
+      ),
+    ).toThrow();
+    expect(sqlite.prepare("SELECT COUNT(*) AS count FROM core_schema_migrations").get()).toEqual({ count: 0 });
+    expect(() => sqlite.prepare("SELECT * FROM broken").all()).toThrow();
   });
 
   it("executes a Drizzle query on the same connection", async () => {
