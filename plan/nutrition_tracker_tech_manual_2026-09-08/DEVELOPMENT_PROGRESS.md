@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 06:45 +08:00
+> 最后更新：2026-09-09 06:53 +08:00
 
 ## 1. 当前快照
 
@@ -12,9 +12,9 @@
 | 项目阶段 | M0 可验证基础实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M0 — 可验证基础 |
-| 当前焦点 | M0-001 版本控制与工作区基线 |
-| 下一步 | 等待用户确认是否创建 `.worktrees/m0-foundation` 隔离工作区；确认后创建 pnpm workspace |
-| 当前阻塞 | BLK-004：按执行技能要求，进入实现前需要确认工作区隔离方式 |
+| 当前焦点 | M0-002 SQLite/ORM 技术门 |
+| 下一步 | 先完成 node:sqlite + Drizzle 的 migration、事务、FTS5、backup 和多架构验证 |
+| 当前阻塞 | BLK-001：SQLite 驱动尚未锁定 |
 | 业务代码 | 尚未开始 |
 | Git | 已初始化 `main`；基线提交 `6ae1c95`；全局提交身份未配置，提交使用一次性 `Codex <codex@local>` 身份 |
 
@@ -25,7 +25,7 @@
 | 里程碑 | 目标 | 状态 | 完成任务 | 退出门槛 |
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
-| M0 | 可验证基础 | `IN_PROGRESS` | 0/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 全部通过 |
+| M0 | 可验证基础 | `IN_PROGRESS` | 1/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 全部通过 |
 | M1 | 饮食记录纵向切片 | `PLANNED` | 0/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
@@ -34,16 +34,16 @@
 
 ## 3. 当前任务
 
-### M0-001 — 版本控制与工作区基线
+### M0-002 — SQLite/ORM 技术门
 
 - 状态：`IN_PROGRESS`
-- 开始时间：2026-09-09 06:43 +08:00
+- 开始时间：2026-09-09 06:53 +08:00
 - 操作者：Codex
-- 依赖：文档基线
-- 计划变更：Git 基线、`.gitignore`、隔离工作区、pnpm workspace、固定工具版本、统一根脚本
-- 计划验收：干净安装、lint、typecheck、test、build 和 Git 状态检查
-- 当前进展：Git 和文档基线已提交；workspace 尚未创建
-- 下一步：确认隔离工作区后按详细执行计划实施 workspace
+- 依赖：M0-001
+- 计划变更：验证 node:sqlite + Drizzle 候选，记录兼容性 ADR；必要时切换 better-sqlite3
+- 计划验收：WAL、foreign keys、busy timeout、事务回滚、FTS5、migration、backup、integrity_check、amd64/arm64 build
+- 当前进展：M0-001 已完成；隔离分支和 pnpm workspace 已建立
+- 下一步：先写失败的 SQLite contract test，再接入最小驱动实现
 
 ## 4. DOC 任务板
 
@@ -57,7 +57,7 @@
 
 | ID | 任务 | 状态 | 依赖 | 首要验收 |
 |---|---|---|---|---|
-| M0-001 | 版本控制与工作区基线 | `IN_PROGRESS` | 文档基线 | clean install + lint/typecheck/test/build |
+| M0-001 | 版本控制与工作区基线 | `DONE` | 文档基线 | EVD-M0-001-B |
 | M0-002 | SQLite/ORM 技术门与 ADR | `PLANNED` | M0-001 | WAL/FTS/transaction/backup/multi-arch |
 | M0-003 | Core contracts | `PLANNED` | M0-001 | 可替换 Clock/ID + error/config tests |
 | M0-004 | Schema 与 migration 基线 | `PLANNED` | M0-002/003 | empty/previous/repeat/failure fixtures |
@@ -76,7 +76,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-001 SQLite 驱动未锁定 | M0-004 及后续 DB 工作 | 完成 M0-002 技术门并接受 ADR | `OPEN` |
 | BLK-002 Auth session 方案未确定 | M0-004/M0-006 | 在有状态 DB session 与签名无状态 session 中定案 | `OPEN` |
 | BLK-003 Recipe snapshot 语义未落库 | M3-001 | 接受 ingredient 计算输入快照设计并修订 schema | `OPEN` |
-| BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 用户同意创建 `.worktrees/m0-foundation`，或明确要求在 `main` 原地开发 | `OPEN` |
+| BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
 
 ## 7. 决策记录
 
@@ -98,6 +98,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-DOC-001 | DOC-001 | 2026-09-09 06:30 +08:00 | 原始文档清单、标题和交叉需求检查 | 8/8 已审查；缺口登记于 `PLAN_REVIEW.md` |
 | EVD-DOC-002 | DOC-002 | 2026-09-09 06:38 +08:00 | PowerShell：文件存在/非空、README 本地链接、H1、原始文档存在、路线任务数 | exit 0；新增 5/5，原始 8/8，链接全部解析，M0–M5 任务数 7/8/6/6/6/8 |
 | EVD-M0-001-A | M0-001 | 2026-09-09 06:45 +08:00 | `git init -b main`、暂存检查、基线提交、`git status --short` | 仓库已创建；提交 `6ae1c95`；提交后工作区为空 |
+| EVD-M0-001-B | M0-001 | 2026-09-09 06:53 +08:00 | `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test -- --run`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；1 个单元测试通过；集成测试暂时无用例但允许空；workspace smoke 通过 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -139,6 +140,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 06:43 +08:00 | Codex | 开始 M0-001 | 用户授权初始化 Git 并按路线开发；先建立版本控制和隔离工作区 |
 | 2026-09-09 06:45 +08:00 | Codex | Git 基线建立 | `main` 创建并提交 `6ae1c95`；目录 owner 与执行用户不同，后续 Git 命令使用一次性 `safe.directory`，未改全局配置 |
 | 2026-09-09 06:45 +08:00 | Codex | M0-001 等待工作区选择 | 按隔离工作区规则暂停进入业务实现，等待用户确认 worktree 或原地开发 |
+| 2026-09-09 06:53 +08:00 | Codex | 完成 M0-001 | `feat/m0-foundation` 已建立；pnpm workspace、TS、Vitest、ESLint、根脚本及最小 shared 测试全部通过 |
+| 2026-09-09 06:53 +08:00 | Codex | 开始 M0-002 | 进入 SQLite/ORM 技术门；先验证候选组合再建立数据库 schema |
 
 ## 11. 交接摘要
 
