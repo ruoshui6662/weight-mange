@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 08:00 +08:00
+> 最后更新：2026-09-09 08:20 +08:00
 
 ## 1. 当前快照
 
@@ -11,12 +11,12 @@
 |---|---|
 | 项目阶段 | M0 可验证基础实施 |
 | 总体状态 | `IN_PROGRESS` |
-| 当前里程碑 | M0 — 可验证基础 |
-| 当前焦点 | M0-007 可执行容器与 CI（环境阻塞） |
-| 下一步 | 在具备 Docker CLI/Buildx 的环境运行真实 build、启动、health 和多架构 smoke；通过后再关闭 M0 |
-| 当前阻塞 | BLK-005：Docker CLI 未安装，M0-002 的多架构验证暂缓 |
-| 业务代码 | 尚未开始 |
-| Git | 已初始化 `main`；基线提交 `6ae1c95`；全局提交身份未配置，提交使用一次性 `Codex <codex@local>` 身份 |
+| 当前里程碑 | M1 — 饮食记录纵向切片 |
+| 当前焦点 | M1-001 Nutrition Engine 基础 |
+| 下一步 | 先固定 nutrient scaling、单位换算、edible portion、coverage 和 rounding 的 golden tests |
+| 当前阻塞 | 无；本地 Docker CLI 缺失已由 GitHub Actions 多架构 buildx 验证解除 |
+| 业务代码 | M1-001 即将开始 |
+| Git | `feat/m0-foundation` 已推送 `origin`；远程 CI run `34291487487` verify 与 Docker buildx 均成功 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -25,8 +25,8 @@
 | 里程碑 | 目标 | 状态 | 完成任务 | 退出门槛 |
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
-| M0 | 可验证基础 | `IN_PROGRESS` | 5/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 全部通过 |
-| M1 | 饮食记录纵向切片 | `PLANNED` | 0/8 | 离线于公网完成真实食物记录闭环 |
+| M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 0/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -75,16 +75,27 @@
 
 ### M0-007 — 可执行容器与 CI
 
-- 状态：`BLOCKED`
+- 状态：`DONE`
 - 开始时间：2026-09-09 07:35 +08:00
-- 阻塞时间：2026-09-09 07:45 +08:00
+- 完成时间：2026-09-09 08:20 +08:00
 - 操作者：Codex
 - 依赖：M0-004/005/006
 - 计划变更：补 non-root 多阶段 Dockerfile、Compose、health/readiness、SIGTERM 和 CI 基线
 - 计划验收：Docker build/run/smoke、数据目录持久化、健康检查和构建门禁
-- 当前进展：已完成 Dockerfile、Compose、healthcheck、SIGTERM 关闭路径和 CI buildx 配置；构建后 API smoke 返回 health/readiness 200
-- 阻塞/风险：Docker CLI 与 Buildx 不存在，不能验证真实镜像构建、non-root 运行和 amd64/arm64
-- 下一步：安装 Docker Desktop，或在 CI/具备 Docker 的主机执行 `pnpm docker:smoke` 与多架构 build
+- 当前进展：已完成 Dockerfile、Compose、healthcheck、SIGTERM 关闭路径和 CI buildx 配置；本地 API smoke 与远程多架构镜像构建均通过
+- 验收结果：EVD-M0-007-D；GitHub Actions run `34291487487` 的 verify 与 Docker buildx 均成功
+- 下一步：进入 M1-001，开始纯函数 Nutrition Engine golden tests
+
+### M1-001 — Nutrition Engine 基础
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 08:20 +08:00
+- 操作者：Codex
+- 依赖：M0
+- 计划变更：实现 nutrient scaling、g/ml/serving 换算、edible portion、unknown/trace/estimated、coverage、rounding policy 和版本常量
+- 计划验收：`NUTRITION_ENGINE_SPEC` 全部 golden calculation tests 固定化；引擎不依赖 DB、网络、环境变量和系统时间
+- 当前进展：任务已启动，尚未写入失败测试
+- 下一步：先读取营养规范并写第一组 scaling/rounding 失败测试
 
 ## 4. DOC 任务板
 
@@ -99,12 +110,12 @@
 | ID | 任务 | 状态 | 依赖 | 首要验收 |
 |---|---|---|---|---|
 | M0-001 | 版本控制与工作区基线 | `DONE` | 文档基线 | EVD-M0-001-B |
-| M0-002 | SQLite/ORM 技术门 | `BLOCKED` | M0-001 | EVD-M0-002-A/B/C；候选未最终接受，等待 Docker |
+| M0-002 | SQLite/ORM 技术门 | `DONE` | M0-001 | EVD-M0-002-A/B/C；候选通过本地门禁及远程多架构 buildx |
 | M0-003 | Core contracts | `DONE` | M0-001 | EVD-M0-003-A |
 | M0-004 | Schema 与 migration 基线 | `DONE` | M0-002/003 | EVD-M0-004-A |
 | M0-005 | Backup/restore 最小闭环 | `DONE` | M0-004 | EVD-M0-005-A |
 | M0-006 | 首次初始化与鉴权 | `DONE` | M0-003/004 | EVD-M0-006-A |
-| M0-007 | 可执行容器与 CI | `BLOCKED` | M0-004/005/006 | 静态配置已完成；真实 Docker smoke 待 BLK-005 解除 |
+| M0-007 | 可执行容器与 CI | `DONE` | M0-004/005/006 | EVD-M0-007-D |
 
 M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有当前里程碑进入实施时，才把其任务复制到本页活动任务板，避免顶部状态被远期细节淹没。
 
@@ -114,11 +125,11 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 
 | Blocker | 影响任务 | 解除条件 | 状态 |
 |---|---|---|---|
-| BLK-001 SQLite 驱动未锁定 | M0-004 及后续 DB 工作 | 完成 M0-002 技术门并接受 ADR | `OPEN` |
+| BLK-001 SQLite 驱动未锁定 | M0-004 及后续 DB 工作 | 已完成 M0-002 技术门并接受 ADR | `RESOLVED` |
 | BLK-002 Auth session 方案未确定 | M0-004/M0-006 | 已接受有状态 DB session，并由 `core_session` 落库 | `RESOLVED` |
 | BLK-003 Recipe snapshot 语义未落库 | M3-001 | 接受 ingredient 计算输入快照设计并修订 schema | `OPEN` |
 | BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
-| BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 安装 Docker Desktop/Buildx，或在具备 Docker 的 CI/主机运行多架构 smoke | `OPEN` |
+| BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
 
 ## 7. 决策记录
 
@@ -127,7 +138,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | DEC-001 | `ACCEPTED` | 保留模块化单体、单业务容器和 SQLite | 与个人自托管规模匹配，运维成本最低 | 2026-09-09 |
 | DEC-002 | `ACCEPTED` | 迁移、最小备份恢复和鉴权前移到 M0 | 它们是安全迭代的基础，不应等到稳定化阶段 | 2026-09-09 |
 | DEC-003 | `ACCEPTED` | V1 offline 定义为“不依赖公网”，不支持客户端脱离服务器写入 | 避免首版引入同步与冲突合并复杂度 | 2026-09-09 |
-| DEC-004 | `PROPOSED` | `node:sqlite + Drizzle` 仅作为候选，通过技术门后锁定 | 两者对应能力/接入仍存在 RC 风险 | 2026-09-09 |
+| DEC-004 | `ACCEPTED` | V1 锁定 `node:sqlite + Drizzle` | 本地 migration/WAL/FTS5/backup/transaction 门禁通过，GitHub Actions 多架构 Docker buildx 通过；RC 风险保留在 ADR 的升级检查中 | 2026-09-09 |
 | DEC-005 | `PROPOSED` | V1 暂不实现围度管理 | 产品验收未要求，避免无 UI/API 的幽灵功能 | 2026-09-09 |
 | DEC-006 | `PROPOSED` | 菜谱保存 ingredient 计算输入快照，编辑时刷新 | 保持来源可追溯，同时让日记历史永不漂移 | 2026-09-09 |
 | DEC-007 | `ACCEPTED` | V1 使用有状态数据库 session；token 只以 SHA-256 保存，cookie 默认 HttpOnly/SameSite=Lax | 支持撤销、过期和重启后的明确会话状态；避免无状态 token 无法即时失效 | 2026-09-09 |
@@ -152,6 +163,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-A | M0-007 | 2026-09-09 07:45 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke`；构建后 API smoke | 代码门禁 exit 0；6 test files、22 tests passed；API `/healthz` 与 `/readyz` 均 200；`docker:smoke` 明确报告 Docker CLI 缺失，任务保持 BLOCKED |
 | EVD-M0-007-B | M0-007 | 2026-09-09 07:50 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm docker:smoke` | 全部 exit 0；API smoke 脚本纳入可重复门禁并返回 health=200、ready=200；Docker smoke 仍因 CLI 缺失保持 BLOCKED |
 | EVD-M0-007-C | M0-007 | 2026-09-09 08:00 +08:00 | GitHub Actions run `34291079576`；本地 `pnpm install --frozen-lockfile`（强制重链）及完整 lint/typecheck/test/build/api smoke | 首次远程 verify 在 install 阶段失败；根因是 `allowBuilds` 占位值；修正为 `esbuild: true` 后本地干净安装 exit 0，完整门禁重新通过，等待远程重跑 |
+| EVD-M0-007-D | M0-007 | 2026-09-09 08:20 +08:00 | GitHub Actions run `34291487487`：verify + `docker/build-push-action@v6`，platforms `linux/amd64,linux/arm64` | verify `success`；Docker buildx `success`；M0-002/M0-007 阻塞解除，M0 关闭 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -208,15 +220,16 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 07:45 +08:00 | Codex | M0-007 静态基线完成但受阻 | Dockerfile/Compose/healthcheck/CI 与 API health/readiness smoke 已通过；Docker CLI/Buildx 缺失，新增 EVD-M0-007-A，M0 保持 IN_PROGRESS |
 | 2026-09-09 07:50 +08:00 | Codex | 加强 M0-007 可重复验证 | 新增 `pnpm api:smoke` 并纳入 CI；构建后 smoke 通过，Docker CLI 缺失继续记录为 BLK-005 |
 | 2026-09-09 08:00 +08:00 | Codex | 修复首次 GitHub CI 安装失败 | 远程 run `34291079576` 在 `pnpm install --frozen-lockfile` 失败；将 `allowBuilds` 占位值修正为 `esbuild: true`，本地强制重链和完整门禁通过，准备推送修复 |
+| 2026-09-09 08:20 +08:00 | Codex | M0 完成并开始 M1 | 远程 run `34291487487` verify 与 amd64/arm64 Docker buildx 均成功；接受 DEC-004，解除 BLK-001/005，M0 7/7 DONE；开始 M1-001 Nutrition Engine |
 
 ## 11. 交接摘要
 
-当前仍处于规划阶段，没有业务代码、数据库或容器需要接管。后续接手者应：
+M0 基础已完成，M1-001 即将开始；当前没有待接管的未提交改动。后续接手者应：
 
 1. 先确认 DOC-002 已完成验证；
 2. 与项目所有者确认 DEC-004/005/006 和 session 方案；
 3. 执行 DOC-003，同步修订原始规范；
-4. 获得明确开发指令后再开始 M0-001，不要自行初始化 Git；
+4. 先执行 M1-001 的规范读取和 golden test；
 5. 开始任务前按根目录 `AGENTS.md` 更新本文件。
 
 ## 12. 更新模板
