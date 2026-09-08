@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "build": "tsc -b --pretty false",
+    "api:smoke": "node scripts/api-smoke.mjs",
     "docker:smoke": "node scripts/docker-smoke.mjs"
   },
   "devDependencies": {

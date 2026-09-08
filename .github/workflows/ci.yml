@@ -23,6 +23,7 @@ jobs:
       - run: pnpm test
       - run: pnpm test:integration
       - run: pnpm build
+      - run: pnpm api:smoke
       - run: pnpm docker:smoke
 
   docker:

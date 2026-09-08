@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 07:45 +08:00
+> 最后更新：2026-09-09 07:50 +08:00
 
 ## 1. 当前快照
 
@@ -150,6 +150,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-005-A | M0-005 | 2026-09-09 07:27 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test`、`pnpm test:integration`、`pnpm docker:smoke` | 全部 exit 0；5 test files、18 tests passed；backup manifest、checksum、integrity_check 与损坏恢复保护已验证 |
 | EVD-M0-006-A | M0-006 | 2026-09-09 07:35 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；6 test files、22 tests passed；bootstrap once、scrypt hash、credential errors、session expiry/revocation、cookie defaults 已验证 |
 | EVD-M0-007-A | M0-007 | 2026-09-09 07:45 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke`；构建后 API smoke | 代码门禁 exit 0；6 test files、22 tests passed；API `/healthz` 与 `/readyz` 均 200；`docker:smoke` 明确报告 Docker CLI 缺失，任务保持 BLOCKED |
+| EVD-M0-007-B | M0-007 | 2026-09-09 07:50 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm docker:smoke` | 全部 exit 0；API smoke 脚本纳入可重复门禁并返回 health=200、ready=200；Docker smoke 仍因 CLI 缺失保持 BLOCKED |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -204,6 +205,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 07:35 +08:00 | Codex | 完成 M0-006 | 一次性 bootstrap、scrypt password hash、统一凭据错误、DB session、过期/撤销和 cookie defaults 全量门禁通过；新增 EVD-M0-006-A；BLK-002 解除 |
 | 2026-09-09 07:35 +08:00 | Codex | 开始 M0-007 | 进入 Dockerfile、Compose、health/readiness 与 CI 静态基线；真实 Docker smoke 仍受 BLK-005 影响 |
 | 2026-09-09 07:45 +08:00 | Codex | M0-007 静态基线完成但受阻 | Dockerfile/Compose/healthcheck/CI 与 API health/readiness smoke 已通过；Docker CLI/Buildx 缺失，新增 EVD-M0-007-A，M0 保持 IN_PROGRESS |
+| 2026-09-09 07:50 +08:00 | Codex | 加强 M0-007 可重复验证 | 新增 `pnpm api:smoke` 并纳入 CI；构建后 smoke 通过，Docker CLI 缺失继续记录为 BLK-005 |
 
 ## 11. 交接摘要
 
