@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 07:08 +08:00
+> 最后更新：2026-09-09 07:20 +08:00
 
 ## 1. 当前快照
 
@@ -12,8 +12,8 @@
 | 项目阶段 | M0 可验证基础实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M0 — 可验证基础 |
-| 当前焦点 | M0-004 Schema 与 migration 基线 |
-| 下一步 | 在候选 SQLite 驱动上定义 core/profile、session、幂等和 job lock 表，并补空库/重复/失败 fixtures |
+| 当前焦点 | M0-005 Backup/restore 最小闭环 |
+| 下一步 | 在 schema 基线上补可校验的备份 manifest、完整性检查与原子恢复测试 |
 | 当前阻塞 | BLK-005：Docker CLI 未安装，M0-002 的多架构验证暂缓 |
 | 业务代码 | 尚未开始 |
 | Git | 已初始化 `main`；基线提交 `6ae1c95`；全局提交身份未配置，提交使用一次性 `Codex <codex@local>` 身份 |
@@ -25,7 +25,7 @@
 | 里程碑 | 目标 | 状态 | 完成任务 | 退出门槛 |
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
-| M0 | 可验证基础 | `IN_PROGRESS` | 1/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 全部通过 |
+| M0 | 可验证基础 | `IN_PROGRESS` | 3/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 全部通过 |
 | M1 | 饮食记录纵向切片 | `PLANNED` | 0/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
@@ -36,14 +36,27 @@
 
 ### M0-004 — Schema 与 migration 基线
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 07:08 +08:00
+- 完成时间：2026-09-09 07:20 +08:00
 - 操作者：Codex
 - 依赖：M0-002（候选驱动，Docker 门暂缓）、M0-003
 - 计划变更：定义 core/profile、session、幂等和 job lock schema，并让 migration runner 接受真实 migration 列表
 - 计划验收：空库、上一 fixture、重复启动、失败 migration、foreign key 和 checksum 测试
-- 当前进展：M0-003 已完成；schema 尚未开始
-- 下一步：先写空库 bootstrap migration 的失败测试
+- 当前进展：已完成 core/profile、session、幂等、job lock 表和约束；空库 bootstrap、重复启动、失败 migration、foreign key、checksum 均有测试
+- 验收结果：EVD-M0-004-A；全量门禁通过，4 个 test files、16 个 tests passed
+- 下一步：进入 M0-005，补备份 manifest、完整性校验和原子恢复
+
+### M0-005 — Backup/restore 最小闭环
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 07:20 +08:00
+- 操作者：Codex
+- 依赖：M0-004
+- 计划变更：实现 SQLite 在线备份、manifest/checksum 校验和安全恢复入口
+- 计划验收：备份可重开、manifest 可验证、损坏备份拒绝恢复、恢复失败不覆盖现有数据库
+- 当前进展：任务已启动，尚未写入失败测试
+- 下一步：先写备份 manifest 与损坏文件拒绝恢复测试
 
 ## 4. DOC 任务板
 
@@ -60,10 +73,7 @@
 | M0-001 | 版本控制与工作区基线 | `DONE` | 文档基线 | EVD-M0-001-B |
 | M0-002 | SQLite/ORM 技术门 | `BLOCKED` | M0-001 | EVD-M0-002-A/B/C；候选未最终接受，等待 Docker |
 | M0-003 | Core contracts | `DONE` | M0-001 | EVD-M0-003-A |
-| M0-004 | Schema 与 migration 基线 | `IN_PROGRESS` | M0-002/003 | 待补测试证据 |
-| M0-002 | SQLite/ORM 技术门与 ADR | `PLANNED` | M0-001 | WAL/FTS/transaction/backup/multi-arch |
-| M0-003 | Core contracts | `PLANNED` | M0-001 | 可替换 Clock/ID + error/config tests |
-| M0-004 | Schema 与 migration 基线 | `PLANNED` | M0-002/003 | empty/previous/repeat/failure fixtures |
+| M0-004 | Schema 与 migration 基线 | `DONE` | M0-002/003 | EVD-M0-004-A |
 | M0-005 | Backup/restore 最小闭环 | `PLANNED` | M0-004 | restore + corruption/rollback tests |
 | M0-006 | 首次初始化与鉴权 | `PLANNED` | M0-003/004 | bootstrap once + auth/security tests |
 | M0-007 | 可执行容器与 CI | `PLANNED` | M0-004/005/006 | Docker smoke + graceful shutdown |
@@ -72,7 +82,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 
 ## 6. 阻塞项
 
-当前无执行阻塞。以下决策会阻塞对应任务，但尚不阻塞文档治理：
+当前有一个环境阻塞。以下决策会阻塞对应任务，但不阻止已可独立验证的本地工作：
 
 | Blocker | 影响任务 | 解除条件 | 状态 |
 |---|---|---|---|
@@ -107,6 +117,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-002-B | M0-002 | 2026-09-09 07:02 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；M0-002 候选实现可编译并通过全量门禁；multi-arch 仍待补 |
 | EVD-M0-002-C | M0-002 | 2026-09-09 07:05 +08:00 | `docker --version`、`docker buildx version` | exit 1；Docker CLI 在当前环境不存在，不能声称多架构验证通过 |
 | EVD-M0-003-A | M0-003 | 2026-09-09 07:08 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；3 test files、14 tests passed；core contracts 已编译 |
+| EVD-M0-004-A | M0-004 | 2026-09-09 07:20 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm docker:smoke` | 全部 exit 0；4 test files、16 tests passed；core/profile/session/idempotency/job schema 与约束已验证 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -154,6 +165,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 07:05 +08:00 | Codex | M0-002 暂停于环境阻塞 | WAL/migration 测试通过，但 Docker CLI 缺失；转入不依赖 Docker 的 M0-003，保留 BLK-005 |
 | 2026-09-09 07:08 +08:00 | Codex | 完成 M0-003 | Clock、时区日期、UUIDv7、配置优先级、secret redaction、错误 envelope 测试与全量门禁通过 |
 | 2026-09-09 07:08 +08:00 | Codex | 开始 M0-004 | 在候选 SQLite 上建立真实 core/profile schema 与 migration fixtures |
+| 2026-09-09 07:20 +08:00 | Codex | 完成 M0-004 | schema bootstrap、重复/失败 migration、foreign key、checksum 约束和全量门禁通过；新增 EVD-M0-004-A |
+| 2026-09-09 07:20 +08:00 | Codex | 开始 M0-005 | 进入备份/恢复最小闭环，先以 manifest 与损坏备份拒绝恢复为测试入口 |
 
 ## 11. 交接摘要
 
