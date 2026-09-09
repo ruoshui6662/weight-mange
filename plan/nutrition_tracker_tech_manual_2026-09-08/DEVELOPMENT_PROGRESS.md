@@ -358,6 +358,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 22:15 +08:00 | Codex + independent reviewer | 完成 M1-006 Dashboard read model | `0009`、goal snapshot、snapshot-only Dashboard、cache rebuild、API envelope 与 benchmark 完成；全量 94 files/505 tests、所有本地门禁 exit 0；进入 M1-007 |
 | 2026-09-09 22:35 +08:00 | Codex | 确认 M1-007 扩展范围 | 用户确认实现登录 + 首次设置完整流程；接受 DEC-009；下一步先完成实施计划和 HTTP contract，再进入 TDD |
 | 2026-09-09 23:20 +08:00 | Codex | 完成 M1-007 核心实现阶段 | 新增 profile/goal service、HTTP auth/session guard、React/Vite onboarding/dashboard、静态资源服务与 Docker web copy；本地门禁通过；视觉基线、Docker 实测和 M1-008 E2E 留待后续 |
+| 2026-09-09 23:25 +08:00 | Codex | 修正 web runtime 依赖交付 | 发现 Docker runtime 只复制 db workspace 包，补为复制全部 workspace packages；同时修正 SPA fallback 的 shell 缓存头；聚焦静态/auth/profile/web 8 tests、lint/typecheck/build/API smoke/diff check 均通过，提交 `b5c7956` |
 
 ## 11. 交接摘要
 
