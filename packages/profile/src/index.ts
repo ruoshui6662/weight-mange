@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import {
+  calculateBmr,
+  calculateTargetCalories,
+  calculateTdee,
+  type EnergyActivityLevel,
+  type EnergyFormulaSex,
+} from "@nutrition-tracker/nutrition-engine";
 
 export type SexForFormula = "male" | "female" | "none";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "high" | "very_high";
@@ -64,6 +71,24 @@ type GoalInput = {
   now?: number;
 };
 
+export type GoalEstimateInput = {
+  manualCalorieTargetKcal?: number;
+  sex?: EnergyFormulaSex;
+  weightKg?: number;
+  heightCm?: number;
+  ageYears?: number;
+  activityLevel?: EnergyActivityLevel;
+  adjustmentKcal?: number;
+  adjustmentPercent?: number;
+};
+
+export type GoalEstimate = {
+  source: "manual" | "formula";
+  estimatedBmr: number | null;
+  estimatedTdee: number | null;
+  calorieTargetKcal: number;
+};
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SEX_VALUES = new Set<SexForFormula>(["male", "female", "none"]);
 const ACTIVITY_VALUES = new Set<ActivityLevel>(["sedentary", "light", "moderate", "high", "very_high"]);
@@ -86,6 +111,38 @@ function previousDate(value: string) {
 
 function nullableNonNegative(value: number | null | undefined) {
   return value === undefined || value === null || (Number.isFinite(value) && value >= 0);
+}
+
+function positiveFinite(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value) && value > 0;
+}
+
+export function estimateGoal(input: GoalEstimateInput): GoalEstimate {
+  if (input.manualCalorieTargetKcal !== undefined) {
+    if (!positiveFinite(input.manualCalorieTargetKcal)) throw new ProfileError("PROFILE_INVALID_INPUT");
+    return {
+      source: "manual",
+      estimatedBmr: null,
+      estimatedTdee: null,
+      calorieTargetKcal: input.manualCalorieTargetKcal,
+    };
+  }
+  if (input.sex === undefined || input.weightKg === undefined || input.heightCm === undefined || input.ageYears === undefined || input.activityLevel === undefined) {
+    throw new ProfileError("PROFILE_INVALID_INPUT");
+  }
+  try {
+    const estimatedBmr = calculateBmr({ sex: input.sex, weightKg: input.weightKg, heightCm: input.heightCm, ageYears: input.ageYears });
+    const estimatedTdee = calculateTdee({ sex: input.sex, weightKg: input.weightKg, heightCm: input.heightCm, ageYears: input.ageYears, activityLevel: input.activityLevel });
+    return {
+      source: "formula",
+      estimatedBmr,
+      estimatedTdee,
+      calorieTargetKcal: calculateTargetCalories({ tdee: estimatedTdee, ...(input.adjustmentKcal === undefined ? {} : { adjustmentKcal: input.adjustmentKcal }), ...(input.adjustmentPercent === undefined ? {} : { adjustmentPercent: input.adjustmentPercent }) }),
+    };
+  } catch (error) {
+    if (error instanceof RangeError) throw new ProfileError("PROFILE_INVALID_INPUT", { cause: error });
+    throw error;
+  }
 }
 
 function rowToProfile(row: Record<string, unknown>, body: Record<string, unknown> | undefined): Profile {
@@ -190,5 +247,10 @@ export function createProfileService(sqlite: DatabaseSync) {
     return listGoals(userId).find((goal) => goal.id === id)!;
   }
 
-  return { getProfile, updateProfile, listGoals, createGoal };
+  function estimateGoalForUser(userId: string, input: GoalEstimateInput) {
+    ensureUser(userId);
+    return estimateGoal(input);
+  }
+
+  return { getProfile, updateProfile, listGoals, createGoal, estimateGoal: estimateGoalForUser };
 }

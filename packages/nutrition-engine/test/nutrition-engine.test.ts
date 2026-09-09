@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   NUTRITION_ENGINE_VERSION,
   convertPortionToGrams,
+  calculateBmr,
+  calculateTargetCalories,
+  calculateTdee,
   roundForDisplay,
   scaleNutrients,
   sumNutrients,
@@ -58,5 +61,26 @@ describe("nutrition engine", () => {
     expect(roundForDisplay("iron_mg", 8.426)).toBe(8.43);
     expect(roundForDisplay("sodium_mg", 120.54)).toBe(120.5);
     expect(roundForDisplay("body_weight_kg", 70.55)).toBe(70.6);
+  });
+
+  it("calculates Mifflin-St Jeor BMR without display rounding", () => {
+    expect(calculateBmr({ sex: "male", weightKg: 70, heightCm: 175, ageYears: 30 })).toBe(1648.75);
+    expect(calculateBmr({ sex: "female", weightKg: 60, heightCm: 165, ageYears: 30 })).toBe(1320.25);
+  });
+
+  it("calculates TDEE from the configured activity factor", () => {
+    expect(calculateTdee({ sex: "male", weightKg: 70, heightCm: 175, ageYears: 30, activityLevel: "moderate" })).toBe(2555.5625);
+  });
+
+  it("applies either a fixed or percentage user adjustment to estimated TDEE", () => {
+    expect(calculateTargetCalories({ tdee: 2555.5625, adjustmentKcal: -300 })).toBe(2255.5625);
+    expect(calculateTargetCalories({ tdee: 2555.5625, adjustmentPercent: -0.1 })).toBe(2300.00625);
+    expect(() => calculateTargetCalories({ tdee: 2555.5625, adjustmentKcal: -300, adjustmentPercent: -0.1 })).toThrow(/one adjustment/i);
+  });
+
+  it("rejects non-physical energy estimation inputs", () => {
+    expect(() => calculateBmr({ sex: "male", weightKg: 0, heightCm: 175, ageYears: 30 })).toThrow(/weightKg/i);
+    expect(() => calculateTdee({ sex: "male", weightKg: 70, heightCm: 175, ageYears: 30, activityLevel: "unknown" as never })).toThrow(/activityLevel/i);
+    expect(() => calculateTargetCalories({ tdee: 0 })).toThrow(/tdee/i);
   });
 });

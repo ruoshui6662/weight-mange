@@ -24,6 +24,12 @@ it("completes the first profile and goal setup after bootstrap", async () => {
     const updated = await fetch(`${base}/api/v1/profile`, { method: "PATCH", headers, body: JSON.stringify({ displayName: "主人", timezone: "Asia/Shanghai", heightCm: 166, sexForFormula: "none", activityLevel: "light" }) });
     expect(updated.status).toBe(200);
     expect(await json(updated)).toMatchObject({ data: { displayName: "主人", timezone: "Asia/Shanghai", body: { heightCm: 166 } } });
+    const estimate = await fetch(`${base}/api/v1/profile/goals/estimate`, { method: "POST", headers, body: JSON.stringify({ sex: "male", weightKg: 70, heightCm: 175, ageYears: 30, activityLevel: "moderate", adjustmentKcal: -300 }) });
+    expect(estimate.status).toBe(200);
+    expect(await json(estimate)).toMatchObject({ data: { source: "formula", estimatedBmr: 1648.75, estimatedTdee: 2555.5625, calorieTargetKcal: 2255.5625 } });
+    const manualEstimate = await fetch(`${base}/api/v1/profile/goals/estimate`, { method: "POST", headers, body: JSON.stringify({ manualCalorieTargetKcal: 1800 }) });
+    expect(manualEstimate.status).toBe(200);
+    expect(await json(manualEstimate)).toMatchObject({ data: { source: "manual", estimatedBmr: null, estimatedTdee: null, calorieTargetKcal: 1800 } });
     const goal = await fetch(`${base}/api/v1/profile/goals`, { method: "POST", headers, body: JSON.stringify({ goalType: "loss", calorieTargetKcal: 1800, proteinTargetG: 120, effectiveFrom: "2026-09-09", source: "manual" }) });
     expect(goal.status).toBe(201);
     expect(await json(goal)).toMatchObject({ data: { goalType: "loss", calorieTargetKcal: 1800 } });

@@ -125,6 +125,9 @@ importers:
       '@nutrition-tracker/core':
         specifier: workspace:*
         version: link:../core
+      '@nutrition-tracker/nutrition-engine':
+        specifier: workspace:*
+        version: link:../nutrition-engine
 
   packages/shared: {}
 

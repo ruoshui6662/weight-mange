@@ -10,6 +10,7 @@
     }
   },
   "dependencies": {
-    "@nutrition-tracker/core": "workspace:*"
+    "@nutrition-tracker/core": "workspace:*",
+    "@nutrition-tracker/nutrition-engine": "workspace:*"
   }
 }

@@ -186,6 +186,41 @@ API 采用 JSON，上传图片/备份使用 multipart。
 
 旧 goal 自动 effective_to。
 
+## POST /api/v1/profile/goals/estimate
+
+仅计算、不写入目标版本。默认使用 Mifflin–St Jeor 与活动系数；用户提供
+`manualCalorieTargetKcal` 时优先返回手动目标，可不提供公式输入。
+
+公式估算请求：
+
+```json
+{
+  "sex": "male",
+  "weightKg": 70,
+  "heightCm": 175,
+  "ageYears": 30,
+  "activityLevel": "moderate",
+  "adjustmentKcal": -300
+}
+```
+
+响应：
+
+```json
+{
+  "data": {
+    "source": "formula",
+    "estimatedBmr": 1648.75,
+    "estimatedTdee": 2555.5625,
+    "calorieTargetKcal": 2255.5625
+  }
+}
+```
+
+`adjustmentKcal` 与 `adjustmentPercent` 最多提供一个；输入非法返回
+`PROFILE_INVALID_INPUT`。该接口不创建 goal，实际写入仍使用
+`POST /api/v1/profile/goals`，以保留有效期和历史快照边界。
+
 ---
 
 # 6. Dashboard

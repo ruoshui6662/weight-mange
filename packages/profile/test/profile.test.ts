@@ -48,4 +48,28 @@ describe("profile and nutrition goals", () => {
     expect(() => profile.createGoal("user-1", { goalType: "loss", calorieTargetKcal: 1800, effectiveFrom: "2026-99-99", source: "manual" })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
     sqlite.close();
   });
+
+  it("estimates formula calories while preserving an explicit manual override", () => {
+    const { sqlite, profile } = createService();
+    expect(profile.estimateGoal("user-1", { sex: "male", weightKg: 70, heightCm: 175, ageYears: 30, activityLevel: "moderate", adjustmentKcal: -300 })).toEqual({
+      source: "formula",
+      estimatedBmr: 1648.75,
+      estimatedTdee: 2555.5625,
+      calorieTargetKcal: 2255.5625,
+    });
+    expect(profile.estimateGoal("user-1", { manualCalorieTargetKcal: 1800 })).toEqual({
+      source: "manual",
+      estimatedBmr: null,
+      estimatedTdee: null,
+      calorieTargetKcal: 1800,
+    });
+    sqlite.close();
+  });
+
+  it("rejects incomplete formula estimates and invalid manual targets", () => {
+    const { sqlite, profile } = createService();
+    expect(() => profile.estimateGoal("user-1", { sex: "male", weightKg: 70, heightCm: 175, activityLevel: "moderate" })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
+    expect(() => profile.estimateGoal("user-1", { manualCalorieTargetKcal: 0 })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
+    sqlite.close();
+  });
 });

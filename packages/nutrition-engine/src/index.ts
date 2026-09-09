@@ -4,7 +4,34 @@ export const ALGORITHM_VERSIONS = {
   foodScale: "food_scale_v1",
   portionConversion: "portion_conversion_v1",
   displayRounding: "display_rounding_v1",
+  energyEstimate: "energy_estimate_v1",
 } as const;
+
+export const ACTIVITY_FACTORS = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  high: 1.725,
+  very_high: 1.9,
+} as const;
+
+export type EnergyFormulaSex = "male" | "female";
+export type EnergyActivityLevel = keyof typeof ACTIVITY_FACTORS;
+
+export type BmrInput = {
+  sex: EnergyFormulaSex;
+  weightKg: number;
+  heightCm: number;
+  ageYears: number;
+};
+
+export type TdeeInput = BmrInput & { activityLevel: EnergyActivityLevel };
+
+export type TargetCaloriesInput = {
+  tdee: number;
+  adjustmentKcal?: number;
+  adjustmentPercent?: number;
+};
 
 export type NutrientStatus = "known" | "trace" | "unknown" | "estimated";
 
@@ -49,6 +76,56 @@ function assertNonNegativeFinite(value: number, name: string): void {
   if (!Number.isFinite(value) || value < 0) {
     throw new RangeError(`${name} must be a non-negative finite number`);
   }
+}
+
+function assertPositiveFinite(value: number, name: string): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} must be a positive finite number`);
+  }
+}
+
+function assertEnergyInput(input: BmrInput): void {
+  if (input.sex !== "male" && input.sex !== "female") {
+    throw new RangeError("sex must be male or female");
+  }
+  assertPositiveFinite(input.weightKg, "weightKg");
+  assertPositiveFinite(input.heightCm, "heightCm");
+  assertPositiveFinite(input.ageYears, "ageYears");
+}
+
+export function calculateBmr(input: BmrInput): number {
+  assertEnergyInput(input);
+  const sexOffset = input.sex === "male" ? 5 : -161;
+  return 10 * input.weightKg + 6.25 * input.heightCm - 5 * input.ageYears + sexOffset;
+}
+
+export function calculateTdee(input: TdeeInput): number {
+  if (!(input.activityLevel in ACTIVITY_FACTORS)) {
+    throw new RangeError("activityLevel must be a supported activity level");
+  }
+  return calculateBmr(input) * ACTIVITY_FACTORS[input.activityLevel];
+}
+
+export function calculateTargetCalories(input: TargetCaloriesInput): number {
+  assertPositiveFinite(input.tdee, "tdee");
+  const hasKcal = input.adjustmentKcal !== undefined;
+  const hasPercent = input.adjustmentPercent !== undefined;
+  if (hasKcal && hasPercent) {
+    throw new RangeError("provide one adjustment");
+  }
+  if (hasKcal) {
+    assertNonNegativeFinite(Math.abs(input.adjustmentKcal!), "adjustmentKcal");
+  }
+  if (hasPercent && !Number.isFinite(input.adjustmentPercent)) {
+    throw new RangeError("adjustmentPercent must be finite");
+  }
+  const target = hasKcal
+    ? input.tdee + input.adjustmentKcal!
+    : hasPercent
+      ? input.tdee * (1 + input.adjustmentPercent!)
+      : input.tdee;
+  assertPositiveFinite(target, "targetCalories");
+  return target;
 }
 
 function createResult(nutrients: Record<string, NutrientSummary>): NutritionResult {
