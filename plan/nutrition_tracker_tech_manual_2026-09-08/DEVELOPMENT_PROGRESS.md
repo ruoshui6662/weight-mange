@@ -16,7 +16,7 @@
 | 下一步 | 完成 M1-007 独立复审与 360/390/430 视觉验收，再进入 M1-008 核心 E2E 与备份恢复流程 |
 | 当前阻塞 | 无；M1-007 核心实现已发布，视觉基线与 M1-008 E2E 尚未开始 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model 已完成；M1-007 核心实现已完成，待视觉/复审验收 |
-| Git | 远程 `main` 已包含 M1-007 核心实现（`3a47945`）；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
+| Git | 远程 `main` 当前为 `165917c`（包含 `3a47945` 代码发布）；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
