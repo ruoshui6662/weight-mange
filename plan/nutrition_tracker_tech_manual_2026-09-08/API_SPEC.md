@@ -607,6 +607,9 @@ Response：
 
 如果不足：
 
+返回 `status=insufficient_data`、`estimatedTdeeKcal=null` 和
+`reason=insufficient_data`；21 天以下、体重观测少于 8 次或饮食 coverage 低于 0.7 均不生成估算。结果只读，不会自动写入或修改 nutrition goal。
+
 ```json
 {
   "data": {

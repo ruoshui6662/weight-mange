@@ -19,5 +19,8 @@ it("returns an explicit analytics overview for an authenticated period", async (
     const response = await fetch(`${base}/api/v1/analytics/overview?from=2026-01-01&to=2026-01-03`, { headers: { cookie: cookie(boot) } });
     expect(response.status).toBe(200);
     expect(await json(response)).toMatchObject({ data: { period: { days: 3 }, recordCoverage: { recordedDays: 0, ratio: 0 }, averages: { intakeKcal: null }, weight: { deltaKg: null } } });
+    const tdee = await fetch(`${base}/api/v1/analytics/tdee?from=2026-01-01&to=2026-01-03`, { headers: { cookie: cookie(boot) } });
+    expect(tdee.status).toBe(200);
+    expect(await json(tdee)).toMatchObject({ data: { methodVersion: "adaptive_tdee_v1", status: "insufficient_data", estimatedTdeeKcal: null, period: { from: "2026-01-01", to: "2026-01-03" } } });
   } finally { await runtime.close(); }
 });

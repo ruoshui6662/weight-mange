@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AnalyticsError, buildAnalyticsOverview } from "../src/index.js";
+import { AnalyticsError, buildAnalyticsOverview, estimateAdaptiveTdee } from "../src/index.js";
 
 describe("analytics overview", () => {
   it("averages recorded summaries and reports coverage, goal difference and weight change", () => {
@@ -36,5 +36,26 @@ describe("analytics overview", () => {
   it("rejects reversed periods and invalid summary values", () => {
     expect(() => buildAnalyticsOverview({ from: "2026-01-03", to: "2026-01-01", daily: [], weights: [] })).toThrow(new AnalyticsError("ANALYTICS_INVALID_INPUT"));
     expect(() => buildAnalyticsOverview({ from: "2026-01-01", to: "2026-01-03", daily: [{ localDate: "2026-01-02", intakeKcal: -1, proteinG: 0, fatG: 0, carbG: 0, goalKcal: null }], weights: [] })).toThrow(new AnalyticsError("ANALYTICS_INVALID_INPUT"));
+  });
+
+  it("estimates adaptive TDEE from intake and trend weight with a fixed version", () => {
+    expect(estimateAdaptiveTdee({ periodDays: 28, averageIntakeKcal: 2000, startTrendWeightKg: 70, endTrendWeightKg: 69, weightMeasurementCount: 10, diaryCoverage: 1, asOfDate: "2026-01-29" })).toEqual({
+      methodVersion: "adaptive_tdee_v1",
+      status: "estimated",
+      reason: null,
+      rawTdeeKcal: 2275,
+      estimatedTdeeKcal: 2275,
+      confidence: 1,
+      recommendedCalorieTargetKcal: null,
+    });
+  });
+
+  it("does not estimate with insufficient data and smooths eligible updates", () => {
+    expect(estimateAdaptiveTdee({ periodDays: 20, averageIntakeKcal: 2000, startTrendWeightKg: 70, endTrendWeightKg: 69, weightMeasurementCount: 7, diaryCoverage: 1, asOfDate: "2026-01-21" })).toMatchObject({ status: "insufficient_data", reason: "insufficient_data", estimatedTdeeKcal: null, confidence: 0 });
+    expect(estimateAdaptiveTdee({ periodDays: 28, averageIntakeKcal: 2000, startTrendWeightKg: 70, endTrendWeightKg: 69, weightMeasurementCount: 10, diaryCoverage: 1, previousEstimateKcal: 2200, asOfDate: "2026-01-29" })).toMatchObject({ status: "estimated", rawTdeeKcal: 2275, estimatedTdeeKcal: 2222.5 });
+  });
+
+  it("throttles updates for seven days and never proposes an automatic target", () => {
+    expect(estimateAdaptiveTdee({ periodDays: 28, averageIntakeKcal: 2000, startTrendWeightKg: 70, endTrendWeightKg: 69, weightMeasurementCount: 10, diaryCoverage: 1, previousEstimateKcal: 2200, asOfDate: "2026-01-29", lastUpdatedDate: "2026-01-25" })).toMatchObject({ status: "throttled", reason: "update_throttled", estimatedTdeeKcal: 2200, recommendedCalorieTargetKcal: null });
   });
 });

@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 03:25 +08:00
+> 最后更新：2026-09-10 03:55 +08:00
 
 ## 1. 当前快照
 
@@ -12,8 +12,8 @@
 | 项目阶段 | M1 饮食记录纵向切片实施；M2 目标与能量估算已开始 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M2-005 Adaptive TDEE v1：数据门槛、confidence 和更新节流 |
-| 下一步 | 先按 Adaptive 规范固定 21/28 天门槛与不足数据 contract；M1-007 视觉证据仍等待真实 Chrome/Edge 或 CI Playwright |
+| 当前焦点 | M2-006 UI/E2E：目标、体重、趋势和分析页面 |
+| 下一步 | 先按前端现有导航壳补体重/分析数据接入与不足数据状态测试；M1-007 视觉证据仍等待真实 Chrome/Edge 或 CI Playwright |
 | 当前阻塞 | `BLK-007`：浏览器内置客户端拦截本地 API，且 viewport override 在 IAB 不生效；动态搜索和 390/430 证据需真实浏览器或 CI；本机 Docker CLI 也缺失 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model、M1-008 核心集成 golden flow、M1-009 导航与搜索状态已完成；M1-007 核心实现已完成但视觉验收受 BLK-007 阻塞；M2-001 已进入实施 |
 | Git | 本地 `main` 为 `e6cfe53`（含浏览器验收阻塞记录），远程 `origin/main` 为 `766efe7`；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
@@ -27,7 +27,7 @@
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 8/9 | 离线于公网完成真实食物记录闭环 |
-| M2 | 目标、体重与基础分析 | `IN_PROGRESS` | 4/6 | 趋势/TDEE 确定性且历史目标不漂移 |
+| M2 | 目标、体重与基础分析 | `IN_PROGRESS` | 5/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
@@ -263,6 +263,20 @@
 - 阻塞/风险：Adaptive TDEE、21/28 天门槛和 UI 留给 M2-005/M2-006；overview 不会自动改写 calorie target。
 - 下一步：进入 M2-005，固定 Adaptive TDEE 的门槛、confidence 和节流策略。
 
+### M2-005 — Adaptive TDEE v1
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 03:35 +08:00
+- 完成时间：2026-09-10 03:55 +08:00
+- 操作者：Codex
+- 依赖：M2-003、M2-004、NUTRITION_ENGINE_SPEC 第 19–20 节
+- 计划变更：实现 21 天最低窗口、推荐 28 天窗口、至少 8 次体重观测、diary coverage/confidence、7 天更新节流和旧估算平滑；只返回估算，不自动修改 calorie target。
+- 计划验收：先写纯函数 RED/golden tests；验证数据不足返回 null、固定模拟数据确定输出、节流/平滑、confidence 边界和负/正体重变化公式。
+- 当前进展：`@nutrition-tracker/analytics` 新增 `estimateAdaptiveTdee` 与 `GET /api/v1/analytics/tdee`；固定 `adaptive_tdee_v1`、21 天最低窗口、至少 8 次观测、coverage 0.7、confidence、7 天节流和 0.7/0.3 平滑；不足数据返回 null，推荐目标始终 null。
+- 验收结果：EVD-M2-005-A；聚焦 analytics/API 2 files/7 tests；全量 138 files/730 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用。
+- 阻塞/风险：本任务不实现 scheduler/job lock 持久化或 UI；推荐目标写回留给用户确认和后续 M2-006。
+- 下一步：进入 M2-006，接入目标、体重、趋势和分析页面，并补前端状态/E2E。
+
 ## 4. DOC 任务板
 
 | ID | 任务 | 状态 | 负责人 | 证据/备注 |
@@ -380,6 +394,7 @@ result: 42 passed, 0 failed
 | EVD-M2-002-A | M2-002 | 2026-09-10 02:25 +08:00 | `pnpm exec vitest run packages/body/test/body.test.ts apps/api/test/body-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察路由 404/域模块缺失，再实现后聚焦 2 files/4 tests；全量 123 files/647 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；同日多次、timezone localDate、版本更新/删除冲突和 REST 路由通过 |
 | EVD-M2-003-A | M2-003 | 2026-09-10 02:55 +08:00 | `pnpm exec vitest run packages/body/test/body.test.ts apps/api/test/body-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 sampling/trend 函数缺失，再实现后聚焦 2 files/7 tests；全量 123 files/653 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；last/average、rolling/EWMA、窗口/alpha 校验、缺失日期和 trend API 通过 |
 | EVD-M2-004-A | M2-004 | 2026-09-10 03:25 +08:00 | `pnpm exec vitest run packages/analytics/test/analytics.test.ts apps/api/test/analytics-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 analytics 模块缺失，再实现后聚焦 2 files/4 tests；全量 138 files/724 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；覆盖率、平均摄入/宏量、goal difference、weight delta 和不足数据 null 语义通过 |
+| EVD-M2-005-A | M2-005 | 2026-09-10 03:55 +08:00 | `pnpm exec vitest run packages/analytics/test/analytics.test.ts apps/api/test/analytics-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 Adaptive 函数缺失，再实现后聚焦 2 files/7 tests；全量 138 files/730 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；21 天/8 次/coverage 门槛、固定公式、平滑、7 天节流和不自动改目标通过 |
 
 ## 9. 问题队列
 
@@ -487,13 +502,15 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 02:55 +08:00 | Codex | 完成 M2-003 | `sampleDailyWeights`、`calculateWeightTrend` 与 `GET /api/v1/body/weight-trend` 完成；全量 123 files/653 tests 与本地门禁通过；下一步进入 M2-004 Analytics read model |
 | 2026-09-10 03:05 +08:00 | Codex | 开始 M2-004 | 固定 analytics overview 的 period、coverage、平均摄入/宏量、goal difference 和 weight delta；先写纯 read-model RED 测试 |
 | 2026-09-10 03:25 +08:00 | Codex | 完成 M2-004 | 独立 analytics package 与 overview API 完成；全量 138 files/724 tests 与本地门禁通过；下一步进入 M2-005 Adaptive TDEE v1 |
+| 2026-09-10 03:35 +08:00 | Codex | 开始 M2-005 | 固定 Adaptive TDEE 输入/输出、21/28 天门槛、confidence、7 天节流和 smoothing；先写纯函数 RED 测试 |
+| 2026-09-10 03:55 +08:00 | Codex | 完成 M2-005 | `estimateAdaptiveTdee` 与 TDEE API 完成；全量 138 files/730 tests 与本地门禁通过；下一步进入 M2-006 UI/E2E |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 核心饮食闭环、M2-001 能量估算、M2-002 体重记录、M2-003 趋势引擎和 M2-004 Analytics overview 已完成。后续接手者应：
+M0 基础代码已完成；M1 核心饮食闭环、M2-001 能量估算、M2-002 体重记录、M2-003 趋势引擎、M2-004 Analytics overview 和 M2-005 Adaptive TDEE 已完成。后续接手者应：
 
 1. 先阅读本页并保留 `BLK-007`：M1-007 的 IAB 动态搜索与 390/430 视觉证据仍需真实 Chrome/Edge 或 CI Playwright；
-2. 继续 M2-005 Adaptive TDEE v1，复用 overview 与 `weight_trend_v1`，保持不足数据不估算且不自动改目标；
+2. 继续 M2-006 UI/E2E，复用 overview、`weight_trend_v1` 和 `adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 3. 保持 M2-001 的 `energy_estimate_v1` 和 `POST /api/v1/profile/goals/estimate` contract，goal 写入仍走版本化 POST；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 
