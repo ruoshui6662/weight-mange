@@ -49,6 +49,28 @@ describe("RecipePanel", () => {
     expect(recipeErrorText(new ApiError("RECIPE_VERSION_CONFLICT", 409))).toContain("重新加载");
   });
 
+  it("keeps a deferred save pending until the server response resolves", async () => {
+    let resolveUpdate!: (value: Recipe) => void;
+    const pendingUpdate = new Promise<Recipe>((resolve) => { resolveUpdate = resolve; });
+    const update = vi.fn(() => pendingUpdate);
+    const save = updateRecipeAction({ ...client, updateRecipe: update }, recipe, {
+      name: recipe.name,
+      cookedWeightG: String(recipe.cookedWeightG),
+      servingCount: String(recipe.servingCount),
+      ingredients: [{ key: "ingredient-1", foodId: "food-1", name: "馒头", amount: "100" }],
+    });
+
+    let settled = false;
+    void save.then(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(update).toHaveBeenCalledTimes(1);
+
+    resolveUpdate({ ...recipe, version: 8 });
+    await expect(save).resolves.toMatchObject({ version: 8 });
+    expect(settled).toBe(true);
+  });
+
   it("sends explicit nulls when clearing optional yield fields", async () => {
     const update = vi.fn(async () => ({ ...recipe, cookedWeightG: null, servingCount: null, version: 8 }));
     await updateRecipeAction({ ...client, updateRecipe: update }, recipe, { name: recipe.name, cookedWeightG: "", servingCount: "", ingredients: [{ key: "ingredient-1", foodId: "food-1", name: "馒头", amount: "100" }] });
