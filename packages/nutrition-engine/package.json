@@ -1,0 +1,9 @@
+{
+  "name": "@nutrition-tracker/nutrition-engine",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}
