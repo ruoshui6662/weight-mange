@@ -26,6 +26,72 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await expect(page.getByRole("heading", { name: "你好，e2e-user" })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
+  await page.getByRole("button", { name: "菜谱" }).click();
+  await page.getByRole("button", { name: "新建菜谱" }).click();
+  await page.getByLabel("菜谱名称").fill("馒头菜谱");
+  await page.getByLabel("成品重量").fill("200");
+  await page.getByLabel("份数").fill("2");
+  await page.getByLabel("原料搜索").fill("馒头");
+  await page.getByRole("button", { name: "搜索原料" }).click();
+  await expect(page.getByRole("button", { name: "选择原料" })).toBeVisible();
+  await page.getByRole("button", { name: "选择原料" }).click();
+  await page.getByRole("button", { name: "保存菜谱" }).click();
+  await expect(page.getByRole("heading", { name: "馒头菜谱", exact: true })).toBeVisible();
+  await expect(page.getByText("总营养", { exact: true })).toBeVisible();
+  await expect(page.getByText("每100克营养", { exact: true })).toBeVisible();
+  await expect(page.getByText("每份营养", { exact: true })).toBeVisible();
+  await expect(page.getByText("223", { exact: true })).toBeVisible();
+  await expect(page.getByText(/计算版本/)).toBeVisible();
+
+  await page.getByRole("button", { name: "返回菜谱列表" }).click();
+  await page.getByRole("button", { name: "新建菜谱" }).click();
+  await page.getByLabel("菜谱名称").fill("无成品重量菜谱");
+  await page.getByLabel("原料搜索").fill("馒头");
+  await page.getByRole("button", { name: "搜索原料" }).click();
+  await page.getByRole("button", { name: "选择原料" }).click();
+  await page.getByRole("button", { name: "保存菜谱" }).click();
+  await expect(page.getByText("未填写成品重量，无法展示每100克营养。", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "返回菜谱列表" }).click();
+  const firstRecipe = page.getByRole("article").filter({ hasText: "馒头菜谱" }).first();
+  await firstRecipe.getByRole("button", { name: "查看菜谱" }).click();
+  await page.getByRole("button", { name: "复制菜谱" }).click();
+  await expect(page.getByRole("heading", { name: "馒头菜谱（副本）", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "编辑菜谱" }).click();
+  await page.getByLabel("原料用量").fill("150");
+  await page.getByRole("button", { name: "保存菜谱" }).click();
+  await page.getByRole("button", { name: "刷新原料" }).click();
+  await expect(page.getByText(/原料：馒头 150g/)).toBeVisible();
+  await page.getByRole("button", { name: "加入日记" }).click();
+
+  const eyebrow = await page.getByText(/^(TODAY|DIARY|RECIPE) · \d{4}-\d{2}-\d{2}$/).first().textContent();
+  const today = eyebrow?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  expect(today).toBeTruthy();
+  await expect(page.getByRole("button", { name: "饮食" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("馒头菜谱（副本） · 100g", { exact: true })).toBeVisible();
+
+  const diaryResponse = await page.request.get(`/api/v1/diary/${today}`);
+  expect(diaryResponse.ok()).toBe(true);
+  const firstDiary = (await diaryResponse.json()).data;
+  const recipeEntry = firstDiary.entries.find((entry: { displayNameSnapshot: string }) => entry.displayNameSnapshot === "馒头菜谱（副本）");
+  expect(recipeEntry).toBeTruthy();
+  const originalEnergy = recipeEntry.nutrients.find((nutrient: { nutrientId: string }) => nutrient.nutrientId === "energy_kcal").amountNumeric;
+  expect(originalEnergy).toBeCloseTo(167.25);
+
+  const recipeResponse = await page.request.get(`/api/v1/recipes/${recipeEntry.recipeId}`);
+  expect(recipeResponse.ok()).toBe(true);
+  const recipeData = (await recipeResponse.json()).data;
+  const updatedRecipeResponse = await page.request.fetch(`/api/v1/recipes/${recipeEntry.recipeId}`, {
+    method: "PATCH",
+    data: { version: recipeData.version, cookedWeightG: 100 },
+  });
+  expect(updatedRecipeResponse.ok()).toBe(true);
+  const secondDiaryResponse = await page.request.get(`/api/v1/diary/${today}`);
+  expect(secondDiaryResponse.ok()).toBe(true);
+  const secondDiary = (await secondDiaryResponse.json()).data;
+  const unchangedEntry = secondDiary.entries.find((entry: { id: string }) => entry.id === recipeEntry.id);
+  expect(unchangedEntry.nutrients.find((nutrient: { nutrientId: string }) => nutrient.nutrientId === "energy_kcal").amountNumeric).toBe(originalEnergy);
+
   await page.getByRole("button", { name: "饮食" }).click();
   await page.getByLabel("搜索食物").fill("馒头");
   await page.getByRole("button", { name: "搜索" }).click();
@@ -35,7 +101,7 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await page.getByRole("button", { name: "今日" }).click();
   await expect(page.getByText("馒头 · 100g", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "编辑馒头" }).click();
+  await page.getByRole("button", { name: "编辑馒头", exact: true }).click();
   await page.locator('input[name^="edit-amount-"]').fill("120");
   await page.getByRole("button", { name: "保存修改" }).click();
   await expect(page.getByText("馒头 · 120g", { exact: true })).toBeVisible();
@@ -46,7 +112,7 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await expectNoHorizontalOverflow(page);
   await page.getByRole("button", { name: "今日" }).click();
   page.once("dialog", (dialog) => { void dialog.accept(); });
-  await page.getByRole("button", { name: "删除馒头" }).click();
+  await page.getByRole("button", { name: "删除馒头", exact: true }).click();
   await expect(page.getByText("馒头 · 120g", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "饮食" }).click();
@@ -77,6 +143,8 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
     await expectNoHorizontalOverflow(page);
+    const viewportNavHeights = await page.getByRole("navigation", { name: "主导航" }).getByRole("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+    expect(viewportNavHeights.every((height) => height >= 44)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`viewport-${viewport.width}.png`), fullPage: true });
   }
 });
