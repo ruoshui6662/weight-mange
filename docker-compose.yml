@@ -1,0 +1,38 @@
+services:
+  nutrition-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nutrition-tracker:dev
+    container_name: nutrition-tracker
+    restart: unless-stopped
+    # Bind mounts may be created as root on NAS hosts. Fix ownership once,
+    # then drop privileges before starting the API process.
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        chown -R 10001:10001 /data &&
+        exec su -s /bin/sh appuser -c 'exec node /app/apps/api/dist/index.js'
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      PORT: "3000"
+      DB_PATH: /data/db/app.sqlite
+      AUTH_MODE: ${AUTH_MODE:-password}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      WEB_DIST_DIR: /app/web
+    healthcheck:
+      test: ["CMD", "node", "/app/scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

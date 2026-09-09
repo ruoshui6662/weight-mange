@@ -1,0 +1,17 @@
+{
+  "name": "@nutrition-tracker/api",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@nutrition-tracker/auth": "workspace:*",
+    "@nutrition-tracker/dashboard": "workspace:*",
+    "@nutrition-tracker/db": "workspace:*",
+    "@nutrition-tracker/food": "workspace:*",
+    "@nutrition-tracker/diary": "workspace:*",
+    "@nutrition-tracker/profile": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

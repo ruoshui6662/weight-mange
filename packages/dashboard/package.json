@@ -1,0 +1,13 @@
+{
+  "name": "@nutrition-tracker/dashboard",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "dependencies": {
+    "@nutrition-tracker/db": "workspace:*",
+    "@nutrition-tracker/diary": "workspace:*"
+  },
+  "devDependencies": { "@nutrition-tracker/food": "workspace:*" },
+  "scripts": { "build": "tsc -p tsconfig.json" }
+}

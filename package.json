@@ -1,0 +1,30 @@
+{
+  "name": "nutrition-tracker",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": ">=11.19.0 <12"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "build": "pnpm --filter @nutrition-tracker/web build && tsc -b --pretty false",
+    "api:smoke": "node scripts/api-smoke.mjs",
+    "docker:smoke": "node scripts/docker-smoke.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.5.0",
+    "drizzle-orm": "1.0.0-rc.4",
+    "eslint": "10.10.0",
+    "drizzle-kit": "1.0.0-rc.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
+  }
+}

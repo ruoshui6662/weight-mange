@@ -1,0 +1,35 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, expect, it } from "vitest";
+import { startApiServer } from "../src/index.js";
+import { bootstrapSession, withCookie } from "./auth-helper.js";
+
+const directories: string[] = [];
+afterEach(() => directories.splice(0).forEach((directory) => rmSync(directory, { force: true, recursive: true })));
+
+it("exposes local-only food routes and stable error envelopes", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "food-api-")); directories.push(directory);
+  const runtime = await startApiServer({ dbPath: join(directory, "app.sqlite"), port: 0 });
+  try {
+    const base = `http://127.0.0.1:${runtime.port}`;
+    const cookie = await bootstrapSession(base);
+    expect((await fetch(`${base}/api/v1/foods/search?q=not-found`, { headers: withCookie(cookie) })).status).toBe(200);
+    expect(await (await fetch(`${base}/api/v1/foods/search?q=not-found`, { headers: withCookie(cookie) })).json()).toMatchObject({ data: [], meta: { nextCursor: null } });
+    const create = await fetch(`${base}/api/v1/foods/custom`, { method: "POST", headers: withCookie(cookie, { "content-type": "application/json" }), body: JSON.stringify({ name: "我的豆浆", nutrients: { energyKcal: 30, proteinG: 2 } }) });
+    expect(create.status).toBe(201); const created = await create.json() as { data: { id: string } };
+    expect((await fetch(`${base}/api/v1/foods/search?q=豆浆&scope=custom`, { headers: withCookie(cookie) })).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/foods/${created.data.id}/favorite`, { method: "POST", headers: withCookie(cookie) })).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/foods/missing`, { headers: withCookie(cookie) })).status).toBe(404);
+    expect((await fetch(`${base}/api/v1/foods/search?q=x&limit=500`, { headers: withCookie(cookie) })).status).toBe(400);
+    const malformed = await fetch(`${base}/api/v1/foods/custom`, { method: "POST", headers: withCookie(cookie, { "content-type": "application/json" }), body: "{}" });
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toMatchObject({ error: { code: "FOOD_INVALID_CUSTOM", requestId: expect.any(String) } });
+    const malformedPatch = await fetch(`${base}/api/v1/foods/${created.data.id}`, { method: "PATCH", headers: withCookie(cookie, { "content-type": "application/json" }), body: JSON.stringify({ nutrients: { fatG: null } }) });
+    expect(malformedPatch.status).toBe(400);
+    expect(await malformedPatch.json()).toMatchObject({ error: { code: "FOOD_INVALID_UPDATE", message: expect.any(String), requestId: expect.any(String) } });
+    const emptyNutrients = await fetch(`${base}/api/v1/foods/${created.data.id}`, { method: "PATCH", headers: withCookie(cookie, { "content-type": "application/json" }), body: JSON.stringify({ nutrients: [] }) });
+    expect(emptyNutrients.status).toBe(400);
+    expect(await emptyNutrients.json()).toMatchObject({ error: { code: "FOOD_INVALID_UPDATE", requestId: expect.any(String) } });
+  } finally { await runtime.close(); }
+});

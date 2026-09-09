@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/db" },
+    { "path": "packages/core" },
+    { "path": "packages/nutrition-engine" },
+    { "path": "packages/auth" },
+    { "path": "packages/food" },
+    { "path": "packages/diary" },
+    { "path": "packages/dashboard" },
+    { "path": "packages/profile" },
+    { "path": "apps/web" },
+    { "path": "tools/food-import" },
+    { "path": "apps/api" }
+  ]
+}

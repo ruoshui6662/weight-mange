@@ -194,6 +194,7 @@ Canonical 食物主表。
 | id | TEXT | PK | |
 | canonical_key | TEXT | UNIQUE | 稳定内部 key |
 | primary_name | TEXT | NOT NULL | 中文显示名 |
+| search_key | TEXT | NOT NULL | 规范化主名称；用于精确/前缀本地搜索索引 |
 | english_name | TEXT nullable | | |
 | brand | TEXT nullable | | 商品品牌 |
 | food_code | TEXT nullable | | CFCD foodCode |
@@ -235,6 +236,7 @@ Canonical 食物主表。
 | source_record_id | TEXT nullable |
 | raw_json | TEXT |
 | source_url | TEXT nullable |
+| source_notes | TEXT nullable | 保留来源记录级备注，如 CFCD `remark` |
 | imported_at | INTEGER |
 | is_primary | INTEGER |
 
@@ -260,7 +262,7 @@ AI 识别未确认的数据不能直接标记 primary。
 |---|---|---|
 | id | TEXT PK | 如 energy_kcal |
 | display_name | TEXT | 热量 |
-| unit | TEXT | kcal/g/mg/µg |
+| unit | TEXT | kcal/kJ/g/mg/µg；`energy_kj` 必须为 `kJ` |
 | nutrient_group | TEXT | macro/vitamin/mineral/other |
 | display_order | INTEGER | |
 | summable | INTEGER | |
@@ -474,6 +476,7 @@ UNIQUE(user_id, local_date)
 | diary_day_id | TEXT FK | |
 | meal_slot_id | TEXT FK | |
 | food_id | TEXT nullable FK | 原食物可被删除 |
+| serving_id | TEXT nullable FK | 记录时选用的 serving；复制 active food 时按此重新解析 |
 | recipe_id | TEXT nullable FK | |
 | display_name_snapshot | TEXT | 历史名称 |
 | source_snapshot | TEXT | |
@@ -482,7 +485,7 @@ UNIQUE(user_id, local_date)
 | gram_equivalent | REAL nullable | |
 | serving_label_snapshot | TEXT nullable | |
 | note | TEXT nullable | |
-| entry_source | TEXT | manual/ai_confirmed/copy/import |
+| entry_source | TEXT | manual/ai_confirmed/copy/copy_snapshot/import |
 | created_at | INTEGER | |
 | updated_at | INTEGER | |
 

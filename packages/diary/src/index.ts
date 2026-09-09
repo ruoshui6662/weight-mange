@@ -1,0 +1,93 @@
+import { createHash, randomUUID } from "node:crypto";
+import type { DatabaseSync } from "node:sqlite";
+import { NUTRITION_ENGINE_VERSION, convertPortionToGrams, scaleNutrients } from "@nutrition-tracker/nutrition-engine";
+
+type Unit = "g" | "ml" | "serving";
+type EntrySource = "manual" | "ai_confirmed" | "copy" | "copy_snapshot" | "import";
+type Options = { now?: () => number; id?: () => string };
+type Nutrient = { nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: string; sourceBasisJson: string };
+type Entry = { id: string; mealSlotId: string; foodId: string | null; servingId: string | null; displayNameSnapshot: string; sourceSnapshot: string; amount: number; unit: Unit; gramEquivalent: number | null; servingLabelSnapshot: string | null; note: string | null; entrySource: EntrySource; version: number; nutrients: Nutrient[] };
+type CreateInput = { userId: string; date: string; mealSlotId: string; foodId: string; amount: number; unit: Unit; servingId?: string | null; note?: string | null; source: Exclude<EntrySource, "copy" | "copy_snapshot">; idempotencyKey?: string };
+type UpdateInput = { userId: string; date: string; entryId: string; amount?: number; unit?: Unit; mealSlotId?: string; servingId?: string | null; note?: string | null; version: number };
+type CopyInput = { userId: string; date: string; fromDate: string; fromMealSlotId: string; toMealSlotId: string };
+
+export class DiaryError extends Error { constructor(readonly code: string, readonly details?: Record<string, unknown>) { super(code); } }
+const meals: Array<[string, string, number]> = [["breakfast", "早餐", 0], ["lunch", "午餐", 1], ["dinner", "晚餐", 2], ["snack", "加餐", 3]];
+const validDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value); if (!match) return false;
+  const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
+  const parsed = new Date(0); parsed.setUTCFullYear(year, month - 1, day); parsed.setUTCHours(0, 0, 0, 0);
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+};
+const validUnit = (value: unknown): value is Unit => value === "g" || value === "ml" || value === "serving";
+const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0;
+
+export function createDiaryService(sqlite: DatabaseSync, options: Options = {}) {
+  const now = options.now ?? Date.now; const id = options.id ?? randomUUID;
+  const ensureSlots = (userId: string) => { for (const [key, name, order] of meals) sqlite.prepare("INSERT OR IGNORE INTO diary_meal_slot (id,user_id,key,display_name,sort_order,active) VALUES (?,?,?,?,?,1)").run(`${userId}:${key}`, userId, key, name, order); };
+  const meal = (userId: string, key: string) => { const row = sqlite.prepare("SELECT id FROM diary_meal_slot WHERE user_id=? AND key=? AND active=1").get(userId, key) as { id: string } | undefined; if (!row) throw new DiaryError("DIARY_MEAL_SLOT_NOT_FOUND"); return row.id; };
+  const day = (userId: string, date: string) => { if (!validDate(date)) throw new DiaryError("DIARY_INVALID_DATE"); const row = sqlite.prepare("SELECT id FROM diary_day WHERE user_id=? AND local_date=?").get(userId, date) as { id: string } | undefined; if (row) return row.id; const goal = sqlite.prepare("SELECT id FROM profile_nutrition_goal WHERE user_id=? AND effective_from<=? AND (effective_to IS NULL OR effective_to>=?) ORDER BY effective_from DESC,id DESC LIMIT 1").get(userId, date, date) as { id: string } | undefined; const dayId = id(); const timestamp = now(); sqlite.prepare("INSERT INTO diary_day (id,user_id,local_date,goal_id,created_at,updated_at) VALUES (?,?,?,?,?,?)").run(dayId, userId, date, goal?.id ?? null, timestamp, timestamp); return dayId; };
+  const hydrate = (entryId: string): Entry => { const row = sqlite.prepare("SELECT id,meal_slot_id mealSlotId,food_id foodId,serving_id servingId,display_name_snapshot displayNameSnapshot,source_snapshot sourceSnapshot,amount,unit,gram_equivalent gramEquivalent,serving_label_snapshot servingLabelSnapshot,note,entry_source entrySource,version FROM diary_entry WHERE id=?").get(entryId) as Omit<Entry, "nutrients"> | undefined; if (!row) throw new DiaryError("DIARY_ENTRY_NOT_FOUND"); const nutrients = sqlite.prepare("SELECT nutrient_id nutrientId,amount_numeric amountNumeric,amount_raw amountRaw,value_status valueStatus,source_basis_json sourceBasisJson FROM diary_entry_nutrient WHERE entry_id=? ORDER BY nutrient_id").all(entryId) as Nutrient[]; return { ...row, nutrients }; };
+  const activeFood = (foodId: string, unit: Unit, servingId?: string | null) => {
+    const food = sqlite.prepare("SELECT fi.id,fi.primary_name,fi.density_g_ml density,fi.edible_ratio edibleRatio,sr.source_type source FROM food_item fi JOIN food_source_record sr ON sr.food_id=fi.id AND sr.is_primary=1 WHERE fi.id=? AND fi.active=1").get(foodId) as { id: string; primary_name: string; density: number | null; edibleRatio: number | null; source: string } | undefined;
+    if (!food) throw new DiaryError("DIARY_FOOD_NOT_FOUND");
+    const serving = servingId ? sqlite.prepare("SELECT id,label,equivalent_g equivalentG,amount,unit FROM food_serving WHERE id=? AND food_id=?").get(servingId, foodId) as { id: string; label: string; equivalentG: number | null; amount: number; unit: "g" | "ml" } | undefined : undefined;
+    if (unit === "serving" && (!serving || !positive(serving.equivalentG))) throw new DiaryError("DIARY_SERVING_NOT_FOUND");
+    const rows = sqlite.prepare("SELECT nv.nutrient_id nutrientId,nv.amount_numeric amountNumeric,nv.amount_raw amountRaw,nv.value_status valueStatus,nv.basis_amount basisAmount,nv.basis_unit basisUnit FROM food_nutrient_value nv JOIN food_source_record sr ON sr.id=nv.source_record_id AND sr.food_id=nv.food_id AND sr.is_primary=1 WHERE nv.food_id=?").all(foodId) as Array<{ nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: "known" | "trace" | "unknown" | "not_applicable" | "estimated"; basisAmount: number; basisUnit: "g" | "ml" | "serving" }>;
+    return { food, serving, rows };
+  };
+  const snapshot = (foodId: string, amount: number, unit: Unit, servingId?: string | null) => {
+    const { food, serving, rows } = activeFood(foodId, unit, servingId);
+    let grams: number;
+    try { grams = convertPortionToGrams({ amount, unit, ...(food.density === null ? {} : { densityGramsPerMl: food.density }), ...(serving?.equivalentG === null || serving?.equivalentG === undefined ? {} : { gramsPerServing: serving.equivalentG }), ...(food.edibleRatio === null ? {} : { edibleRatio: food.edibleRatio }) }); } catch { throw new DiaryError("DIARY_PORTION_UNSUPPORTED"); }
+    const values: Record<string, { status: "known" | "trace" | "unknown" | "estimated"; value?: number }> = {};
+    for (const row of rows) {
+      if (row.basisUnit !== "g" || row.basisAmount <= 0) throw new DiaryError("DIARY_NUTRIENT_BASIS_UNSUPPORTED");
+      values[row.nutrientId] = row.valueStatus === "known" || row.valueStatus === "estimated" ? { status: row.valueStatus, value: (row.amountNumeric ?? 0) * 100 / row.basisAmount } : { status: row.valueStatus === "not_applicable" ? "unknown" : row.valueStatus };
+    }
+    const scaled = scaleNutrients({ per100g: values as Record<string, { status: "known" | "estimated"; value: number } | { status: "trace" | "unknown" }>, amountGrams: grams });
+    return { name: food.primary_name, source: food.source, grams, servingLabel: serving?.label ?? null, nutrients: rows.map((row) => ({ nutrientId: row.nutrientId, amountNumeric: row.valueStatus === "known" || row.valueStatus === "estimated" ? scaled.nutrients[row.nutrientId]!.amount : null, amountRaw: row.valueStatus === "known" || row.valueStatus === "estimated" ? String(scaled.nutrients[row.nutrientId]!.amount) : row.amountRaw, valueStatus: row.valueStatus, sourceBasisJson: JSON.stringify({ nutritionEngineVersion: NUTRITION_ENGINE_VERSION, sourceFoodId: foodId, sourceServingId: serving?.id ?? null, gramEquivalent: grams, sourceBasis: { amount: row.basisAmount, unit: row.basisUnit } }) })) };
+  };
+  const insertSnapshot = (entryId: string, nutrients: Nutrient[]) => { for (const nutrient of nutrients) sqlite.prepare("INSERT INTO diary_entry_nutrient (entry_id,nutrient_id,amount_numeric,amount_raw,value_status,source_basis_json) VALUES (?,?,?,?,?,?)").run(entryId, nutrient.nutrientId, nutrient.amountNumeric, nutrient.amountRaw, nutrient.valueStatus, nutrient.sourceBasisJson); };
+  const assertCreate = (input: CreateInput) => { if (!input || !validDate(input.date) || !input.userId || !input.mealSlotId || !input.foodId || !positive(input.amount) || !validUnit(input.unit) || !["manual", "ai_confirmed", "import"].includes(input.source)) throw new DiaryError("DIARY_INVALID_ENTRY"); };
+  const write = (input: CreateInput, entrySource: EntrySource = input.source, manageTransaction = true): Entry => {
+    assertCreate(input); const requestHash = createHash("sha256").update(JSON.stringify({ ...input, idempotencyKey: undefined })).digest("hex");
+    if (manageTransaction) sqlite.exec("BEGIN IMMEDIATE"); try {
+      if (input.idempotencyKey) { const previous = sqlite.prepare("SELECT request_hash requestHash,response_json responseJson FROM core_idempotency_key WHERE scope='diary_entry' AND idempotency_key=?").get(input.idempotencyKey) as { requestHash: string; responseJson: string | null } | undefined; if (previous) { if (previous.requestHash !== requestHash || !previous.responseJson) throw new DiaryError("DIARY_IDEMPOTENCY_CONFLICT"); if (manageTransaction) sqlite.exec("COMMIT"); return hydrate(JSON.parse(previous.responseJson) as string); } }
+      if (!meals.some(([key]) => key === input.mealSlotId)) throw new DiaryError("DIARY_MEAL_SLOT_NOT_FOUND"); ensureSlots(input.userId); const mealSlotId = meal(input.userId, input.mealSlotId); const dayId = day(input.userId, input.date); const data = snapshot(input.foodId, input.amount, input.unit, input.servingId); const entryId = id(); const timestamp = now();
+      sqlite.prepare("INSERT INTO diary_entry (id,diary_day_id,meal_slot_id,food_id,serving_id,display_name_snapshot,source_snapshot,amount,unit,gram_equivalent,serving_label_snapshot,note,entry_source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(entryId, dayId, mealSlotId, input.foodId, input.servingId ?? null, data.name, data.source, input.amount, input.unit, data.grams, data.servingLabel, input.note ?? null, entrySource, timestamp, timestamp); insertSnapshot(entryId, data.nutrients);
+      if (input.idempotencyKey) sqlite.prepare("INSERT INTO core_idempotency_key (scope,idempotency_key,request_hash,response_status,response_json,created_at,expires_at) VALUES ('diary_entry',?,?,?,?,?,?)").run(input.idempotencyKey, requestHash, 201, JSON.stringify(entryId), timestamp, timestamp + 86_400_000);
+      if (manageTransaction) sqlite.exec("COMMIT"); return hydrate(entryId);
+    } catch (error) { if (manageTransaction) sqlite.exec("ROLLBACK"); throw error; }
+  };
+  const aggregate = (entries: Entry[]) => {
+    const totals = new Map<string, { amount: number; relevant: number; covered: number; hasTrace: boolean; hasEstimated: boolean }>();
+    for (const entry of entries) for (const nutrient of entry.nutrients) {
+      const total = totals.get(nutrient.nutrientId) ?? { amount: 0, relevant: 0, covered: 0, hasTrace: false, hasEstimated: false };
+      const weight = entry.gramEquivalent ?? 0; total.relevant += weight; total.amount += nutrient.amountNumeric ?? 0; total.covered += nutrient.valueStatus === "known" ? weight : 0;
+      total.hasTrace ||= nutrient.valueStatus === "trace"; total.hasEstimated ||= nutrient.valueStatus === "estimated"; totals.set(nutrient.nutrientId, total);
+    }
+    return { nutrients: Object.fromEntries([...totals].map(([id, value]) => [id, { amount: value.amount, coverage: value.relevant === 0 ? 1 : value.covered / value.relevant, hasTrace: value.hasTrace, hasEstimated: value.hasEstimated }])) };
+  };
+  const copySnapshot = (sourceId: string, userId: string, date: string, mealKey: string) => {
+    ensureSlots(userId); const dayId = day(userId, date); const mealSlotId = meal(userId, mealKey); const original = hydrate(sourceId); const entryId = id(); const timestamp = now();
+    sqlite.prepare("INSERT INTO diary_entry (id,diary_day_id,meal_slot_id,food_id,serving_id,display_name_snapshot,source_snapshot,amount,unit,gram_equivalent,serving_label_snapshot,note,entry_source,created_at,updated_at) SELECT ?,?,?,food_id,serving_id,display_name_snapshot,source_snapshot,amount,unit,gram_equivalent,serving_label_snapshot,note,'copy_snapshot',?,? FROM diary_entry WHERE id=?").run(entryId, dayId, mealSlotId, timestamp, timestamp, sourceId);
+    insertSnapshot(entryId, original.nutrients); return hydrate(entryId);
+  };
+  const copyMealRows = (input: CopyInput): Entry[] => {
+    if (!validDate(input.date) || !validDate(input.fromDate)) throw new DiaryError("DIARY_INVALID_DATE");
+    const old = sqlite.prepare("SELECT e.id,e.food_id foodId,e.serving_id servingId,e.amount,e.unit,e.note FROM diary_entry e JOIN diary_day d ON d.id=e.diary_day_id JOIN diary_meal_slot ms ON ms.id=e.meal_slot_id WHERE d.user_id=? AND d.local_date=? AND ms.key=? ORDER BY e.created_at,e.id").all(input.userId, input.fromDate, input.fromMealSlotId) as Array<{ id: string; foodId: string | null; servingId: string | null; amount: number; unit: Unit; note: string | null }>;
+    return old.map((source) => {
+      const active = source.foodId && sqlite.prepare("SELECT 1 FROM food_item WHERE id=? AND active=1").get(source.foodId);
+      return active ? write({ userId: input.userId, date: input.date, mealSlotId: input.toMealSlotId, foodId: source.foodId!, amount: source.amount, unit: source.unit, ...(source.servingId ? { servingId: source.servingId } : {}), source: "manual", note: source.note }, "copy", false) : copySnapshot(source.id, input.userId, input.date, input.toMealSlotId);
+    });
+  };
+  return {
+    createEntry: (input: CreateInput) => write(input),
+    getDay(input: { userId: string; date: string }) { sqlite.exec("BEGIN IMMEDIATE"); try { ensureSlots(input.userId); const dayId = day(input.userId, input.date); const slots = sqlite.prepare("SELECT id,key,display_name displayName,sort_order sortOrder FROM diary_meal_slot WHERE user_id=? AND active=1 ORDER BY sort_order").all(input.userId) as Array<{ id: string; key: string; displayName: string; sortOrder: number }>; const entries = sqlite.prepare("SELECT id FROM diary_entry WHERE diary_day_id=? ORDER BY created_at,id").all(dayId) as Array<{ id: string }>; sqlite.exec("COMMIT"); const hydrated = entries.map((row) => hydrate(row.id)); const mealTotals = Object.fromEntries(slots.map((slot) => [slot.key, aggregate(hydrated.filter((entry) => entry.mealSlotId === slot.id))])); return { id: dayId, localDate: input.date, mealSlots: slots, entries: hydrated, mealTotals, dailyTotal: aggregate(hydrated) }; } catch (error) { sqlite.exec("ROLLBACK"); throw error; } },
+    updateEntry(input: UpdateInput) { if (!validDate(input.date)) throw new DiaryError("DIARY_INVALID_DATE"); if (!Number.isInteger(input.version) || input.version < 0 || (input.amount !== undefined && !positive(input.amount)) || (input.unit !== undefined && !validUnit(input.unit))) throw new DiaryError("DIARY_INVALID_ENTRY"); sqlite.exec("BEGIN IMMEDIATE"); try { const row = sqlite.prepare("SELECT e.*,d.user_id userId,d.local_date localDate,ms.key mealKey FROM diary_entry e JOIN diary_day d ON d.id=e.diary_day_id JOIN diary_meal_slot ms ON ms.id=e.meal_slot_id WHERE e.id=? AND d.user_id=? AND d.local_date=?").get(input.entryId, input.userId, input.date) as Record<string, unknown> | undefined; if (!row) throw new DiaryError("DIARY_ENTRY_NOT_FOUND"); if (row.version !== input.version) throw new DiaryError("DIARY_VERSION_CONFLICT"); const unit = (input.unit ?? row.unit) as Unit; const amount = input.amount ?? Number(row.amount); const servingId = input.servingId ?? (row.serving_id as string | null); const mealKey = input.mealSlotId ?? String(row.mealKey); if (!meals.some(([key]) => key === mealKey)) throw new DiaryError("DIARY_MEAL_SLOT_NOT_FOUND"); ensureSlots(input.userId); const mealSlotId = meal(input.userId, mealKey); if (!row.food_id) throw new DiaryError("DIARY_FOOD_NOT_FOUND"); const data = snapshot(String(row.food_id), amount, unit, servingId); const timestamp = now(); sqlite.prepare("UPDATE diary_entry SET meal_slot_id=?,serving_id=?,amount=?,unit=?,gram_equivalent=?,serving_label_snapshot=?,note=?,display_name_snapshot=?,source_snapshot=?,version=version+1,updated_at=? WHERE id=? AND version=?").run(mealSlotId, servingId, amount, unit, data.grams, data.servingLabel, input.note ?? (row.note as string | null), data.name, data.source, timestamp, input.entryId, input.version); sqlite.prepare("DELETE FROM diary_entry_nutrient WHERE entry_id=?").run(input.entryId); insertSnapshot(input.entryId, data.nutrients); sqlite.exec("COMMIT"); return hydrate(input.entryId); } catch (error) { sqlite.exec("ROLLBACK"); throw error; } },
+    deleteEntry(input: { userId: string; date: string; entryId: string }) { if (!validDate(input.date)) throw new DiaryError("DIARY_INVALID_DATE"); const result = sqlite.prepare("DELETE FROM diary_entry WHERE id=? AND diary_day_id IN (SELECT id FROM diary_day WHERE user_id=? AND local_date=?)").run(input.entryId, input.userId, input.date); if (result.changes !== 1) throw new DiaryError("DIARY_ENTRY_NOT_FOUND"); },
+    copyMeal(input: CopyInput): Entry[] { sqlite.exec("BEGIN IMMEDIATE"); try { const copied = copyMealRows(input); sqlite.exec("COMMIT"); return copied; } catch (error) { sqlite.exec("ROLLBACK"); throw error; } },
+    copyDay(input: { userId: string; date: string; fromDate: string }): Entry[] { if (!validDate(input.date) || !validDate(input.fromDate)) throw new DiaryError("DIARY_INVALID_DATE"); sqlite.exec("BEGIN IMMEDIATE"); try { const keys = sqlite.prepare("SELECT ms.key FROM diary_entry e JOIN diary_day d ON d.id=e.diary_day_id JOIN diary_meal_slot ms ON ms.id=e.meal_slot_id WHERE d.user_id=? AND d.local_date=? GROUP BY ms.key ORDER BY min(ms.sort_order)").all(input.userId, input.fromDate) as Array<{ key: string }>; const copied = keys.flatMap((row) => copyMealRows({ userId: input.userId, date: input.date, fromDate: input.fromDate, fromMealSlotId: row.key, toMealSlotId: row.key })); sqlite.exec("COMMIT"); return copied; } catch (error) { sqlite.exec("ROLLBACK"); throw error; } },
+  };
+}

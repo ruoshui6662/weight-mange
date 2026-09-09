@@ -1,0 +1,12 @@
+{
+  "name": "@nutrition-tracker/food-import",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@nutrition-tracker/db": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}
