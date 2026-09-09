@@ -12,6 +12,7 @@ import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
 import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 import { createProfileService, ProfileError } from "@nutrition-tracker/profile";
 import { BodyError, calculateWeightTrend, createBodyService, sampleDailyWeights } from "@nutrition-tracker/body";
+import { AnalyticsError, createAnalyticsService } from "@nutrition-tracker/analytics";
 
 const SESSION_COOKIE = "nutrition_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -119,6 +120,12 @@ function bodyError(response: ServerResponse, error: unknown, requestId: string) 
   return true;
 }
 
+function analyticsError(response: ServerResponse, error: unknown, requestId: string) {
+  if (!(error instanceof AnalyticsError)) return false;
+  writeJson(response, 400, { error: { code: error.code, message: error.code, requestId } });
+  return true;
+}
+
 function authError(response: ServerResponse, error: unknown, requestId: string) {
   if (error instanceof ApiAuthError) {
     writeJson(response, 401, { error: { code: error.code, message: error.code, requestId } });
@@ -144,6 +151,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
     const diary = createDiaryService(sqlite);
     const dashboard = createDashboardService(sqlite);
     const body = createBodyService(sqlite);
+    const analytics = createAnalyticsService(sqlite);
     const webDistDir = options.webDistDir ?? process.env.WEB_DIST_DIR ?? "/app/web";
     const server = createServer(async (request, response) => {
       const requestId = randomUUID();
@@ -212,6 +220,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (request.method === "POST" && url.pathname === "/api/v1/profile/goals") { const body = await readJson(request); writeJson(response, 201, { data: profile.createGoal(userId!, body as Parameters<typeof profile.createGoal>[1]) }); return; }
         if (bodyWeightMatch && request.method === "GET" && bodyWeightMatch[1] === undefined) { const limitParam = url.searchParams.get("limit"); writeJson(response, 200, { data: body.listWeights({ userId: userId!, ...(url.searchParams.get("from") ? { from: url.searchParams.get("from")! } : {}), ...(url.searchParams.get("to") ? { to: url.searchParams.get("to")! } : {}), ...(limitParam ? { limit: Number(limitParam) } : {}) }) }); return; }
         if (request.method === "GET" && url.pathname === "/api/v1/body/weight-trend") { const days = Number(url.searchParams.get("days") ?? "30"); const method = url.searchParams.get("method") ?? "ewma"; const sampling = url.searchParams.get("sampling") ?? "last"; const weights = body.listWeights({ userId: userId!, limit: 500 }); const points = sampleDailyWeights(weights.map((weight) => ({ localDate: weight.localDate, measuredAt: Date.parse(weight.measuredAt), weightKg: weight.weightKg })), sampling as "last" | "average"); writeJson(response, 200, { data: calculateWeightTrend({ points, windowDays: days as 7 | 14 | 30 | 90, method: method as "rolling" | "ewma" }) }); return; }
+        if (request.method === "GET" && url.pathname === "/api/v1/analytics/overview") { const from = url.searchParams.get("from") ?? ""; const to = url.searchParams.get("to") ?? ""; writeJson(response, 200, { data: analytics.getOverview({ userId: userId!, from, to }) }); return; }
         if (bodyWeightMatch && request.method === "POST" && bodyWeightMatch[1] === undefined) { const input = await readJson(request); writeJson(response, 201, { data: body.createWeight({ userId: userId!, measuredAt: String(input.measuredAt ?? ""), weightKg: input.weightKg as number, ...(typeof input.source === "string" ? { source: input.source as "manual" | "import" } : {}), ...(input.note === null || typeof input.note === "string" ? { note: input.note } : {}) }) }); return; }
         if (bodyWeightMatch && request.method === "PATCH" && bodyWeightMatch[1] !== undefined) { const input = await readJson(request); writeJson(response, 200, { data: body.updateWeight({ userId: userId!, id: decodeURIComponent(bodyWeightMatch[1]), version: input.version as number, ...(typeof input.measuredAt === "string" ? { measuredAt: input.measuredAt } : {}), ...(typeof input.weightKg === "number" ? { weightKg: input.weightKg } : {}), ...(input.note === null || typeof input.note === "string" ? { note: input.note } : {}) }) }); return; }
         if (bodyWeightMatch && request.method === "DELETE" && bodyWeightMatch[1] !== undefined) { const input = await readJson(request); body.deleteWeight({ userId: userId!, id: decodeURIComponent(bodyWeightMatch[1]), version: input.version as number }); writeNoContent(response); return; }
@@ -225,7 +234,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (request.method === "GET" && !url.pathname.startsWith("/api/")) { if (existsSync(webDistDir) && serveStatic(response, url.pathname, webDistDir)) return; if (url.pathname === "/") { writeFallbackHome(response); return; } }
         writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
       } catch (error) {
-        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId) && !bodyError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
+        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId) && !bodyError(response, error, requestId) && !analyticsError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
       }
     });
     await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(options.port ?? Number(process.env.PORT ?? 3000), "0.0.0.0", () => resolve()); });

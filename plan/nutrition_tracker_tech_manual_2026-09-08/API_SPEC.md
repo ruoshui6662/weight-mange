@@ -580,6 +580,8 @@ to
 - weight delta；
 - record coverage。
 
+当前 read model 响应字段为 `period`、`recordCoverage`、`averages`、`goal` 和 `weight`。没有足够记录时，平均值、目标差异和体重变化返回 `null`，不会用零或估算值伪造数据。
+
 ## GET /api/v1/analytics/nutrients
 
 ## GET /api/v1/analytics/weight

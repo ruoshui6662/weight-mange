@@ -9,6 +9,7 @@
     { "path": "packages/food" },
     { "path": "packages/diary" },
     { "path": "packages/body" },
+    { "path": "packages/analytics" },
     { "path": "packages/dashboard" },
     { "path": "packages/profile" },
     { "path": "apps/web" },

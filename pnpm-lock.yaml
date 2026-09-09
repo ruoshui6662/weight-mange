@@ -35,6 +35,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@nutrition-tracker/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@nutrition-tracker/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -78,6 +81,12 @@ importers:
       vite:
         specifier: 8.2.2
         version: 8.2.2(@types/node@26.5.0)(jiti@2.7.0)
+
+  packages/analytics:
+    dependencies:
+      '@nutrition-tracker/body':
+        specifier: workspace:*
+        version: link:../body
 
   packages/auth: {}
 
