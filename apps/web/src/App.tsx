@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, api, type Dashboard, type Diary, type Profile } from "./api";
+import { bootstrapError, validateBootstrapInput, BOOTSTRAP_PASSWORD_MIN_LENGTH } from "./bootstrap-validation";
 import { nextScreen, offlineLabel, type Screen } from "./flow";
 
 const today = new Date().toISOString().slice(0, 10);
-const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
+const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
-function Field(props: { label: string; name: string; value: string; type?: string; onChange: (value: string) => void; min?: string; step?: string }) {
-  return <label className="field"><span>{props.label}</span><input name={props.name} type={props.type ?? "text"} value={props.value} min={props.min} step={props.step} onChange={(event) => props.onChange(event.target.value)} required /></label>;
+function Field(props: { label: string; name: string; value: string; type?: string; onChange: (value: string) => void; min?: string; minLength?: number; step?: string }) {
+  return <label className="field"><span>{props.label}</span><input name={props.name} type={props.type ?? "text"} value={props.value} min={props.min} minLength={props.minLength} step={props.step} onChange={(event) => props.onChange(event.target.value)} required /></label>;
 }
 
 function Shell(props: { children: React.ReactNode; title: string; subtitle?: string }) {
@@ -64,8 +65,8 @@ function OfflineNotice(props: { offline: boolean }) { return props.offline ? <di
 
 function Bootstrap(props: { onDone: (user: Profile) => void; error: string; setError: (value: string) => void }) {
   const [name, setName] = useState(""); const [password, setPassword] = useState(""); const [timezone, setTimezone] = useState("Asia/Shanghai"); const [busy, setBusy] = useState(false);
-  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); setBusy(true); try { const result = await api.bootstrap({ displayName: name, password, timezone }); props.onDone(result.user); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
-  return <Shell title="先建立你的空间" subtitle="数据保存在你自己的服务中，首次设置只需完成一次。"><form className="card form" onSubmit={submit}><Field label="称呼" name="displayName" value={name} onChange={setName} /><Field label="密码（至少 12 个字符）" name="password" type="password" value={password} onChange={setPassword} /><Field label="时区" name="timezone" value={timezone} onChange={setTimezone} />{props.error ? <p className="error" role="alert">{props.error}</p> : null}<button className="primary" disabled={busy}>{busy ? "正在创建…" : "创建并继续"}</button></form></Shell>;
+  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); const validation = validateBootstrapInput({ displayName: name, password }); if (validation) { props.setError(bootstrapError(validation) ?? "请检查输入。"); return; } setBusy(true); try { const result = await api.bootstrap({ displayName: name.trim(), password, timezone }); props.onDone(result.user); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
+  return <Shell title="先建立你的空间" subtitle="数据保存在你自己的服务中，首次设置只需完成一次。"><form className="card form" onSubmit={submit}><Field label="称呼" name="displayName" value={name} onChange={setName} /><Field label={`密码（至少 ${BOOTSTRAP_PASSWORD_MIN_LENGTH} 个字符）`} name="password" type="password" value={password} onChange={setPassword} minLength={BOOTSTRAP_PASSWORD_MIN_LENGTH} /><Field label="时区" name="timezone" value={timezone} onChange={setTimezone} />{props.error ? <p className="error" role="alert">{props.error}</p> : null}<button className="primary" disabled={busy}>{busy ? "正在创建…" : "创建并继续"}</button></form></Shell>;
 }
 
 function Login(props: { onDone: () => Promise<void>; error: string; setError: (value: string) => void }) {
