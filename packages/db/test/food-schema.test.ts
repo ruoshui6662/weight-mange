@@ -30,6 +30,7 @@ describe("food canonical schema", () => {
       "0001_core_profile",
       "0002_food_canonical_schema",
       "0003_food_staging_validation",
+      "0004_food_import_review_fixes",
     ]);
     const names = sqlite
       .prepare(
@@ -52,6 +53,28 @@ describe("food canonical schema", () => {
       "food_staging_item",
       "food_staging_nutrient",
     ]));
+  });
+
+  it("upgrades existing nutrient rows to permit kJ without data loss", () => {
+    const { sqlite } = openDatabase(":memory:");
+    const beforeReviewFix = [...schema.CORE_MIGRATIONS, ...FOOD_MIGRATIONS.slice(0, 2)];
+    applyMigrations(sqlite, beforeReviewFix, { now: () => 1000 });
+    sqlite.prepare("INSERT INTO food_dataset (id, dataset_key, version, source_name, checksum, imported_at, status, record_count, validation_json, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run("dataset_1", "cfcd6", "v1", "CFCD", "checksum", 1000, "active", 1, "{}", "{}");
+    sqlite.prepare("INSERT INTO food_item (id, canonical_key, primary_name, food_type, default_basis, source_quality, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run("food_1", "cfcd6:F001", "食物", "generic", "edible_100g", "A", 1, 1000, 1000);
+    sqlite.prepare("INSERT INTO food_source_record (id, food_id, dataset_id, source_type, raw_json, imported_at, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run("source_1", "food_1", "dataset_1", "cfcd6", "{}", 1000, 1);
+    sqlite.prepare("INSERT INTO food_nutrient_definition (id, display_name, unit, nutrient_group, display_order, summable) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("energy_kcal", "能量", "kcal", "macro", 1, 1);
+    sqlite.prepare("INSERT INTO food_nutrient_value (id, food_id, source_record_id, nutrient_id, amount_numeric, amount_raw, value_status, basis_amount, basis_unit, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run("value_1", "food_1", "source_1", "energy_kcal", 100, "100", "known", 100, "g", 1000);
+
+    expect(applyMigrations(sqlite, [FOOD_MIGRATIONS[2]!], { now: () => 1000 }).applied).toEqual(["0004_food_import_review_fixes"]);
+    expect(sqlite.prepare("SELECT amount_numeric FROM food_nutrient_value WHERE id = 'value_1'").get()).toEqual({ amount_numeric: 100 });
+    expect(() => sqlite.prepare("INSERT INTO food_nutrient_definition (id, display_name, unit, nutrient_group, display_order, summable) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("energy_kj", "能量", "kJ", "other", 2, 1)).not.toThrow();
+    expect(sqlite.prepare("SELECT source_notes FROM food_source_record WHERE id = 'source_1'").get()).toEqual({ source_notes: null });
   });
 
   it("allows only one active version per dataset key", () => {

@@ -235,6 +235,7 @@ Canonical 食物主表。
 | source_record_id | TEXT nullable |
 | raw_json | TEXT |
 | source_url | TEXT nullable |
+| source_notes | TEXT nullable | 保留来源记录级备注，如 CFCD `remark` |
 | imported_at | INTEGER |
 | is_primary | INTEGER |
 
@@ -260,7 +261,7 @@ AI 识别未确认的数据不能直接标记 primary。
 |---|---|---|
 | id | TEXT PK | 如 energy_kcal |
 | display_name | TEXT | 热量 |
-| unit | TEXT | kcal/g/mg/µg |
+| unit | TEXT | kcal/kJ/g/mg/µg；`energy_kj` 必须为 `kJ` |
 | nutrient_group | TEXT | macro/vitamin/mineral/other |
 | display_order | INTEGER | |
 | summable | INTEGER | |

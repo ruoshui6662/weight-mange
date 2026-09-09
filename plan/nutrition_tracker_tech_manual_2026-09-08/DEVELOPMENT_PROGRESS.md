@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 18:28 +08:00
+> 最后更新：2026-09-09 18:37 +08:00
 
 ## 1. 当前快照
 
@@ -121,7 +121,7 @@
 - 依赖：M1-002
 - 计划变更：实现受控 raw JSON 导入、staging 写入、结构/语义校验、规范化、active diff、事务 promote 与可审计报告；失败不得改变 active catalog
 - 计划验收：TDD RED/GREEN；20–50 个 golden foods 覆盖 code、macro、raw、alias、serving；重复版本幂等；失败隔离；promote 回滚；全量 lint/typecheck/test/integration/build/API smoke/docker smoke
-- 当前进展：实现与 20 条合成 golden fixture 已完成；parse/stage/validate/normalize/diff/promote/explicit FTS rebuild 均有自动化覆盖，待独立复审
+- 当前进展：已修复独立复审的 4 项 Important 问题：`kJ` unit/source remark、结构失败 staging 审计、无穷/非法数值拒绝；已完成回归与全量门禁，待复审确认
 - 阻塞/风险：真实外部 CFCD 数据不随仓库引入；使用受控 golden fixtures 验证 importer contract
 - 下一步：先固定 importer 输入/输出 contract 和 staging 事务测试
 
@@ -170,6 +170,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | DEC-005 | `PROPOSED` | V1 暂不实现围度管理 | 产品验收未要求，避免无 UI/API 的幽灵功能 | 2026-09-09 |
 | DEC-006 | `PROPOSED` | 菜谱保存 ingredient 计算输入快照，编辑时刷新 | 保持来源可追溯，同时让日记历史永不漂移 | 2026-09-09 |
 | DEC-007 | `ACCEPTED` | V1 使用有状态数据库 session；token 只以 SHA-256 保存，cookie 默认 HttpOnly/SameSite=Lax | 支持撤销、过期和重启后的明确会话状态；避免无状态 token 无法即时失效 | 2026-09-09 |
+| DEC-008 | `ACCEPTED` | canonical nutrient unit 增加 `kJ`，`energy_kj` 必须以 `kJ` 持久化 | `FOOD_DATA_SPEC.md` 与 `DATABASE_SCHEMA.md` 已定义 energyKJ/energy_kj，但原 schema 的单位 CHECK 漏列 kJ；错误标为 kcal 会污染导入数据 | 2026-09-09 |
 
 `PROPOSED` 决策不能作为最终 contract。进入受影响任务前，必须改为 `ACCEPTED`、`REJECTED` 或 `SUPERSEDED`，并同步相关规范。
 
@@ -201,6 +202,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-001-A | M1-001 | 2026-09-09 10:00 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 全部命令 exit 0；聚焦 1 file/6 tests、全量 7 files/28 tests；API smoke home/health/ready 均 200；Docker CLI 不存在但 smoke 正确报告环境阻塞 |
 | EVD-M1-001-B | M1-001 | 2026-09-09 10:15 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build` | coverage=0.5 的新断言先失败（received 0.625），最小修复后聚焦 1 file/6 tests、全量 7 files/28 tests 通过；所有列出命令 exit 0 |
 | EVD-M1-003-A | M1-003 | 2026-09-09 18:28 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 1 file/5 tests、全量 13 files/59 tests，lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；实现待独立复审 |
+| EVD-M1-003-B | M1-003 | 2026-09-09 18:37 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm vitest run packages/db/test/food-schema.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 审查修复聚焦 7 importer tests、8 schema tests；全量 13 files/63 tests；lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；等待复审确认 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -272,6 +274,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 18:20 +08:00 | Codex | 完成 M1-002 审查修复 | 两个错配回归断言先失败，复合唯一键/外键后聚焦 7 tests 与全量 35 tests 通过 |
 | 2026-09-09 18:25 +08:00 | Codex | 开始 M1-003 Food import staging pipeline | 读取 FOOD_DATA_SPEC 与 M1-003 路线要求；先固定 parse/staging/validate/normalize/diff/promote contract，保持 active catalog 隔离 |
 | 2026-09-09 18:28 +08:00 | Codex + delegated implementer | M1-003 实现完成，等待复审 | 完成离线 parse/stage/validate/normalize/diff/promote/FTS pipeline；20 条合成 fixture 覆盖 raw 状态、幂等、隔离、rollback 与 FTS；全量门禁通过，Docker CLI 缺失已如实记录 |
+| 2026-09-09 18:37 +08:00 | Codex + delegated implementer | 完成 M1-003 审查修复 | 新增 `0004` 前向迁移保留旧营养行并允许 `kJ`、加入 source remark；metadata 完整的结构失败进入 failed staging；非法数值拒绝且不会变为 unknown；复审回归与全量门禁通过 |
 
 ## 11. 交接摘要
 

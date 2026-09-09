@@ -43,7 +43,7 @@ export type ImportResult = {
 };
 
 const NUTRIENTS = {
-  water: ["water_g", "水", "g", "other"], energyKCal: ["energy_kcal", "能量", "kcal", "macro"], energyKJ: ["energy_kj", "能量", "kcal", "other"],
+  water: ["water_g", "水", "g", "other"], energyKCal: ["energy_kcal", "能量", "kcal", "macro"], energyKJ: ["energy_kj", "能量", "kJ", "other"],
   protein: ["protein_g", "蛋白质", "g", "macro"], fat: ["fat_g", "脂肪", "g", "macro"], CHO: ["carbohydrate_g", "碳水化合物", "g", "macro"], dietaryFiber: ["dietary_fiber_g", "膳食纤维", "g", "macro"], cholesterol: ["cholesterol_mg", "胆固醇", "mg", "other"], ash: ["ash_g", "灰分", "g", "other"],
   vitaminA: ["vitamin_a_ug", "维生素A", "µg", "vitamin"], carotene: ["carotene_ug", "胡萝卜素", "µg", "vitamin"], retinol: ["retinol_ug", "视黄醇", "µg", "vitamin"], thiamin: ["thiamin_mg", "硫胺素", "mg", "vitamin"], riboflavin: ["riboflavin_mg", "核黄素", "mg", "vitamin"], niacin: ["niacin_mg", "烟酸", "mg", "vitamin"], vitaminC: ["vitamin_c_mg", "维生素C", "mg", "vitamin"], vitaminETotal: ["vitamin_e_mg", "维生素E", "mg", "vitamin"],
   Ca: ["calcium_mg", "钙", "mg", "mineral"], P: ["phosphorus_mg", "磷", "mg", "mineral"], K: ["potassium_mg", "钾", "mg", "mineral"], Na: ["sodium_mg", "钠", "mg", "mineral"], Mg: ["magnesium_mg", "镁", "mg", "mineral"], Fe: ["iron_mg", "铁", "mg", "mineral"], Zn: ["zinc_mg", "锌", "mg", "mineral"], Se: ["selenium_ug", "硒", "µg", "mineral"], Cu: ["copper_mg", "铜", "mg", "mineral"], Mn: ["manganese_mg", "锰", "mg", "mineral"],
@@ -104,13 +104,36 @@ function namespace(document: ParsedDocument) { return document.datasetKey.starts
 function foodId(document: ParsedDocument, code: string) { return `food:${namespace(document)}:${code}`; }
 function sourceId(document: ParsedDocument, code: string) { return `source:${document.datasetKey}:${document.version}:${code}`; }
 
+type ImportMetadata = Pick<FoodImportDocument, "datasetKey" | "version" | "sourceName" | "checksum">;
+
+function extractMetadata(raw: string): ImportMetadata | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const candidate = Array.isArray(parsed) ? parsed[0] : parsed;
+    if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    const value = candidate as Record<string, unknown>;
+    const datasetKey = asNonEmptyString(value.datasetKey); const version = asNonEmptyString(value.version); const sourceName = asNonEmptyString(value.sourceName); const checksum = asNonEmptyString(value.checksum);
+    return datasetKey && version && sourceName && checksum ? { datasetKey, version, sourceName, checksum } : null;
+  } catch { return null; }
+}
+
+function stageParseFailure(sqlite: DatabaseSync, raw: string, metadata: ImportMetadata, validation: ValidationReport, options: ImportOptions): string {
+  const id = `staging:${metadata.datasetKey}:${metadata.version}:${metadata.checksum}`;
+  sqlite.exec("BEGIN IMMEDIATE");
+  try {
+    sqlite.prepare("INSERT INTO food_staging_dataset (id, dataset_key, version, source_name, checksum, imported_at, raw_manifest_json, status, validation_json, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, 'failed', ?, ?) ON CONFLICT(id) DO UPDATE SET status = 'failed', validation_json = excluded.validation_json, metadata_json = excluded.metadata_json").run(id, metadata.datasetKey, metadata.version, metadata.sourceName, metadata.checksum, options.now(), raw, JSON.stringify(validation), JSON.stringify({ importerVersion: options.importerVersion ?? FOOD_IMPORTER_VERSION }));
+    sqlite.exec("COMMIT");
+    return id;
+  } catch (error) { sqlite.exec("ROLLBACK"); throw error; }
+}
+
 function validate(document: ParsedDocument): ValidationReport {
   const errors: ValidationError[] = []; const warnings: ValidationWarning[] = [];
   for (const food of document.foods) {
     if ((food.edibleRaw !== null && !["", "—"].includes(food.edibleRaw) && food.edibleRatio === null) || (food.edibleRatio !== null && (food.edibleRatio < 0 || food.edibleRatio > 1))) errors.push({ code: "INVALID_EDIBLE_PERCENTAGE", path: `food:${food.foodCode}.edible`, message: "edible must be a finite percentage between 0 and 100." });
     for (const nutrient of Object.values(food.nutrients)) {
       if (nutrient.amountNumeric !== null && nutrient.amountNumeric < 0) errors.push({ code: "NEGATIVE_NUTRIENT", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values cannot be negative." });
-      if (nutrient.amountRaw === "Infinity" || nutrient.amountRaw === "-Infinity" || nutrient.amountRaw === "NaN") errors.push({ code: "NON_FINITE_NUTRIENT", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values must be finite." });
+      if (nutrient.amountRaw !== null && !["", "Tr", "—"].includes(nutrient.amountRaw) && nutrient.amountNumeric === null) errors.push({ code: "INVALID_NUTRIENT_NUMBER", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values must be finite numeric strings or documented unknown markers." });
     }
     const kcal = food.nutrients.energyKCal!.amountNumeric; const kj = food.nutrients.energyKJ!.amountNumeric;
     if (kcal !== null && kj !== null && Math.abs(kj - kcal * 4.184) / Math.max(kj, 1) > 0.1) warnings.push({ code: "ENERGY_INCONSISTENCY", path: `food:${food.foodCode}`, message: "kcal/kJ difference exceeds 10%." });
@@ -174,7 +197,7 @@ export function promoteStagedDataset(sqlite: DatabaseSync, id: string, options: 
     for (const food of document.foods) {
       const fId = foodId(document, food.foodCode); const sId = sourceId(document, food.foodCode); const canonicalKey = `${namespace(document)}:${food.foodCode}`;
       sqlite.prepare("INSERT INTO food_item (id, canonical_key, primary_name, english_name, food_code, food_type, default_basis, edible_ratio, source_quality, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'generic', 'edible_100g', ?, 'A', 1, ?, ?) ON CONFLICT(canonical_key) DO UPDATE SET primary_name=excluded.primary_name, english_name=excluded.english_name, food_code=excluded.food_code, edible_ratio=excluded.edible_ratio, active=1, updated_at=excluded.updated_at").run(fId, canonicalKey, food.foodName, food.englishName, food.foodCode, food.edibleRatio, now, now);
-      sqlite.prepare("INSERT INTO food_source_record (id, food_id, dataset_id, source_type, source_record_id, raw_json, source_url, imported_at, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)").run(sId, fId, newDatasetId, namespace(document), food.foodCode, food.rawJson, document.sourceUrl ?? null, now);
+      sqlite.prepare("INSERT INTO food_source_record (id, food_id, dataset_id, source_type, source_record_id, raw_json, source_url, source_notes, imported_at, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)").run(sId, fId, newDatasetId, namespace(document), food.foodCode, food.rawJson, document.sourceUrl ?? null, food.remark, now);
       for (const [inputKey, tuple] of Object.entries(NUTRIENTS) as Array<[NutrientInputKey, readonly string[]]>) { const nutrient = food.nutrients[inputKey]!; sqlite.prepare("INSERT INTO food_nutrient_value (id, food_id, source_record_id, nutrient_id, amount_numeric, amount_raw, value_status, basis_amount, basis_unit, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 100, 'g', ?)").run(`${sId}:nutrient:${tuple[0]!}`, fId, sId, tuple[0]!, nutrient.amountNumeric, nutrient.amountRaw, nutrient.valueStatus, now); }
       sqlite.prepare("DELETE FROM food_alias WHERE food_id = ? AND user_defined = 0").run(fId);
       for (const alias of food.aliases) sqlite.prepare("INSERT INTO food_alias (id, food_id, alias, alias_normalized, alias_type, user_defined) VALUES (?, ?, ?, ?, 'synonym', 0)").run(`${sId}:alias:${normalizeAlias(alias)}`, fId, alias, normalizeAlias(alias));
@@ -194,7 +217,12 @@ export function promoteStagedDataset(sqlite: DatabaseSync, id: string, options: 
 
 export function importFoodDataset(sqlite: DatabaseSync, raw: string, options: ImportOptions): ImportResult {
   const metadata = { importerVersion: options.importerVersion ?? FOOD_IMPORTER_VERSION }; const parsed = parseFoodImport(raw);
-  if (!parsed.ok) return { status: "failed", validation: { errors: parsed.errors, warnings: [] }, diff: emptyDiff(), metadata };
+  if (!parsed.ok) {
+    const validation = { errors: parsed.errors, warnings: [] };
+    const rawMetadata = extractMetadata(raw);
+    const stagedId = rawMetadata ? stageParseFailure(sqlite, raw, rawMetadata, validation, options) : undefined;
+    return { status: "failed", ...(stagedId ? { stagingDatasetId: stagedId } : {}), validation, diff: emptyDiff(), metadata };
+  }
   const id = stagingId(parsed.document);
   const existing = sqlite.prepare("SELECT status FROM food_staging_dataset WHERE dataset_key = ? AND version = ? AND checksum = ?").get(parsed.document.datasetKey, parsed.document.version, parsed.document.checksum) as { status: string } | undefined;
   if (existing) { const validation = validate(parsed.document); return { status: existing.status === "promoted" ? "already_promoted" : "already_staged", stagingDatasetId: id, validation, diff: buildDiff(sqlite, parsed.document), metadata }; }

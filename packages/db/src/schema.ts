@@ -288,4 +288,51 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
         ON food_staging_dataset(dataset_key, version, checksum);
     `,
   },
+  {
+    version: "0004_food_import_review_fixes",
+    sql: `
+      ALTER TABLE food_source_record ADD COLUMN source_notes TEXT;
+
+      PRAGMA defer_foreign_keys = ON;
+      DROP INDEX food_nutrient_value_food_idx;
+      ALTER TABLE food_nutrient_value RENAME TO food_nutrient_value_legacy;
+      ALTER TABLE food_nutrient_definition RENAME TO food_nutrient_definition_legacy;
+
+      CREATE TABLE food_nutrient_definition (
+        id TEXT PRIMARY KEY,
+        display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+        unit TEXT NOT NULL CHECK (unit IN ('kcal', 'kJ', 'g', 'mg', 'µg')),
+        nutrient_group TEXT NOT NULL CHECK (nutrient_group IN ('macro', 'vitamin', 'mineral', 'other')),
+        display_order INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
+        summable INTEGER NOT NULL DEFAULT 1 CHECK (summable IN (0, 1))
+      );
+
+      CREATE TABLE food_nutrient_value (
+        id TEXT PRIMARY KEY,
+        food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
+        source_record_id TEXT NOT NULL,
+        nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
+        amount_numeric REAL,
+        amount_raw TEXT,
+        value_status TEXT NOT NULL CHECK (value_status IN ('known', 'trace', 'unknown', 'not_applicable', 'estimated')),
+        basis_amount REAL NOT NULL CHECK (basis_amount > 0),
+        basis_unit TEXT NOT NULL CHECK (basis_unit IN ('g', 'ml', 'serving')),
+        confidence REAL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+        created_at INTEGER NOT NULL,
+        UNIQUE(food_id, source_record_id, nutrient_id),
+        FOREIGN KEY (source_record_id, food_id)
+          REFERENCES food_source_record(id, food_id) ON DELETE RESTRICT
+      );
+
+      INSERT INTO food_nutrient_definition (id, display_name, unit, nutrient_group, display_order, summable)
+        SELECT id, display_name, unit, nutrient_group, display_order, summable
+        FROM food_nutrient_definition_legacy;
+      INSERT INTO food_nutrient_value (id, food_id, source_record_id, nutrient_id, amount_numeric, amount_raw, value_status, basis_amount, basis_unit, confidence, created_at)
+        SELECT id, food_id, source_record_id, nutrient_id, amount_numeric, amount_raw, value_status, basis_amount, basis_unit, confidence, created_at
+        FROM food_nutrient_value_legacy;
+      DROP TABLE food_nutrient_value_legacy;
+      DROP TABLE food_nutrient_definition_legacy;
+      CREATE INDEX food_nutrient_value_food_idx ON food_nutrient_value(food_id, nutrient_id);
+    `,
+  },
 ];
