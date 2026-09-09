@@ -22,6 +22,31 @@ function writeJson(response: ServerResponse, statusCode: number, body: object) {
   response.end(JSON.stringify(body));
 }
 
+function writeHome(response: ServerResponse) {
+  response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+  response.end(`<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>体重管理服务</title>
+    <style>
+      body { margin: 0; padding: 3rem 1.5rem; color: #24313a; background: #f5f7f8; font-family: system-ui, sans-serif; }
+      main { max-width: 38rem; margin: 0 auto; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 0.5rem 2rem rgb(36 49 58 / 10%); }
+      h1 { margin-top: 0; font-size: 1.6rem; }
+      a { color: #176b87; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>体重管理服务已启动</h1>
+      <p>API 容器运行正常。业务界面将在后续版本提供。</p>
+      <p><a href="/healthz">健康检查</a> · <a href="/readyz">就绪检查</a></p>
+    </main>
+  </body>
+</html>`);
+}
+
 export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   mkdirSync(dirname(options.dbPath), { recursive: true });
   const { sqlite } = openDatabase(options.dbPath);
@@ -30,6 +55,10 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   try {
     applyMigrations(sqlite, CORE_MIGRATIONS);
     const server = createServer((request, response) => {
+      if (request.method === "GET" && request.url === "/") {
+        writeHome(response);
+        return;
+      }
       if (request.method === "GET" && request.url === "/healthz") {
         writeJson(response, 200, { status: "ok" });
         return;
