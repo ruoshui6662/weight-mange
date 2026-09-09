@@ -11,6 +11,7 @@
     { "path": "packages/body" },
     { "path": "packages/analytics" },
     { "path": "packages/dashboard" },
+    { "path": "packages/recipe" },
     { "path": "packages/profile" },
     { "path": "apps/web" },
     { "path": "tools/food-import" },

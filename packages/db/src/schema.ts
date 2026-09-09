@@ -121,6 +121,65 @@ export const BODY_MIGRATIONS: readonly SqliteMigration[] = [
   },
 ];
 
+export const RECIPE_MIGRATIONS: readonly SqliteMigration[] = [
+  {
+    version: "0011_recipe_snapshots",
+    sql: `
+      CREATE TABLE recipe (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES profile_user(id) ON DELETE CASCADE,
+        name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+        cooked_weight_g REAL CHECK (cooked_weight_g IS NULL OR cooked_weight_g > 0),
+        serving_count REAL CHECK (serving_count IS NULL OR serving_count > 0),
+        note TEXT,
+        version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+        deleted_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX recipe_user_updated_idx ON recipe(user_id, updated_at, id);
+
+      CREATE TABLE recipe_ingredient (
+        id TEXT PRIMARY KEY,
+        recipe_id TEXT NOT NULL REFERENCES recipe(id) ON DELETE CASCADE,
+        food_id TEXT REFERENCES food_item(id) ON DELETE SET NULL,
+        name_snapshot TEXT NOT NULL CHECK (length(trim(name_snapshot)) > 0),
+        input_amount REAL NOT NULL CHECK (input_amount > 0),
+        input_unit TEXT NOT NULL CHECK (input_unit IN ('g', 'ml', 'serving')),
+        gram_equivalent REAL CHECK (gram_equivalent IS NULL OR gram_equivalent > 0),
+        sort_order INTEGER NOT NULL CHECK (sort_order >= 0)
+      );
+      CREATE INDEX recipe_ingredient_recipe_order_idx ON recipe_ingredient(recipe_id, sort_order, id);
+
+      CREATE TABLE recipe_ingredient_nutrient_snapshot (
+        id TEXT PRIMARY KEY,
+        ingredient_id TEXT NOT NULL REFERENCES recipe_ingredient(id) ON DELETE CASCADE,
+        nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
+        amount_numeric REAL,
+        amount_raw TEXT,
+        value_status TEXT NOT NULL CHECK (value_status IN ('known', 'trace', 'unknown', 'not_applicable', 'estimated')),
+        source_basis_json TEXT NOT NULL,
+        nutrition_engine_version TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX recipe_snapshot_ingredient_idx ON recipe_ingredient_nutrient_snapshot(ingredient_id, nutrient_id);
+
+      CREATE TABLE recipe_nutrient_cache (
+        recipe_id TEXT NOT NULL REFERENCES recipe(id) ON DELETE CASCADE,
+        nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
+        total_amount REAL,
+        per_100g_amount REAL,
+        per_serving_amount REAL,
+        computed_at INTEGER NOT NULL,
+        calc_version TEXT NOT NULL,
+        invalidated_at INTEGER,
+        PRIMARY KEY (recipe_id, nutrient_id)
+      );
+      CREATE INDEX recipe_cache_invalidated_idx ON recipe_nutrient_cache(recipe_id, invalidated_at);
+    `,
+  },
+];
+
 export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
   {
     version: "0002_food_canonical_schema",

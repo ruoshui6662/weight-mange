@@ -153,6 +153,15 @@ importers:
         specifier: workspace:*
         version: link:../nutrition-engine
 
+  packages/recipe:
+    dependencies:
+      '@nutrition-tracker/db':
+        specifier: workspace:*
+        version: link:../db
+      '@nutrition-tracker/nutrition-engine':
+        specifier: workspace:*
+        version: link:../nutrition-engine
+
   packages/shared: {}
 
   tools/food-import:

@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
-import { ANALYTICS_MIGRATIONS, BODY_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { ANALYTICS_MIGRATIONS, BODY_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS, RECIPE_MIGRATIONS } from "@nutrition-tracker/db/schema";
 import { AuthError, createAuthService, createSqliteAuthStore, sessionCookieOptions } from "@nutrition-tracker/auth";
 import { createDashboardService, DashboardError } from "@nutrition-tracker/dashboard";
 import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
@@ -144,7 +144,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   const secureCookies = options.secureCookies ?? process.env.AUTH_COOKIE_SECURE === "true";
 
   try {
-    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS, ...BODY_MIGRATIONS]);
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS, ...BODY_MIGRATIONS, ...RECIPE_MIGRATIONS]);
     const auth = createAuthService(createSqliteAuthStore(sqlite));
     const profile = createProfileService(sqlite);
     const foods = createFoodCatalog(sqlite);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyMigrations, openDatabase } from "../src/index.js";
-import { ANALYTICS_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "../src/schema.js";
+import { ANALYTICS_MIGRATIONS, BODY_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS, RECIPE_MIGRATIONS } from "../src/schema.js";
 
 describe("core/profile schema baseline", () => {
   it("creates the required tables from an empty database", () => {
@@ -64,5 +64,27 @@ describe("core/profile schema baseline", () => {
     applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS]);
     expect(sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='analytics_daily_summary'").get()).toMatchObject({ sql: expect.stringContaining("PRIMARY KEY (user_id, local_date)") });
     expect(sqlite.prepare("PRAGMA table_info(analytics_daily_summary)").all()).toEqual(expect.arrayContaining([expect.objectContaining({ name: "calc_version" })]));
+  });
+
+  it("adds recipe snapshot tables with versioned soft delete and cache invalidation", () => {
+    const { sqlite } = openDatabase(":memory:");
+    const migrations = [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS, ...BODY_MIGRATIONS, ...RECIPE_MIGRATIONS];
+    expect(applyMigrations(sqlite, migrations).applied).toContain("0011_recipe_snapshots");
+    expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('recipe','recipe_ingredient','recipe_ingredient_nutrient_snapshot','recipe_nutrient_cache') ORDER BY name").all()).toEqual([
+      { name: "recipe" },
+      { name: "recipe_ingredient" },
+      { name: "recipe_ingredient_nutrient_snapshot" },
+      { name: "recipe_nutrient_cache" },
+    ]);
+    expect(sqlite.prepare("PRAGMA table_info(recipe)").all()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "version" }),
+      expect.objectContaining({ name: "deleted_at" }),
+    ]));
+    expect(sqlite.prepare("PRAGMA table_info(recipe_nutrient_cache)").all()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "invalidated_at" }),
+      expect.objectContaining({ name: "calc_version" }),
+    ]));
+    expect(() => sqlite.prepare("INSERT INTO recipe_ingredient_nutrient_snapshot (id,ingredient_id,nutrient_id,value_status,source_basis_json,nutrition_engine_version,created_at) VALUES ('s','missing','energy_kcal','invalid','{}','1',1)").run()).toThrow();
+    expect(applyMigrations(sqlite, migrations).applied).toEqual([]);
   });
 });
