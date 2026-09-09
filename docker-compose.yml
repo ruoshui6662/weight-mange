@@ -9,10 +9,12 @@ services:
     # Bind mounts may be created as root on NAS hosts. Fix ownership once,
     # then drop privileges before starting the API process.
     user: "0:0"
-    entrypoint: ["/bin/sh", "-c"]
-    command: >-
-      chown -R 10001:10001 /data &&
-      exec su -s /bin/sh appuser -c 'exec node /app/apps/api/dist/index.js'
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        chown -R 10001:10001 /data &&
+        exec su -s /bin/sh appuser -c 'exec node /app/apps/api/dist/index.js'
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
