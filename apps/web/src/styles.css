@@ -36,8 +36,9 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .calorie-number small, .metric small { margin-left: 4px; color: #6d8477; font-size: 14px; letter-spacing: 0; }
 .progress { height: 12px; overflow: hidden; border-radius: 99px; background: #cfe4d7; }
 .progress span { display: block; height: 100%; border-radius: inherit; background: #4ba87d; transition: width .18s ease; }
-.macro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
-.metric { display: grid; gap: 8px; padding: 16px; }
+.macro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.metric { display: grid; min-width: 0; gap: 8px; padding: 16px; overflow-wrap: anywhere; }
+.metric strong, .metric small, .metric .muted { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .metric strong { font-size: 22px; }
 .status-chip { border-radius: 99px; padding: 6px 10px; color: #397c5c; background: #e5f4eb; font-size: 12px; font-weight: 800; }
 .meals { display: grid; gap: 4px; margin-top: 14px; }
