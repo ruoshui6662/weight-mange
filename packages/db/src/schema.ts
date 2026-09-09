@@ -178,6 +178,13 @@ export const RECIPE_MIGRATIONS: readonly SqliteMigration[] = [
       CREATE INDEX recipe_cache_invalidated_idx ON recipe_nutrient_cache(recipe_id, invalidated_at);
     `,
   },
+  {
+    version: "0012_recipe_serving_identity",
+    sql: `
+      ALTER TABLE recipe_ingredient ADD COLUMN serving_id TEXT REFERENCES food_serving(id) ON DELETE SET NULL;
+      CREATE INDEX recipe_ingredient_serving_idx ON recipe_ingredient(serving_id);
+    `,
+  },
 ];
 
 export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
