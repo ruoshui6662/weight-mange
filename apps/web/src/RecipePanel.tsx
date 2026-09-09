@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
-import { ApiError, type Recipe, type RecipeClient, type RecipeCreateInput, type RecipeNutrientSummary } from "./api";
+import { ApiError, type Recipe, type RecipeClient, type RecipeCreateInput, type RecipeIngredient, type RecipeNutrientSummary, type RecipeUpdateInput } from "./api";
 import { nutrientValue, validateRecipeDraft, warningText, type RecipeDraft, type RecipeDraftIngredient } from "./recipe-ui";
 
 export type RecipePanelProps = {
@@ -11,6 +11,8 @@ export type RecipePanelProps = {
 
 type FoodResult = Awaited<ReturnType<RecipeClient["searchFoods"]>>[number];
 type RecipeMode = "list" | "editor" | "detail";
+type EditorIngredient = RecipeDraftIngredient & { originalAmount: number; originalUnit: RecipeIngredient["inputUnit"]; originalGramEquivalent: number | null; originalServingId: string | null; edited: boolean };
+type RecipeEditorDraft = Omit<RecipeDraft, "ingredients"> & { ingredients: EditorIngredient[] };
 
 let fallbackIngredientRowKey = 0;
 
@@ -20,8 +22,8 @@ export function createIngredientRowKey(): string {
   return `ingredient-row-${fallbackIngredientRowKey}`;
 }
 
-const emptyRow = (): RecipeDraftIngredient => ({ key: createIngredientRowKey(), foodId: "", name: "", amount: "100" });
-const emptyDraft = (): RecipeDraft => ({ name: "", cookedWeightG: "", servingCount: "", ingredients: [emptyRow()] });
+const emptyRow = (): EditorIngredient => ({ key: createIngredientRowKey(), foodId: "", name: "", amount: "100", originalAmount: 100, originalUnit: "g", originalGramEquivalent: 100, originalServingId: null, edited: true });
+const emptyDraft = (): RecipeEditorDraft => ({ name: "", cookedWeightG: "", servingCount: "", ingredients: [emptyRow()] });
 const displayError = (error: unknown) => {
   if (!(error instanceof ApiError)) return "请求未完成，请检查服务状态后重试。";
   if (error.code === "RECIPE_VERSION_CONFLICT") return "菜谱已被更新，请重新加载后再编辑。";
@@ -40,8 +42,35 @@ function draftInput(draft: RecipeDraft): RecipeCreateInput {
   return { name: draft.name.trim(), cookedWeightG: draft.cookedWeightG.trim() ? Number(draft.cookedWeightG) : null, servingCount: draft.servingCount.trim() ? Number(draft.servingCount) : null, ingredients: draft.ingredients.map((row) => ({ foodId: row.foodId, amount: Number(row.amount), unit: "g" })) };
 }
 
+export function recipeDraftFromRecipe(next: Recipe): RecipeEditorDraft {
+  return { name: next.name, cookedWeightG: next.cookedWeightG === null ? "" : String(next.cookedWeightG), servingCount: next.servingCount === null ? "" : String(next.servingCount), ingredients: next.ingredients.map((item) => ({ key: item.id, foodId: item.foodId ?? "", name: item.nameSnapshot, amount: String(item.gramEquivalent ?? item.inputAmount), originalAmount: item.inputAmount, originalUnit: item.inputUnit, originalGramEquivalent: item.gramEquivalent, originalServingId: item.servingId, edited: false })) };
+}
+
+function sameIngredientDraft(row: EditorIngredient, original: RecipeIngredient): boolean {
+  return row.key === original.id && row.foodId === (original.foodId ?? "") && Number(row.amount) === (original.gramEquivalent ?? original.inputAmount);
+}
+
+export function recipeUpdateInput(recipe: Recipe, draft: RecipeEditorDraft | RecipeDraft): RecipeUpdateInput {
+  const metadata: RecipeUpdateInput = { name: draft.name.trim(), cookedWeightG: draft.cookedWeightG.trim() ? Number(draft.cookedWeightG) : null, servingCount: draft.servingCount.trim() ? Number(draft.servingCount) : null, version: recipe.version };
+  const editorIngredients = draft.ingredients as Array<RecipeDraftIngredient & Partial<Pick<EditorIngredient, "originalAmount" | "originalUnit" | "originalServingId" | "edited">>>;
+  const unchanged = recipe.ingredients.length === draft.ingredients.length && draft.ingredients.every((row) => {
+    const original = recipe.ingredients.find((item) => item.id === row.key);
+    return original ? sameIngredientDraft(row as EditorIngredient, original) : false;
+  });
+  if (unchanged) return metadata;
+  return { ...metadata, ingredients: editorIngredients.map((row) => {
+    const original = recipe.ingredients.find((item) => item.id === row.key);
+    const untouchedNonGram = original && row.edited !== true && row.originalUnit !== undefined && row.originalUnit !== "g" && sameIngredientDraft(row as EditorIngredient, original);
+    return { foodId: row.foodId, amount: untouchedNonGram ? row.originalAmount ?? original.inputAmount : Number(row.amount), unit: untouchedNonGram ? row.originalUnit ?? original.inputUnit : "g", ...(untouchedNonGram ? { servingId: row.originalServingId ?? original.servingId } : {}) };
+  }) };
+}
+
 export async function updateRecipeAction(client: RecipeClient, recipe: Recipe, draft: RecipeDraft): Promise<Recipe> {
-  return client.updateRecipe(recipe.id, { ...draftInput(draft), version: recipe.version });
+  return client.updateRecipe(recipe.id, recipeUpdateInput(recipe, draft as RecipeEditorDraft));
+}
+
+export async function reloadRecipeAction(client: RecipeClient, recipeId: string): Promise<Recipe> {
+  return client.getRecipe(recipeId);
 }
 
 export async function copyRecipeAction(client: RecipeClient, recipeId: string): Promise<Recipe> {
@@ -68,7 +97,7 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
   const [mode, setMode] = useState<RecipeMode>("list");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [draft, setDraft] = useState<RecipeDraft>(emptyDraft);
+  const [draft, setDraft] = useState<RecipeEditorDraft>(emptyDraft);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -77,6 +106,7 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
   const [searchError, setSearchError] = useState<Record<string, string>>({});
   const [diaryMeal, setDiaryMeal] = useState("breakfast");
   const [diaryAmount, setDiaryAmount] = useState("100");
+  const [conflictRecipeId, setConflictRecipeId] = useState<string | null>(null);
 
   async function loadRecipes() {
     setLoading(true);
@@ -93,10 +123,10 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
   }
 
   function beginEdit(next: Recipe) {
-    setError(""); setRecipe(next); setDraft({ name: next.name, cookedWeightG: next.cookedWeightG === null ? "" : String(next.cookedWeightG), servingCount: next.servingCount === null ? "" : String(next.servingCount), ingredients: next.ingredients.map((item) => ({ key: item.id, foodId: item.foodId ?? "", name: item.nameSnapshot, amount: String(item.inputAmount) })) }); setMode("editor");
+    setError(""); setConflictRecipeId(null); setRecipe(next); setDraft(recipeDraftFromRecipe(next)); setMode("editor");
   }
 
-  function updateRow(key: string, patch: Partial<RecipeDraftIngredient>) { setDraft((current) => ({ ...current, ingredients: current.ingredients.map((row) => row.key === key ? { ...row, ...patch } : row) })); }
+  function updateRow(key: string, patch: Partial<RecipeDraftIngredient>) { setDraft((current) => ({ ...current, ingredients: current.ingredients.map((row) => row.key === key ? { ...row, ...patch, edited: patch.amount === undefined ? row.edited : true } : row) })); }
 
   async function searchFood(event: FormEvent, row: RecipeDraftIngredient) {
     event.preventDefault();
@@ -118,8 +148,30 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
     setBusy("save"); setError("");
     try {
       const next = recipe ? await updateRecipeAction(props.client, recipe, draft) : await props.client.createRecipe(input);
-      setRecipe(next); setRecipes((current) => recipe ? current.map((item) => item.id === next.id ? next : item) : [next, ...current]); setMode("detail");
-    } catch (caught) { setError(displayError(caught)); }
+      setConflictRecipeId(null); setRecipe(next); setRecipes((current) => recipe ? current.map((item) => item.id === next.id ? next : item) : [next, ...current]); setMode("detail");
+    } catch (caught) { if (caught instanceof ApiError && caught.code === "RECIPE_VERSION_CONFLICT" && recipe) setConflictRecipeId(recipe.id); setError(displayError(caught)); }
+    finally { setBusy(null); }
+  }
+
+  async function openRecipe(next: Recipe) {
+    setBusy(`open:${next.id}`); setError("");
+    try { const fresh = await reloadRecipeAction(props.client, next.id); setRecipe(fresh); setMode("detail"); }
+    catch (caught) { setError(displayError(caught)); }
+    finally { setBusy(null); }
+  }
+
+  async function openRecipeEditor(next: Recipe) {
+    setBusy(`open:${next.id}`); setError("");
+    try { const fresh = await reloadRecipeAction(props.client, next.id); beginEdit(fresh); }
+    catch (caught) { setError(displayError(caught)); }
+    finally { setBusy(null); }
+  }
+
+  async function reloadAfterConflict() {
+    if (!conflictRecipeId) return;
+    setBusy("reload");
+    try { const fresh = await reloadRecipeAction(props.client, conflictRecipeId); setRecipe(fresh); setRecipes((current) => current.map((item) => item.id === fresh.id ? fresh : item)); setConflictRecipeId(null); setError(""); }
+    catch (caught) { setError(displayError(caught)); }
     finally { setBusy(null); }
   }
 
@@ -129,11 +181,11 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
   async function addToDiary(event: FormEvent) { event.preventDefault(); if (!recipe) return; setBusy("diary"); setError(""); try { await addRecipeToDiaryAction(props.client, recipe.id, { date: props.today, mealSlotId: diaryMeal, amount: Number(diaryAmount), unit: "g" }, props.onDiaryReload, props.onOpenDiary); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
 
   const header = <div className="section-heading"><div><h2>菜谱</h2><p className="muted">使用本地食物快照组合和复用菜谱。</p></div><button type="button" className="primary" onClick={beginCreate} disabled={loading || busy !== null}>新建菜谱</button></div>;
-  if (mode === "editor") return <section className="card add-card">{header}<form className="form" onSubmit={(event) => void save(event)}><label className="field"><span>菜谱名称</span><input aria-label="菜谱名称" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label className="field"><span>成品重量（g，可选）</span><input aria-label="成品重量" type="number" min="0" step="0.1" value={draft.cookedWeightG} onChange={(event) => setDraft({ ...draft, cookedWeightG: event.target.value })} /></label><label className="field"><span>份数（可选）</span><input aria-label="份数" type="number" min="0" step="0.1" value={draft.servingCount} onChange={(event) => setDraft({ ...draft, servingCount: event.target.value })} /></label><h3>原料</h3>{draft.ingredients.map((row) => <div className="card" key={row.key}><label className="field"><span>原料名称</span><input aria-label="原料搜索" value={searches[row.key] ?? row.name} onChange={(event) => setSearches((current) => ({ ...current, [row.key]: event.target.value }))} /></label><div className="entry-actions"><button type="button" className="soft-button" disabled={busy === `search:${row.key}`} onClick={(event) => void searchFood(event, row)}>搜索原料</button>{draft.ingredients.length > 1 ? <button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: current.ingredients.filter((item) => item.key !== row.key) }))}>删除原料</button> : null}</div>{(foodResults[row.key] ?? []).map((food) => <button type="button" className="food-result" key={food.id} aria-label="选择原料" onClick={() => chooseFood(row, food)}><span>{food.name}</span><small>{food.summary.energyKcal ?? "—"} kcal / 100g</small></button>)}<RecipeFoodSearchStatus searched={foodResults[row.key] !== undefined} resultCount={(foodResults[row.key] ?? []).length} />{searchError[row.key] ? <p className="error" role="alert">{searchError[row.key]}</p> : null}<label className="field"><span>用量（g）</span><input aria-label="原料用量" type="number" min="0" step="0.1" value={row.amount} onChange={(event) => updateRow(row.key, { amount: event.target.value })} /></label><p className="muted">已选：{row.name || "尚未选择"}</p></div>)}<button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: [...current.ingredients, emptyRow()] }))}>添加原料</button>{error ? <p className="error" role="alert">{error}</p> : null}<button type="submit" className="primary" disabled={busy !== null}>{busy === "save" ? "保存中…" : "保存菜谱"}</button><button type="button" className="soft-button" onClick={() => { setMode(recipe ? "detail" : "list"); setError(""); }}>取消</button></form></section>;
+  if (mode === "editor") return <section className="card add-card">{header}<form className="form" onSubmit={(event) => void save(event)}><label className="field"><span>菜谱名称</span><input aria-label="菜谱名称" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label className="field"><span>成品重量（g，可选）</span><input aria-label="成品重量" type="number" min="0" step="0.1" value={draft.cookedWeightG} onChange={(event) => setDraft({ ...draft, cookedWeightG: event.target.value })} /></label><label className="field"><span>份数（可选）</span><input aria-label="份数" type="number" min="0" step="0.1" value={draft.servingCount} onChange={(event) => setDraft({ ...draft, servingCount: event.target.value })} /></label><h3>原料</h3>{draft.ingredients.map((row) => <div className="card" key={row.key}><label className="field"><span>原料名称</span><input aria-label="原料搜索" value={searches[row.key] ?? row.name} onChange={(event) => setSearches((current) => ({ ...current, [row.key]: event.target.value }))} /></label><div className="entry-actions"><button type="button" className="soft-button" disabled={busy === `search:${row.key}`} onClick={(event) => void searchFood(event, row)}>搜索原料</button>{draft.ingredients.length > 1 ? <button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: current.ingredients.filter((item) => item.key !== row.key) }))}>删除原料</button> : null}</div>{(foodResults[row.key] ?? []).map((food) => <button type="button" className="food-result" key={food.id} aria-label="选择原料" onClick={() => chooseFood(row, food)}><span>{food.name}</span><small>{food.summary.energyKcal ?? "—"} kcal / 100g</small></button>)}<RecipeFoodSearchStatus searched={foodResults[row.key] !== undefined} resultCount={(foodResults[row.key] ?? []).length} />{searchError[row.key] ? <p className="error" role="alert">{searchError[row.key]}</p> : null}<label className="field"><span>用量（{row.originalUnit === "g" || row.edited ? "g" : "克等值"}）</span><input aria-label="原料用量" type="number" min="0" step="0.1" value={row.amount} onChange={(event) => updateRow(row.key, { amount: event.target.value })} /></label><p className="muted">已选：{row.name || "尚未选择"}</p></div>)}<button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: [...current.ingredients, emptyRow()] }))}>添加原料</button>{error ? <p className="error" role="alert">{error}</p> : null}{conflictRecipeId ? <button type="button" className="soft-button" onClick={() => void reloadAfterConflict()} disabled={busy !== null}>重新加载最新菜谱（保留当前草稿）</button> : null}<button type="submit" className="primary" disabled={busy !== null}>{busy === "save" ? "保存中…" : "保存菜谱"}</button><button type="button" className="soft-button" onClick={() => { setMode(recipe ? "detail" : "list"); setError(""); }}>取消</button></form></section>;
 
   if (mode === "detail" && recipe) return <section className="card add-card">{header}<div className="section-heading"><h2>{recipe.name}</h2><span className="status-chip">计算版本 {recipe.calcVersion}</span></div><div className="entry-actions"><button type="button" className="soft-button" disabled={busy !== null} onClick={() => beginEdit(recipe)}>编辑菜谱</button><button type="button" className="soft-button" disabled={busy !== null} onClick={() => void copyRecipe()}>复制菜谱</button><button type="button" className="soft-button" disabled={busy !== null} onClick={() => void refreshRecipe()}>刷新原料</button><button type="button" className="soft-button" disabled={busy !== null} onClick={() => void deleteRecipe()}>删除菜谱</button></div><p className="muted">原料：{recipe.ingredients.map((item) => `${item.nameSnapshot} ${item.inputAmount}${item.inputUnit}`).join("、")}</p><NutrientSection title="总营养" values={recipe.total} /><NutrientSection title="每100克营养" values={recipe.per100g} /><NutrientSection title="每份营养" values={recipe.perServing} />{recipe.warnings.length > 0 ? <div role="note"><h3>数据提示</h3><ul>{recipe.warnings.map((warning, index) => <li key={`${warning.code}-${index}`}>{warningText(warning)}</li>)}</ul></div> : null}<form className="add-form" onSubmit={(event) => void addToDiary(event)}><h3>加入日记</h3><label className="field"><span>餐次</span><select aria-label="餐次" value={diaryMeal} onChange={(event) => setDiaryMeal(event.target.value)}><option value="breakfast">早餐</option><option value="lunch">午餐</option><option value="dinner">晚餐</option><option value="snack">加餐</option></select></label><label className="field"><span>用量（g）</span><input aria-label="日记用量" type="number" min="1" step="0.1" value={diaryAmount} onChange={(event) => setDiaryAmount(event.target.value)} /></label><button type="submit" className="primary" disabled={busy !== null}>{busy === "diary" ? "加入中…" : "加入日记"}</button></form>{error ? <p className="error" role="alert">{error}</p> : null}<button type="button" className="soft-button" onClick={() => { setRecipe(null); setMode("list"); }}>返回菜谱列表</button></section>;
 
-  return <section className="card add-card">{header}<RecipeListStatus loading={loading} error={error} hasRecipes={recipes.length > 0} onRetry={() => void loadRecipes()} />{!loading && recipes.length > 0 ? <div className="meals">{recipes.map((item) => <article className="meal" key={item.id}><div className="meal-content"><h3>{item.name}</h3><p className="muted">{item.cookedWeightG === null ? "未填写成品重量" : `${item.cookedWeightG}g`} · {item.servingCount === null ? "未填写份数" : `${item.servingCount}份`} · {item.warnings.length} 条提示</p></div><div className="entry-actions"><button type="button" className="soft-button" onClick={() => { setRecipe(item); setMode("detail"); }}>查看菜谱</button><button type="button" className="soft-button" onClick={() => beginEdit(item)}>编辑菜谱</button></div></article>)}</div> : null}</section>;
+  return <section className="card add-card">{header}{busy?.startsWith("open:") ? <p className="loading" role="status">正在加载菜谱详情…</p> : null}<RecipeListStatus loading={loading} error={error} hasRecipes={recipes.length > 0} onRetry={() => void loadRecipes()} />{!loading && recipes.length > 0 ? <div className="meals">{recipes.map((item) => <article className="meal" key={item.id}><div className="meal-content"><h3>{item.name}</h3><p className="muted">{item.cookedWeightG === null ? "未填写成品重量" : `${item.cookedWeightG}g`} · {item.servingCount === null ? "未填写份数" : `${item.servingCount}份`} · {item.warnings.length} 条提示</p></div><div className="entry-actions"><button type="button" className="soft-button" disabled={busy !== null} onClick={() => void openRecipe(item)}>查看菜谱</button><button type="button" className="soft-button" disabled={busy !== null} onClick={() => void openRecipeEditor(item)}>编辑菜谱</button></div></article>)}</div> : null}</section>;
 }
 
 export function RecipeListStatus(props: { loading: boolean; error: string; hasRecipes: boolean; onRetry: () => void }): ReactElement | null {

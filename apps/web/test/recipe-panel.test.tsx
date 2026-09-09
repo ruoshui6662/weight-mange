@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeErrorText, refreshRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -47,6 +47,34 @@ describe("RecipePanel", () => {
     expect(update).toHaveBeenCalledWith("recipe-1", expect.objectContaining({ version: 7, name: "新名字", cookedWeightG: 220, servingCount: 2, ingredients: [{ foodId: "food-1", amount: 120, unit: "g" }] }));
     expect(draft.name).toBe("新名字");
     expect(recipeErrorText(new ApiError("RECIPE_VERSION_CONFLICT", 409))).toContain("重新加载");
+  });
+
+  it("omits ingredients for metadata-only edits and preserves non-g input snapshots", async () => {
+    const draft = recipeDraftFromRecipe({ ...recipe, ingredients: [{ ...recipe.ingredients[0], inputAmount: 2, inputUnit: "ml", gramEquivalent: 200 }] });
+    const update = vi.fn(async () => recipe);
+    await updateRecipeAction({ ...client, updateRecipe: update }, { ...recipe, ingredients: [{ ...recipe.ingredients[0], inputAmount: 2, inputUnit: "ml", gramEquivalent: 200 }] }, { ...draft, name: "改名" });
+    expect(update).toHaveBeenCalledWith("recipe-1", expect.objectContaining({ name: "改名", version: 7 }));
+    expect(update.mock.calls[0][1]).not.toHaveProperty("ingredients");
+
+    const changedDraft = { ...draft, ingredients: [{ ...draft.ingredients[0], amount: "250" }] };
+    await updateRecipeAction({ ...client, updateRecipe: update }, { ...recipe, ingredients: [{ ...recipe.ingredients[0], inputAmount: 2, inputUnit: "ml", gramEquivalent: 200 }] }, changedDraft);
+    expect(update.mock.calls[1][1]).toMatchObject({ ingredients: [{ foodId: "food-1", amount: 250, unit: "g" }] });
+
+    const mixedRecipe = { ...recipe, ingredients: [
+      { ...recipe.ingredients[0], id: "ingredient-ml", inputAmount: 2, inputUnit: "ml" as const, gramEquivalent: 200 },
+      { ...recipe.ingredients[0], id: "ingredient-g", inputAmount: 100, inputUnit: "g" as const, gramEquivalent: 100 },
+    ] };
+    const mixedDraft = recipeDraftFromRecipe(mixedRecipe);
+    mixedDraft.ingredients[1].amount = "125";
+    await updateRecipeAction({ ...client, updateRecipe: update }, mixedRecipe, mixedDraft);
+    expect(update.mock.calls[2][1]).toMatchObject({ ingredients: [{ foodId: "food-1", amount: 2, unit: "ml" }, { foodId: "food-1", amount: 125, unit: "g" }] });
+  });
+
+  it("fetches fresh detail before opening and can recover the latest version after a conflict", async () => {
+    const fresh = { ...recipe, version: 9, name: "服务端最新菜谱" };
+    const getRecipe = vi.fn(async () => fresh);
+    await expect(reloadRecipeAction({ ...client, getRecipe }, "recipe-1")).resolves.toEqual(fresh);
+    expect(getRecipe).toHaveBeenCalledWith("recipe-1");
   });
 
   it("uses copy and refresh responses, and delete only after confirmation", async () => {
