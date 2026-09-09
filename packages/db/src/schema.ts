@@ -408,4 +408,10 @@ export const DIARY_MIGRATIONS: readonly SqliteMigration[] = [
       );
     `,
   },
+  {
+    version: "0008_diary_serving_identity",
+    sql: `
+      ALTER TABLE diary_entry ADD COLUMN serving_id TEXT REFERENCES food_serving(id) ON DELETE SET NULL;
+    `,
+  },
 ];

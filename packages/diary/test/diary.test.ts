@@ -19,7 +19,7 @@ function setup() {
   sqlite.prepare("INSERT INTO profile_user (id,display_name,timezone,created_at,updated_at) VALUES ('user-1','User','Asia/Shanghai',1,1)").run();
   const foods = createFoodCatalog(sqlite, { now: () => 10, id: (() => { let i = 0; return () => `food-id-${++i}`; })() });
   const food = foods.createCustom({ name: "豆浆", nutrients: { energyKcal: 30, proteinG: 2, fatG: 1, carbG: 3 } });
-  return { sqlite, foodId: food.id, diary: createDiaryService(sqlite, { now: () => 100, id: (() => { let i = 0; return () => `diary-id-${++i}`; })() }) };
+  return { sqlite, foodId: food.id, foods, diary: createDiaryService(sqlite, { now: () => 100, id: (() => { let i = 0; return () => `diary-id-${++i}`; })() }) };
 }
 
 it("writes an immutable scaled nutrient snapshot and returns stored totals after a food edit", () => {
@@ -27,7 +27,7 @@ it("writes an immutable scaled nutrient snapshot and returns stored totals after
   const entry = diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "breakfast", foodId, amount: 75, unit: "g", source: "manual", idempotencyKey: "entry-1" });
   expect(entry.nutrients.find((value) => value.nutrientId === "energy_kcal")).toMatchObject({ amountNumeric: 22.5, amountRaw: "22.5", valueStatus: "known" });
   sqlite.prepare("UPDATE food_nutrient_value SET amount_numeric=99 WHERE food_id=? AND nutrient_id='energy_kcal'").run(foodId);
-  expect(diary.getDay({ userId: "user-1", date: "2026-09-09" }).total.nutrients.energy_kcal.amount).toBe(22.5);
+  expect(diary.getDay({ userId: "user-1", date: "2026-09-09" }).dailyTotal.nutrients.energy_kcal.amount).toBe(22.5);
 });
 
 it("is idempotent, rejects stale updates, and replaces only the edited snapshot", () => {
@@ -56,4 +56,31 @@ it("rolls back an invalid entry without creating a day or meal slots", () => {
   const { sqlite, foodId, diary } = setup();
   expect(() => diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "not-a-meal", foodId, amount: 10, unit: "g", source: "manual" })).toThrow("DIARY_MEAL_SLOT_NOT_FOUND");
   expect(sqlite.prepare("SELECT count(*) count FROM diary_day").get()).toMatchObject({ count: 0 });
+});
+
+it("returns meal and daily totals with snapshot status coverage", () => {
+  const { sqlite, foodId, diary } = setup();
+  const source = sqlite.prepare("SELECT id FROM food_source_record WHERE food_id=? AND is_primary=1").get(foodId) as { id: string };
+  sqlite.prepare("INSERT INTO food_nutrient_definition (id,display_name,unit,nutrient_group,display_order,summable) VALUES ('fiber_g','纤维','g','macro',9,1)").run();
+  sqlite.prepare("INSERT INTO food_nutrient_value (id,food_id,source_record_id,nutrient_id,amount_numeric,amount_raw,value_status,basis_amount,basis_unit,created_at) VALUES ('trace-fiber',?,?, 'fiber_g',NULL,'Tr','trace',100,'g',1)").run(foodId, source.id);
+  diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "breakfast", foodId, amount: 100, unit: "g", source: "manual" });
+  diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "lunch", foodId, amount: 100, unit: "g", source: "manual" });
+  sqlite.prepare("UPDATE food_nutrient_value SET amount_numeric=999 WHERE food_id=? AND nutrient_id='energy_kcal'").run(foodId);
+  const result = diary.getDay({ userId: "user-1", date: "2026-09-09" });
+  expect(result.mealTotals.breakfast.nutrients.energy_kcal.amount).toBe(30);
+  expect(result.dailyTotal.nutrients.energy_kcal.amount).toBe(60);
+  expect(result.dailyTotal.nutrients.fiber_g).toMatchObject({ amount: 0, coverage: 0, hasTrace: true });
+});
+
+it("persists a serving id and copyDay re-resolves active servings or falls back to snapshots", () => {
+  const { sqlite, foodId, foods, diary } = setup();
+  const servingId = foods.addServing(foodId, { label: "一杯", amount: 250, unit: "g", equivalentG: 250 });
+  const entry = diary.createEntry({ userId: "user-1", date: "2026-09-08", mealSlotId: "breakfast", foodId, amount: 1, unit: "serving", servingId, source: "manual" });
+  expect(entry.servingId).toBe(servingId);
+  const activeCopy = diary.copyDay({ userId: "user-1", date: "2026-09-09", fromDate: "2026-09-08" });
+  expect(activeCopy[0]).toMatchObject({ entrySource: "copy", servingId });
+  sqlite.prepare("UPDATE food_item SET active=0 WHERE id=?").run(foodId);
+  const fallback = diary.copyDay({ userId: "user-1", date: "2026-09-10", fromDate: "2026-09-08" });
+  expect(fallback[0]).toMatchObject({ entrySource: "copy_snapshot", servingId });
+  expect(fallback[0]?.nutrients.find((value) => value.nutrientId === "energy_kcal")?.amountNumeric).toBe(75);
 });

@@ -348,6 +348,14 @@ Response 必须返回 entry snapshot。
 
 ## POST /api/v1/diary/:date/copy-day
 
+```json
+{
+  "fromDate": "2026-09-07"
+}
+```
+
+复制当天所有餐次。active food（包括 serving）按当前食物数据重新快照；原食物或 serving 无法解析时保留原 entry snapshot，并标记 `source=copy_snapshot`。
+
 ---
 
 # 11. Meal Photos

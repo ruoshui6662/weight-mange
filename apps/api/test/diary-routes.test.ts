@@ -19,6 +19,8 @@ it("exposes diary writes with nested validation and optimistic conflict envelope
     expect((await fetch(`${base}/api/v1/diary/2026-09-09`)).status).toBe(200);
     const stale = await fetch(`${base}/api/v1/diary/2026-09-09/entries/${entry.data.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: 20, version: 0 }) });
     expect(stale.status).toBe(409); expect(await stale.json()).toMatchObject({ error: { code: "DIARY_VERSION_CONFLICT", requestId: expect.any(String) } });
+    const copyDay = await fetch(`${base}/api/v1/diary/2026-09-10/copy-day`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fromDate: "2026-09-09" }) });
+    expect(copyDay.status).toBe(201); expect(await copyDay.json()).toMatchObject({ data: [expect.objectContaining({ entrySource: "copy" })] });
     const invalid = await fetch(`${base}/api/v1/diary/2026-09-09/entries`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     expect(invalid.status).toBe(400); expect(await invalid.json()).toMatchObject({ error: { code: "DIARY_INVALID_ENTRY", requestId: expect.any(String) } });
   } finally { await runtime.close(); }

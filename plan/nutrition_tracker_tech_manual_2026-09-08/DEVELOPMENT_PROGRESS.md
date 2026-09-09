@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 21:20 +08:00
+> 最后更新：2026-09-09 21:30 +08:00
 
 ## 1. 当前快照
 
@@ -14,7 +14,7 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-006 Dashboard read model |
 | 下一步 | 从 diary 的已存快照构建可重建的日汇总；不得重算历史 food 数据 |
-| 当前阻塞 | 无；M1-005 实现完成，待独立复审 |
+| 当前阻塞 | 无；M1-005 四项 Important 复审问题已修复，待复审确认 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
@@ -148,8 +148,8 @@
 - 依赖：M1-001、M1-004
 - 计划变更：增加 `0007_diary_snapshots` 前向迁移、日记 domain 和核心 REST 读写路径；以存储快照保持历史不随 food 更新或停用而漂移。
 - 计划验收：TDD RED/GREEN；快照缩放、food edit/deactivation 后历史稳定、幂等、乐观锁、copy fallback、事务回滚与 API error envelope；全量门禁。
-- 当前进展：`diary_day`、默认餐次、entry/version 与每营养快照已在同一事务落库；`source_basis_json` 保存引擎版本、来源 food/serving 与 basis；copy 优先当前 active food，缺失/停用时使用 `copy_snapshot`。
-- 验收结果：EVD-M1-005-A；聚焦 2 files/5 tests、全量 51 files/250 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0。
+- 当前进展：`diary_day`、默认餐次、entry/version 与每营养快照已在同一事务落库；`0008` 记录 `serving_id`；day read 返回基于存储快照的 meal/daily totals 与 coverage；copy-day/copy-meal 均优先当前 active food，缺失/停用时使用 `copy_snapshot`。
+- 验收结果：EVD-M1-005-A/B；聚焦 2 files/7 tests、全量 51 files/254 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0。
 - 阻塞/风险：菜谱、照片、goal snapshot、Dashboard/UI 与外部调用均未扩展到本任务；API 当前以基础单用户 `local-user` 承载，后续鉴权路由应接入 session user。
 - 下一步：独立复审后进入 M1-006 Dashboard read model。
 
@@ -317,6 +317,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 21:10 +08:00 | Codex | 完成 M1-004 最终复审 | 三轮独立复审完成；search envelope、indexed prefix/FTS、PATCH validation/revision、reference user additions 与事务边界均通过；进入 M1-005 |
 | 2026-09-09 21:15 +08:00 | Codex | 开始 M1-005 Diary domain 与 snapshot | 读取 API/DB/roadmap；先固定快照、幂等、复制 fallback 与 optimistic concurrency contract |
 | 2026-09-09 21:20 +08:00 | Codex + delegated implementer | 完成 M1-005 Diary domain 与 snapshot | 先观察 diary domain 缺失/API 404 RED；`0007`、已存营养快照、幂等、版本冲突、复制 fallback 和核心 REST API 完成；聚焦 5 tests、全量 250 tests 与全部本地门禁通过，Docker CLI 缺失如实记录 |
+| 2026-09-09 21:30 +08:00 | Codex + delegated implementer | 修复 M1-005 独立复审问题 | 新增 `0008` serving 身份迁移；day 返回存储快照 meal/daily totals 与 coverage；copy-day API/domain、active serving 重新解析和 snapshot fallback 回归通过；聚焦 7 tests、全量 254 tests 与全部本地门禁通过 |
 | 2026-09-09 20:42 +08:00 | Codex + delegated implementer | M1-004 实现完成，等待复审 | 本地 search/detail/custom/alias/serving/favorite 路由和 domain 已完成；聚焦 4 tests、全量 131 tests 与门禁通过；100k 性能未测量并已记录限制 |
 | 2026-09-09 20:52 +08:00 | Codex + delegated implementer | M1-004 复审修复完成，等待确认 | nested custom transaction、source revision、FTS/keyset、error envelope、reference user additions 和 strict cursor 回归均通过；全量 135 tests |
 | 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |

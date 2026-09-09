@@ -476,6 +476,7 @@ UNIQUE(user_id, local_date)
 | diary_day_id | TEXT FK | |
 | meal_slot_id | TEXT FK | |
 | food_id | TEXT nullable FK | 原食物可被删除 |
+| serving_id | TEXT nullable FK | 记录时选用的 serving；复制 active food 时按此重新解析 |
 | recipe_id | TEXT nullable FK | |
 | display_name_snapshot | TEXT | 历史名称 |
 | source_snapshot | TEXT | |
@@ -484,7 +485,7 @@ UNIQUE(user_id, local_date)
 | gram_equivalent | REAL nullable | |
 | serving_label_snapshot | TEXT nullable | |
 | note | TEXT nullable | |
-| entry_source | TEXT | manual/ai_confirmed/copy/import |
+| entry_source | TEXT | manual/ai_confirmed/copy/copy_snapshot/import |
 | created_at | INTEGER | |
 | updated_at | INTEGER | |
 

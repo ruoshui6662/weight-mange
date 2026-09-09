@@ -43,3 +43,14 @@ All exit 0:
 ## Scope and limitation
 
 No recipes, photos, goal snapshots, dashboard cache, UI, AI, or network calls were added. The temporary core routes use `local-user`; later auth-aware routes must supply the session user id.
+
+## Review remediation
+
+Four Important findings were fixed after a new RED suite (missing `mealTotals`/`dailyTotal`, absent serving identity, and missing copy-day route):
+
+- `0008_diary_serving_identity` persists `serving_id` forward-only.
+- Day reads aggregate `diary_entry_nutrient` rows only, returning meal and daily totals with known-only coverage numerator, trace/unknown flags, and estimated markers.
+- Active copy re-resolves its persisted serving; inactive/missing food preserves the stored entry and nutrient snapshot as `copy_snapshot`.
+- `copyDay` and `POST /api/v1/diary/:date/copy-day` copy all source-day meal slots.
+
+Focused remediation verification: `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts` — exit 0, 2 files / 7 tests. Full gates rerun: 51 files / 254 tests, all listed commands exit 0; Docker CLI remains unavailable locally.
