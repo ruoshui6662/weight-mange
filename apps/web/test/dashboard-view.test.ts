@@ -57,4 +57,13 @@ describe("dashboard interaction feedback", () => {
     expect(analyticsHtml).toContain("数据不足");
     expect(analyticsHtml).toContain("不会伪造估算");
   });
+
+  it("renders actionable service error states for M2 panels", () => {
+    const weightHtml = renderToStaticMarkup(React.createElement(WeightPanel, { records: [], trend: null, loading: false, error: "BODY_UNAVAILABLE", onRetry: noopAsync, onAdd: noopAsync }));
+    const analyticsHtml = renderToStaticMarkup(React.createElement(AnalyticsPanel, { overview: null, tdee: null, loading: false, error: "ANALYTICS_UNAVAILABLE", onRetry: noopAsync }));
+    expect(weightHtml).toContain("体重服务暂时不可用");
+    expect(weightHtml).toContain("重试");
+    expect(analyticsHtml).toContain("分析服务暂时不可用");
+    expect(analyticsHtml).toContain("重试");
+  });
 });

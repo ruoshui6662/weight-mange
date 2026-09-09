@@ -13,16 +13,18 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
     "build": "pnpm --filter @nutrition-tracker/web build && tsc -b --pretty false",
     "api:smoke": "node scripts/api-smoke.mjs",
     "docker:smoke": "node scripts/docker-smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.55.0",
     "@types/node": "26.5.0",
+    "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",
     "eslint": "10.10.0",
-    "drizzle-kit": "1.0.0-rc.4",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
     "vitest": "5.0.0"

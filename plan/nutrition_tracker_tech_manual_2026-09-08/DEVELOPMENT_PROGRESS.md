@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 04:10 +08:00
+> 最后更新：2026-09-10 06:30 +08:00
 
 ## 1. 当前快照
 
@@ -12,11 +12,11 @@
 | 项目阶段 | M1 饮食记录纵向切片实施；M2 目标与能量估算已开始 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M2-006 UI/E2E：目标、体重、趋势和分析页面 |
-| 下一步 | 提供真实 Chrome/Edge 或 CI Playwright，补 M1-007/M2-006 浏览器级 E2E 与 390/430 视觉证据 |
-| 当前阻塞 | `BLK-007`：浏览器内置客户端拦截本地 API，且 viewport override 在 IAB 不生效；动态搜索和 390/430 证据需真实浏览器或 CI；本机 Docker CLI 也缺失 |
-| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model、M1-008 核心集成 golden flow、M1-009 导航与搜索状态已完成；M1-007 核心实现已完成但视觉验收受 BLK-007 阻塞；M2-001 已进入实施 |
-| Git | 本地 `main` 为 `e6cfe53`（含浏览器验收阻塞记录），远程 `origin/main` 为 `766efe7`；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
+| 当前焦点 | M1-007 Mobile-first 核心 UI：补齐记录编辑/复制/删除操作 |
+| 下一步 | 先确认记录操作交互设计，再按 TDD 接入现有 Diary API 并补浏览器验收 |
+| 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
+| 业务代码 | M1-001 至 M1-006、M1-008、M1-009、M2-001 至 M2-006 已完成；M1-007 的首次设置、登录、搜索、添加和响应式浏览器门禁已完成，记录编辑/复制/删除 UI 仍待补齐 |
+| Git | 本地 `main` 当前基线为 `a4e1d41`，本轮 Playwright/CI 与前端契约修复尚未提交；远程发布未在本轮执行 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -27,7 +27,7 @@
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 8/9 | 离线于公网完成真实食物记录闭环 |
-| M2 | 目标、体重与基础分析 | `IN_PROGRESS` | 5/6 | 趋势/TDEE 确定性且历史目标不漂移 |
+| M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
@@ -169,15 +169,16 @@
 
 ### M1-007 — Mobile-first 核心 UI
 
-- 状态：`BLOCKED`
+- 状态：`IN_PROGRESS`
 - 开始时间：2026-09-09 22:20 +08:00
 - 操作者：Codex
 - 依赖：M1-004、M1-006
 - 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 bootstrap、login/logout/session、profile/goal、food search、diary 和 Dashboard API，完成首次设置、登录和移动端核心记录流程与可访问状态。
 - 计划验收：360/390/430px 无横向溢出；键盘/focus trap/44px hit area/reduced motion/非颜色状态表达；Dashboard 视觉基线、空/加载/错误/offline 状态。
-- 当前进展：已完成 HTTP bootstrap/login/logout/session、profile/goal API、全业务路由 session 保护；`apps/web` 已实现首次设置、登录、目标设置、Dashboard、食物搜索与快速记账；Vite 产物已由 API 静态服务并复制进 Docker runtime。根据飞牛实机反馈，已补齐密码不足时的前端预校验与明确错误提示；浏览器实测 11 位密码不会发请求并显示可操作提示；360px 首页截图、无横向溢出和五项导航切换已通过。
-- 阻塞/风险：`BLK-007` 阻塞浏览器动态搜索和 390/430 viewport 验收：IAB 对本地 `/api/v1/foods/search` 返回 `ERR_BLOCKED_BY_CLIENT`，viewport override 设置后仍保持 360x800；需真实 Chrome/Edge 或 CI Playwright。Docker CLI 缺失仍只影响容器实测。
-- 下一步：完成独立复审与 360/390/430 目标 viewport 视觉/响应式验收后关闭 M1-007。
+- 当前进展：首次设置、登录/退出、目标设置、Dashboard、受控食物搜索、快速记账和 360/390/430 响应式浏览器验收已通过；本轮修复搜索 API 客户端二次解包和 diary `mealSlots + entries` 到页面餐次模型的契约错位。路线要求的记录编辑、复制、删除按钮及交互仍未实现，任务保持 IN_PROGRESS。
+- 验收结果：浏览器基础路径纳入 EVD-M2-006-B；M1-007 完整退出门槛待记录操作 UI 完成后追加。
+- 阻塞/风险：`BLK-007` 已由 CI Playwright 解除；本机 Docker CLI 缺失仍只影响容器实测。
+- 下一步：先获记录操作交互设计确认，再接入 PATCH/DELETE/copy-meal/copy-day API，并补对应 Web/E2E 测试。
 
 ### M1-008 — 核心 E2E 与数据安全
 
@@ -279,16 +280,19 @@
 
 ### M2-006 — UI/E2E：目标、体重、趋势和分析
 
-- 状态：`BLOCKED`
+- 状态：`DONE`
 - 开始时间：2026-09-10 03:55 +08:00
+- 恢复时间：2026-09-10 04:20 +08:00
+- 完成时间：2026-09-10 06:30 +08:00
 - 操作者：Codex
 - 依赖：M1-007、M2-001 至 M2-005
 - 计划变更：将体重记录/趋势、Analytics overview、Adaptive TDEE 接入现有 Dashboard 导航；补加载、空数据、错误、数据不足状态和体重新增表单。
 - 计划验收：Web 聚焦测试、全量 lint/typecheck/test/build/API smoke/diff check；真实浏览器验证页面切换、表单写入、API 错误状态和 360/390/430 无横向溢出。
-- 当前进展：前端 API client、WeightPanel、AnalyticsPanel 和五项导航数据接入已完成；空状态/不足数据静态测试通过；30 天 EWMA 本地 100 次调用 p50 0.061ms、p95 0.135ms、max 11.989ms，低于 150ms 门槛。
-- 验收结果：EVD-M2-006-A；全量 138 files/731 tests；lint/typecheck/build/API smoke/test:integration/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用。
-- 阻塞/风险：`BLK-007` 仍阻塞真实浏览器 E2E 和 390/430 视觉证据：IAB 拦截本地 API，viewport override 不生效；解除条件为真实 Chrome/Edge 或 CI Playwright。
-- 下一步：先解除 BLK-007，完成浏览器证据后再将 M2-006 标记 DONE，并复核 M1-007 的退出门槛。
+- 当前进展：前端 API client、WeightPanel、AnalyticsPanel 和五项导航数据接入完成；搜索/日记响应契约已对齐；空、错误、不足状态与 44px 导航命中区有测试；Playwright 覆盖首次设置、登录、搜索成功/空状态、记账、体重写入、分析不足和三档 viewport 截图。
+- 活动日志：2026-09-10 04:20 +08:00 恢复实施；2026-09-10 06:30 +08:00 完成验收，操作者 Codex。
+- 验收结果：EVD-M2-006-B；`pnpm lint`、`pnpm typecheck`、`pnpm test`（138 files/732 tests）、`pnpm test:integration`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`（1 passed，360/390/430 截图和无横向溢出）、`git diff --check` 均 exit 0；30 天 EWMA 性能 p50 0.061ms、p95 0.135ms、max 11.989ms。
+- 阻塞/风险：无；本机 Docker CLI 缺失继续只影响容器实测。
+- 下一步：回到 M1-007 补齐记录编辑/复制/删除 UI，不改变已锁定的 diary snapshot 与 API contract。
 
 ## 4. DOC 任务板
 
@@ -325,7 +329,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
 | BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
 | BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 已将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；后续 run `34342506965` 成功并更新 GHCR `latest` | `RESOLVED` |
-| BLK-007 IAB 本地 API/viewport 能力受限 | M1-007 动态搜索与 390/430 视觉验收 | 浏览器客户端访问本地 `/api/v1/foods/search` 被 `ERR_BLOCKED_BY_CLIENT` 拦截；viewport override 在 IAB 不生效；解除条件为提供可访问本地服务的真实 Chrome/Edge 或 CI Playwright 环境 | `OPEN` |
+| BLK-007 IAB 本地 API/viewport 能力受限 | M1-007 动态搜索与 390/430 视觉验收 | 浏览器客户端访问本地 `/api/v1/foods/search` 被 `ERR_BLOCKED_BY_CLIENT` 拦截；viewport override 在 IAB 不生效；已由本地 Chromium Playwright + CI job 覆盖，保留 IAB 限制作为环境备注 | `RESOLVED` |
 
 ## 7. 决策记录
 
@@ -409,6 +413,7 @@ result: 42 passed, 0 failed
 | EVD-M2-004-A | M2-004 | 2026-09-10 03:25 +08:00 | `pnpm exec vitest run packages/analytics/test/analytics.test.ts apps/api/test/analytics-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 analytics 模块缺失，再实现后聚焦 2 files/4 tests；全量 138 files/724 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；覆盖率、平均摄入/宏量、goal difference、weight delta 和不足数据 null 语义通过 |
 | EVD-M2-005-A | M2-005 | 2026-09-10 03:55 +08:00 | `pnpm exec vitest run packages/analytics/test/analytics.test.ts apps/api/test/analytics-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 Adaptive 函数缺失，再实现后聚焦 2 files/7 tests；全量 138 files/730 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；21 天/8 次/coverage 门槛、固定公式、平滑、7 天节流和不自动改目标通过 |
 | EVD-M2-006-A | M2-006 | 2026-09-10 04:10 +08:00 | `pnpm exec vitest run apps/web/test/dashboard-view.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 30 天 EWMA 100 次本地基准 | 聚焦 Web 1 file/3 tests；全量 138 files/731 tests；lint/typecheck/build/API smoke/test:integration/diff check exit 0；EWMA p50 0.061ms、p95 0.135ms、max 11.989ms；docker smoke exit 0 但本机 Docker CLI 不可用；IAB/viewport 限制导致 M2-006 保持 BLOCKED |
+| EVD-M2-006-B | M2-006 | 2026-09-10 06:30 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 本地 Chromium Playwright 截图 | 全量 138 files/732 tests；integration 无测试文件正常 exit 0；lint/typecheck/build/API smoke/diff check exit 0；Playwright 1 passed，覆盖 bootstrap/login/logout、食物搜索成功/空状态、记账、体重写入、分析不足、44px 导航命中区和 360/390/430 无横向溢出，三档截图写入 test-results 并被 gitignore；BLK-007 解除 |
 
 ## 9. 问题队列
 
@@ -520,14 +525,16 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 03:55 +08:00 | Codex | 完成 M2-005 | `estimateAdaptiveTdee` 与 TDEE API 完成；全量 138 files/730 tests 与本地门禁通过；下一步进入 M2-006 UI/E2E |
 | 2026-09-10 03:55 +08:00 | Codex | 开始 M2-006 | 接入体重/趋势/overview/TDEE 到 Dashboard，先写 WeightPanel/AnalyticsPanel 的空态和不足数据测试 |
 | 2026-09-10 04:10 +08:00 | Codex | M2-006 代码完成但验收阻塞 | 前端接入和 30 天趋势性能通过；真实浏览器 E2E、390/430 viewport 仍受 BLK-007 阻塞，任务保持 BLOCKED |
+| 2026-09-10 04:20 +08:00 | Codex | 恢复 M2-006 浏览器验收 | 读取路线与 UI/API 规范；新增 Playwright Chromium CI 路径和临时受控食物 seed，计划验收首次设置/登录、搜索、记账、体重、分析不足和 360/390/430 viewport |
+| 2026-09-10 06:30 +08:00 | Codex | 完成 M2-006，解除 BLK-007 | 修复 Web API 搜索二次解包和 diary `mealSlots + entries` 映射；全量 732 tests、Playwright 1 passed、三档截图/无横向溢出/44px 命中区通过；M2 6/6 DONE；复核发现 M1-007 仍缺记录编辑/复制/删除 UI，下一步回到 M1-007 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 核心饮食闭环、M2-001 能量估算、M2-002 体重记录、M2-003 趋势引擎、M2-004 Analytics overview 和 M2-005 Adaptive TDEE 已完成；M2-006 代码已完成但等待浏览器验收。后续接手者应：
+M0 基础代码已完成；M1-001 至 M1-006、M1-008、M1-009 和 M2 全部任务已完成；M1-007 已通过首次设置、登录、搜索、添加、响应式浏览器门禁，但记录编辑/复制/删除 UI 仍待补齐。后续接手者应：
 
-1. 先阅读本页并保留 `BLK-007`：M1-007 的 IAB 动态搜索与 390/430 视觉证据仍需真实 Chrome/Edge 或 CI Playwright；
-2. 先解除 BLK-007，验证 M1-007/M2-006 的真实浏览器交互和 360/390/430 viewport；代码复用 overview、`weight_trend_v1` 和 `adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
-3. 保持 M2-001 的 `energy_estimate_v1` 和 `POST /api/v1/profile/goals/estimate` contract，goal 写入仍走版本化 POST；
+1. 先阅读本页并按 M1-007 记录操作设计确认；不要把未实现的编辑/复制/删除 UI 误标为完成；
+2. 接入已有 PATCH/DELETE/copy-meal/copy-day API，保持 diary snapshot、幂等和版本冲突语义；
+3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 
 ## 12. 更新模板

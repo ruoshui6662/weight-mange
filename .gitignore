@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 coverage/
+test-results/
 *.tsbuildinfo
 
 # Local runtime data
@@ -39,4 +40,3 @@ tmp/
 .vscode/
 .DS_Store
 Thumbs.db
-

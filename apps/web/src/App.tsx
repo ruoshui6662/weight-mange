@@ -102,7 +102,10 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   const kcalGoal = props.dashboard?.goal?.kcal ?? 0;
   const intake = props.dashboard?.intake.kcal ?? 0;
   const progress = kcalGoal > 0 ? Math.min(100, Math.round((intake / kcalGoal) * 100)) : 0;
-  const mealEntries = useMemo(() => new Map((props.diary?.meals ?? []).map((item) => [item.mealSlot.key, item])), [props.diary]);
+  const mealEntries = useMemo(() => new Map((props.diary?.mealSlots ?? []).map((slot) => [slot.key, {
+    mealSlot: { key: slot.key, displayName: slot.displayName },
+    entries: (props.diary?.entries ?? []).filter((entry) => entry.mealSlotId === slot.id).map((entry) => ({ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit })),
+  }])), [props.diary]);
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
@@ -112,7 +115,7 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
     if (!text) { setResults([]); setSearchStatus("idle"); return; }
     setResults([]); setSelected(null); setSearchStatus("loading");
     try {
-      const nextResults = (await api.searchFoods(text)).data;
+      const nextResults = await api.searchFoods(text);
       setResults(nextResults);
       setSearchStatus(searchStatusForResults(nextResults.length));
     } catch (caught) {
@@ -156,7 +159,9 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   </main>;
 }
 
-function MealSummary(props: { dashboard: Dashboard | null; mealEntries: Map<string, Diary["meals"][number]> }) {
+type MealEntryGroup = { mealSlot: { key: string; displayName: string }; entries: Array<{ id: string; displayName: string; amount: number; unit: string }> };
+
+function MealSummary(props: { dashboard: Dashboard | null; mealEntries: Map<string, MealEntryGroup> }) {
   return <section className="card"><div className="section-heading"><h2>今天吃了什么</h2><span className="status-chip">本地记录</span></div><div className="meals">{["breakfast", "lunch", "dinner", "snack"].map((key) => <div className="meal" key={key}><div><strong>{props.mealEntries.get(key)?.mealSlot.displayName ?? ({ breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" } as Record<string, string>)[key]}</strong>{(props.mealEntries.get(key)?.entries ?? []).map((entry) => <p className="meal-entry" key={entry.id}>{entry.displayName} · {entry.amount}{entry.unit}</p>)}</div><span>{Math.round(props.dashboard?.meals.find((item) => item.key === key)?.totals.kcal ?? 0)} kcal</span></div>)}</div></section>;
 }
 
