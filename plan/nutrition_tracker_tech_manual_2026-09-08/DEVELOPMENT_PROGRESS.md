@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 09:18 +08:00
+> 最后更新：2026-09-09 09:28 +08:00
 
 ## 1. 当前快照
 
@@ -14,9 +14,9 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-001 Nutrition Engine 基础 |
 | 下一步 | 先固定 nutrient scaling、单位换算、edible portion、coverage 和 rounding 的 golden tests |
-| 当前阻塞 | 无；等待飞牛端按新摘要重新拉取并反馈实际启动结果 |
+| 当前阻塞 | 飞牛 Compose 命令解析修复已推送，等待用户重建验证 |
 | 业务代码 | M1-001 即将开始 |
-| Git | 远程 `main` 已更新至 `401da83`；GHCR 已发布 `latest` 与 `401da835f69de08af041eb39e941703fbf3e81bb` |
+| Git | 远程 `main` 已更新至 `3d41734`；GHCR 已发布可用镜像 `401da835f69de08af041eb39e941703fbf3e81bb` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -167,6 +167,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-E | M0-007 | 2026-09-09 08:40 +08:00 | GitHub Actions run `34292835823`；GHCR package 页面与 manifest | 实际 push 成功；`latest` 和 `206adb469a8a34f640705de06abea255f50dca12` 标签可用，包含 linux/amd64、linux/arm64；manifest digest `sha256:28045d2384efeabac7cc02da393d2af3c079421e19c671f08f54655a4564bc85` |
 | EVD-M0-007-F | M0-007 | 2026-09-09 09:12 +08:00 | 飞牛启动失败复盘；检查 `Dockerfile` runtime COPY、workspace symlink 与 Compose bind mount 运行用户；本地 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm docker:smoke` | 发现 runtime 未复制 `apps/api/node_modules`，API workspace 依赖可能在容器内缺失；已补 COPY；Compose 改为 root 启动时 `chown -R 10001:10001 /data` 后以 `appuser` 执行 API；代码门禁全部 exit 0，Docker CLI 仍缺失，等待远程 buildx |
 | EVD-M0-007-G | M0-007 | 2026-09-09 09:18 +08:00 | GitHub Actions run `34293880647`（main）与 `34293870807`（feature）；GHCR package manifest | 两个远程 workflow 均 `success`；新镜像 `latest`/`401da835f69de08af041eb39e941703fbf3e81bb` 已发布，manifest digest `sha256:34dcad2ffa1d6d3e4bc305a2b5997478caaef4087f3024dc9e7a4a1d9b7bbbc`，linux/amd64 digest `sha256:483e2bb9dbf9676566bdc94595b52ed3237649f6e0006d9dd772eb24cdd488bc`，linux/arm64 digest `sha256:7f4c28b2c2682d114f5aede87ae1ebf6fc25e2588f2ea69ca8b5fe4ba36229ec` |
+| EVD-M0-007-H | M0-007 | 2026-09-09 09:28 +08:00 | 飞牛日志：`Restarting (1)`、`chown: missing operand`；复核 Compose `entrypoint`/`command` 参数传递 | 确认上一版 Compose 在飞牛解析后把 shell 脚本拆成多个参数；已改为三段式 `entrypoint`，保证完整脚本作为 `/bin/sh -c` 单个参数执行；提交 `3d41734` 已推送，等待用户重建 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -227,6 +228,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 08:40 +08:00 | Codex | 修正镜像发布流程并完成 GHCR 发布 | 发现原 workflow 仅 `push: false`、只做构建校验；改为 main 登录 GHCR 并 push `latest`/SHA 标签，run `34292835823` 成功，镜像已可拉取 |
 | 2026-09-09 09:12 +08:00 | Codex | 处理飞牛拉取后启动失败 | 运行时补复制 `apps/api/node_modules`；Compose 启动前修正 `/data` 权限并降权到 `appuser`；本地门禁通过，准备推送并等待新的 GHCR 镜像 |
 | 2026-09-09 09:18 +08:00 | Codex | 新镜像远程验证完成 | main run `34293880647` 与 feature run `34293870807` 均成功；GHCR `latest` 已更新为 `401da83`，等待飞牛重新拉取并启动 |
+| 2026-09-09 09:28 +08:00 | Codex | 修复飞牛 Compose shell 参数解析 | 日志确认 `chown` 缺少操作数；将 entrypoint 改为三段式数组，提交 `3d41734` 已同步到 `main`；飞牛只需替换 Compose 并强制重建，无需改数据目录 |
 
 ## 11. 交接摘要
 
