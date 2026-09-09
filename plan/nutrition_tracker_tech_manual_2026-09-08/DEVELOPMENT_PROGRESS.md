@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 21:30 +08:00
+> 最后更新：2026-09-09 23:20 +08:00
 
 ## 1. 当前快照
 
@@ -13,8 +13,8 @@
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-007 Mobile-first 核心 UI |
-| 下一步 | 基于 Dashboard API 实现移动端首页、饮食记录和状态流；完成后再构建发布包含前端的镜像 |
-| 当前阻塞 | 无；M1-006 独立复审已通过 |
+| 下一步 | 先接入 HTTP 鉴权与首次设置 API，再实现登录/首次设置/核心记录前端流程；完成后构建发布包含前端的镜像 |
+| 当前阻塞 | 无；M1-007 核心实现已完成，视觉基线与 M1-008 E2E 尚未开始 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
@@ -173,11 +173,11 @@
 - 开始时间：2026-09-09 22:20 +08:00
 - 操作者：Codex
 - 依赖：M1-004、M1-006
-- 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 food search、diary 和 Dashboard API，完成移动端核心记录流程与可访问状态。
+- 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 bootstrap、login/logout/session、profile/goal、food search、diary 和 Dashboard API，完成首次设置、登录和移动端核心记录流程与可访问状态。
 - 计划验收：360/390/430px 无横向溢出；键盘/focus trap/44px hit area/reduced motion/非颜色状态表达；Dashboard 视觉基线、空/加载/错误/offline 状态。
-- 当前进展：已读取 UI_DESIGN_SYSTEM、API_SPEC 和 M1-007 路线要求；前端技术与页面边界待设计确认。
-- 阻塞/风险：`apps/web` 当前只有 README；需要先确定本任务是实现 Dashboard+日记核心闭环，还是同时覆盖首次设置与登录完整流程。
-- 下一步：确认前端设计范围后写入实施计划，再以组件测试和视觉基线测试先行实现。
+- 当前进展：已完成 HTTP bootstrap/login/logout/session、profile/goal API、全业务路由 session 保护；`apps/web` 已实现首次设置、登录、目标设置、Dashboard、食物搜索与快速记账；Vite 产物已由 API 静态服务并复制进 Docker runtime。
+- 阻塞/风险：本机未安装 Docker CLI，尚未执行本地 Docker build/run；360/390/430 视觉基线截图和完整 Playwright E2E 属于 M1-007/M1-008 后续验收。
+- 下一步：先完成独立复审与视觉/响应式验收，再进入 M1-008 核心 E2E 与备份恢复流程。
 
 ## 4. DOC 任务板
 
@@ -225,6 +225,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | DEC-006 | `PROPOSED` | 菜谱保存 ingredient 计算输入快照，编辑时刷新 | 保持来源可追溯，同时让日记历史永不漂移 | 2026-09-09 |
 | DEC-007 | `ACCEPTED` | V1 使用有状态数据库 session；token 只以 SHA-256 保存，cookie 默认 HttpOnly/SameSite=Lax | 支持撤销、过期和重启后的明确会话状态；避免无状态 token 无法即时失效 | 2026-09-09 |
 | DEC-008 | `ACCEPTED` | canonical nutrient unit 增加 `kJ`，`energy_kj` 必须以 `kJ` 持久化 | `FOOD_DATA_SPEC.md` 与 `DATABASE_SCHEMA.md` 已定义 energyKJ/energy_kj，但原 schema 的单位 CHECK 漏列 kJ；错误标为 kcal 会污染导入数据 | 2026-09-09 |
+| DEC-009 | `ACCEPTED` | M1-007 扩展为登录 + 首次设置完整流程；HTTP 层使用 M0-006 有状态数据库 session，首次设置一次性创建用户并随后建立会话；业务 API 从 session 取得 userId，不再固定 `local-user` | 用户确认完整登录/首次设置范围；保持现有安全边界，避免前端绕过鉴权或出现多用户数据串读 | 2026-09-09 |
 
 `PROPOSED` 决策不能作为最终 contract。进入受影响任务前，必须改为 `ACCEPTED`、`REJECTED` 或 `SUPERSEDED`，并同步相关规范。
 
@@ -268,6 +269,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-004-E | M1-004 | 2026-09-09 21:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search 统一返回 `{data,meta:{nextCursor}}`；空/非空 route 与 domain 回归通过，全量 28 files/137 tests，本地门禁 exit 0 |
 | EVD-M1-005-C | M1-005 | 2026-09-09 21:40 +08:00 | `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; independent scoped review | 聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；所有本地命令 exit 0；coverage 按 gramEquivalent 加权，copy 请求级事务回滚通过；独立复审无 Critical/Important/Minor；Docker CLI 缺失由 smoke 如实记录 |
 | EVD-M1-006-A | M1-006 | 2026-09-09 22:15 +08:00 | `pnpm vitest run packages/dashboard/test/dashboard.test.ts apps/api/test/dashboard-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `node scripts/dashboard-benchmark.mjs`; independent scoped review | focused 2 files/4 tests、full 94 files/505 tests；全部命令 exit 0，integration 无测试文件正常 exit 0；benchmark n=1000 p50=0.321ms/p95=0.573ms；独立复审 ACCEPTED，无 Critical/Important/Minor；Docker CLI 缺失已记录 |
+| EVD-M1-007-A | M1-007 | 2026-09-09 23:20 +08:00 | `pnpm exec vitest run apps/api/test/auth-routes.test.ts apps/api/test/profile-routes.test.ts apps/api/test/static-routes.test.ts apps/web/test`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | focused auth/profile/static/web 6 files/8 tests；full 104 files/533 tests；lint/typecheck/build/API smoke/diff check exit 0；API smoke home/health/ready=200 且命中 web app shell；Docker smoke exit 0 with environment message that Docker CLI is unavailable；视觉截图与 M1-008 E2E 未宣称完成 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -354,6 +356,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 21:40 +08:00 | Codex + independent reviewer | 完成 M1-005 最终 scoped re-review | 聚焦 diary/API 2 files/9 tests、typecheck 通过；coverage 与复制事务问题均确认修复，无 Critical/Important/Minor；M1-005 标记 DONE，下一步进入 M1-006 |
 | 2026-09-09 21:45 +08:00 | Codex | 开始 M1-006 Dashboard read model 设计 | 已读 README、PRODUCT_SPEC、API_SPEC、DATABASE_SCHEMA、NUTRITION_ENGINE_SPEC 与路线图；记录 goal snapshot 绑定决策点，计划先获确认再实现 |
 | 2026-09-09 22:15 +08:00 | Codex + independent reviewer | 完成 M1-006 Dashboard read model | `0009`、goal snapshot、snapshot-only Dashboard、cache rebuild、API envelope 与 benchmark 完成；全量 94 files/505 tests、所有本地门禁 exit 0；进入 M1-007 |
+| 2026-09-09 22:35 +08:00 | Codex | 确认 M1-007 扩展范围 | 用户确认实现登录 + 首次设置完整流程；接受 DEC-009；下一步先完成实施计划和 HTTP contract，再进入 TDD |
+| 2026-09-09 23:20 +08:00 | Codex | 完成 M1-007 核心实现阶段 | 新增 profile/goal service、HTTP auth/session guard、React/Vite onboarding/dashboard、静态资源服务与 Docker web copy；本地门禁通过；视觉基线、Docker 实测和 M1-008 E2E 留待后续 |
 
 ## 11. 交接摘要
 

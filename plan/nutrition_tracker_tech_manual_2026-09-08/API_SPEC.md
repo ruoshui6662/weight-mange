@@ -105,6 +105,28 @@ API 采用 JSON，上传图片/备份使用 multipart。
 
 # 4. Auth
 
+## GET /api/v1/auth/status
+
+公开接口，用于决定首次设置或登录页面：
+
+```json
+{ "data": { "initialized": false } }
+```
+
+## POST /api/v1/auth/bootstrap
+
+仅在 `initialized=false` 时可用；成功一次性创建用户并设置 session cookie：
+
+```json
+{
+  "displayName": "User",
+  "password": "至少 12 个字符",
+  "timezone": "Asia/Shanghai"
+}
+```
+
+成功返回 `201` 与 `{ "data": { "user": { ... } } }`。重复调用返回 `409 AUTH_BOOTSTRAP_ALREADY_COMPLETED`。
+
 ## POST /api/v1/auth/login
 
 ```json
@@ -115,9 +137,17 @@ API 采用 JSON，上传图片/备份使用 multipart。
 
 成功设置 HttpOnly cookie。
 
-## POST /api/v1/auth/logout
-
 ## GET /api/v1/auth/session
+
+无 cookie 或 cookie 已失效时仍返回 `200`：
+
+```json
+{ "data": { "authenticated": false, "user": null } }
+```
+
+有效 session 返回 `authenticated: true` 及当前 profile。
+
+## POST /api/v1/auth/logout
 
 ---
 

@@ -23,6 +23,8 @@ services:
       PORT: "3000"
       DB_PATH: /data/db/app.sqlite
       AUTH_MODE: ${AUTH_MODE:-password}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      WEB_DIST_DIR: /app/web
     healthcheck:
       test: ["CMD", "node", "/app/scripts/healthcheck.mjs"]
       interval: 30s

@@ -13,7 +13,7 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "build": "tsc -b --pretty false",
+    "build": "pnpm --filter @nutrition-tracker/web build && tsc -b --pretty false",
     "api:smoke": "node scripts/api-smoke.mjs",
     "docker:smoke": "node scripts/docker-smoke.mjs"
   },
