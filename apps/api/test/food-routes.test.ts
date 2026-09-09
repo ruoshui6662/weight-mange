@@ -26,5 +26,8 @@ it("exposes local-only food routes and stable error envelopes", async () => {
     const malformedPatch = await fetch(`${base}/api/v1/foods/${created.data.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ nutrients: { fatG: null } }) });
     expect(malformedPatch.status).toBe(400);
     expect(await malformedPatch.json()).toMatchObject({ error: { code: "FOOD_INVALID_UPDATE", message: expect.any(String), requestId: expect.any(String) } });
+    const emptyNutrients = await fetch(`${base}/api/v1/foods/${created.data.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ nutrients: [] }) });
+    expect(emptyNutrients.status).toBe(400);
+    expect(await emptyNutrients.json()).toMatchObject({ error: { code: "FOOD_INVALID_UPDATE", requestId: expect.any(String) } });
   } finally { await runtime.close(); }
 });

@@ -32,6 +32,7 @@ describe("food canonical schema", () => {
       "0003_food_staging_validation",
       "0004_food_import_review_fixes",
       "0005_food_search_key",
+      "0006_food_search_key_nocase_index",
     ]);
     const names = sqlite
       .prepare(

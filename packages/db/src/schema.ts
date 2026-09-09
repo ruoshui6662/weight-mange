@@ -343,4 +343,10 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
       CREATE INDEX food_item_search_key_idx ON food_item(search_key);
     `,
   },
+  {
+    version: "0006_food_search_key_nocase_index",
+    sql: `
+      CREATE INDEX food_item_search_key_nocase_idx ON food_item(search_key COLLATE NOCASE);
+    `,
+  },
 ];
