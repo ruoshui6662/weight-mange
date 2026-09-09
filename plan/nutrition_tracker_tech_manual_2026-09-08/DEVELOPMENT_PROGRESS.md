@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 01:10 +08:00
+> 最后更新：2026-09-10 01:25 +08:00
 
 ## 1. 当前快照
 
@@ -13,8 +13,8 @@
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-007 Mobile-first 核心 UI：360/390/430 视觉证据 |
-| 下一步 | 补齐目标 viewport 截图与浏览器级交互验收，然后关闭 M1-007 |
-| 当前阻塞 | 功能无阻塞；本机 Docker CLI 缺失，容器实测仍需 CI/飞牛环境完成 |
+| 下一步 | 启动本地预览，采集目标 viewport 截图并验收导航/空状态交互 |
+| 当前阻塞 | `BLK-007`：浏览器内置客户端拦截本地 API，且 viewport override 在 IAB 不生效；动态搜索和 390/430 证据需真实浏览器或 CI；本机 Docker CLI 也缺失 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model、M1-008 核心集成 golden flow 已完成；M1-007 核心实现已完成，待视觉/复审验收 |
 | Git | 远程 `main` 当前为 `165917c`（包含 `3a47945` 代码发布）；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
 
@@ -169,14 +169,14 @@
 
 ### M1-007 — Mobile-first 核心 UI
 
-- 状态：`IN_PROGRESS`
+- 状态：`BLOCKED`
 - 开始时间：2026-09-09 22:20 +08:00
 - 操作者：Codex
 - 依赖：M1-004、M1-006
 - 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 bootstrap、login/logout/session、profile/goal、food search、diary 和 Dashboard API，完成首次设置、登录和移动端核心记录流程与可访问状态。
 - 计划验收：360/390/430px 无横向溢出；键盘/focus trap/44px hit area/reduced motion/非颜色状态表达；Dashboard 视觉基线、空/加载/错误/offline 状态。
-- 当前进展：已完成 HTTP bootstrap/login/logout/session、profile/goal API、全业务路由 session 保护；`apps/web` 已实现首次设置、登录、目标设置、Dashboard、食物搜索与快速记账；Vite 产物已由 API 静态服务并复制进 Docker runtime。根据飞牛实机反馈，已补齐密码不足时的前端预校验与明确错误提示；浏览器实测 11 位密码不会发请求并显示可操作提示。
-- 阻塞/风险：本机未安装 Docker CLI，尚未执行本地 Docker build/run；360/390/430 视觉基线截图和完整 Playwright E2E 属于 M1-007/M1-008 后续验收。
+- 当前进展：已完成 HTTP bootstrap/login/logout/session、profile/goal API、全业务路由 session 保护；`apps/web` 已实现首次设置、登录、目标设置、Dashboard、食物搜索与快速记账；Vite 产物已由 API 静态服务并复制进 Docker runtime。根据飞牛实机反馈，已补齐密码不足时的前端预校验与明确错误提示；浏览器实测 11 位密码不会发请求并显示可操作提示；360px 首页截图、无横向溢出和五项导航切换已通过。
+- 阻塞/风险：`BLK-007` 阻塞浏览器动态搜索和 390/430 viewport 验收：IAB 对本地 `/api/v1/foods/search` 返回 `ERR_BLOCKED_BY_CLIENT`，viewport override 设置后仍保持 360x800；需真实 Chrome/Edge 或 CI Playwright。Docker CLI 缺失仍只影响容器实测。
 - 下一步：完成独立复审与 360/390/430 目标 viewport 视觉/响应式验收后关闭 M1-007。
 
 ### M1-008 — 核心 E2E 与数据安全
@@ -242,6 +242,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
 | BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
 | BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 已将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；后续 run `34342506965` 成功并更新 GHCR `latest` | `RESOLVED` |
+| BLK-007 IAB 本地 API/viewport 能力受限 | M1-007 动态搜索与 390/430 视觉验收 | 浏览器客户端访问本地 `/api/v1/foods/search` 被 `ERR_BLOCKED_BY_CLIENT` 拦截；viewport override 在 IAB 不生效；解除条件为提供可访问本地服务的真实 Chrome/Edge 或 CI Playwright 环境 | `OPEN` |
 
 ## 7. 决策记录
 
@@ -318,6 +319,7 @@ result: 42 passed, 0 failed
 “已检查”“看起来正常”或只给文件路径不能作为通过证据。
 
 | EVD-M1-009-A | M1-009 | 2026-09-10 01:10 +08:00 | `pnpm exec vitest run apps/web/test/dashboard-view.test.ts apps/web/test/flow.test.ts apps/web/test/search-state.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 聚焦 3 files/8 tests；全量 108 files/544 tests；所有代码门禁与 API smoke exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；导航五项均有可见状态，空目录搜索有导入说明 |
+| EVD-M1-007-E | M1-007 | 2026-09-10 01:25 +08:00 | IAB 本地预览 `http://localhost:3970/`；viewport `360x800`；浏览器 AX/截图；`tab.playwright.evaluate` 布局测量；命令行登录后搜索 API 请求 | 360px 首页截图可见；`documentWidth=345`、`bodyWidth=345`、无横向溢出；今日/饮食/体重/分析/我的五项导航均切换到可见状态；命令行搜索返回 200 空数组；IAB 搜索请求被 `ERR_BLOCKED_BY_CLIENT` 拦截，390/430 viewport override 不生效，M1-007 保持 BLOCKED |
 
 ## 9. 问题队列
 
@@ -415,6 +417,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 00:45 +08:00 | Codex | 登记 ISSUE-116 | 用户反馈更新后除退出外按钮无效；代码核查确认底部导航尚未绑定动作，搜索仅查询本地 active catalog，空目录时无结果提示；待后续实现，不在本次诊断中扩大范围 |
 | 2026-09-10 00:55 +08:00 | Codex | 开始 M1-009 | 用户确认从第一性原理继续开发；已写入导航/空状态 spec 与实施计划，任务进入 IN_PROGRESS，先执行导航状态模型的 RED 测试 |
 | 2026-09-10 01:10 +08:00 | Codex | 完成 M1-009 | 补充 Dashboard 导航与空状态 HTML 渲染回归；聚焦 3 files/8 tests、全量 108 files/544 tests，lint/typecheck/build/API smoke/diff check 通过；docker smoke 仅记录本机 Docker CLI 缺失；ISSUE-116 已关闭，下一步补 M1-007 目标 viewport 视觉证据 |
+| 2026-09-10 01:15 +08:00 | Codex | 继续 M1-007 视觉验收 | 按计划准备采集 360/390/430 viewport 证据，并验证导航切换、空搜索状态和无横向溢出；若当前环境缺少浏览器运行时，将记录为验收阻塞 |
+| 2026-09-10 01:25 +08:00 | Codex | M1-007 动态验收环境阻塞 | 360px 首页截图、无横向溢出和五项导航切换已通过；浏览器直接访问本地搜索 API 被 `ERR_BLOCKED_BY_CLIENT` 拦截，命令行同一会话请求返回 200 空数组；继续采集 390/430 静态证据，动态搜索留待真实浏览器/CI |
 
 ## 11. 交接摘要
 
