@@ -9,13 +9,13 @@
 
 | 项目 | 当前值 |
 |---|---|
-| 项目阶段 | M0 可验证基础实施 |
+| 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-002 Food canonical schema |
-| 下一步 | 定义 dataset、item、source record、nutrient definition/value、alias、serving、search stats 和 staging schema，并先固定 raw string/Tr/— 与约束测试 |
+| 当前焦点 | M1-003 Food import staging pipeline |
+| 下一步 | 基于 `food_staging_*` 实现解析、校验、diff、事务 promote 与报告生成；不得绕过 staging 表更新 active catalog |
 | 当前阻塞 | 无；M1-001 已完成并通过评审 |
-| 业务代码 | M1-001 Nutrition Engine 基础已完成；M1-002 进行中 |
+| 业务代码 | M1-001 Nutrition Engine 基础与 M1-002 Food canonical schema 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 1/8 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 2/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -101,14 +101,16 @@
 
 ### M1-002 — Food canonical schema
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 10:05 +08:00
+- 完成时间：2026-09-09 18:10 +08:00
 - 操作者：Codex
 - 依赖：M1-001
 - 计划变更：补 food_dataset、food_item、food_category、food_source_record、food_nutrient_definition、food_nutrient_value、food_alias、food_serving、food_search_stats 和 FTS 基线表/约束
 - 计划验收：raw string 保真；`Tr`、`—` 不变成 0；active dataset、canonical key、source relation、nutrient status、serving 与删除行为有约束测试
-- 当前进展：已读取 `DATABASE_SCHEMA.md` 与 `FOOD_DATA_SPEC.md`，任务 brief 待派发
-- 下一步：先写空库 migration/schema 失败测试，再实现最小 food canonical schema
+- 当前进展：新增可组合的 `FOOD_MIGRATIONS`，包含 canonical、staging 和 `unicode61` FTS5 基线；7 个迁移约束测试以新 migration 缺失观察 RED 后通过
+- 验收结果：EVD-M1-002-A；聚焦 1 test file/7 tests、全量 8 test files/35 tests、lint/typecheck/integration/build/API smoke 均通过；docker smoke 以 Docker CLI 缺失提示退出 0
+- 下一步：进入 M1-003 Food import staging pipeline
 
 ## 4. DOC 任务板
 
@@ -251,6 +253,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 10:00 +08:00 | Codex | 完成 M1-001 Nutrition Engine 基础 | 先观察模块缺失的失败测试；新增纯计算、状态/coverage 和展示取整 golden tests；所有本地门禁通过，Docker CLI 缺失由 smoke 脚本记录 |
 | 2026-09-09 10:05 +08:00 | Codex | M1-001 review 修复开始 | P1：estimated 被计入 known coverage；先以 coverage=0.5 失败断言复现，再以最小修复恢复验收 |
 | 2026-09-09 10:15 +08:00 | Codex | 完成 M1-001 review 修复 | estimated 仍计入营养总量和 hasEstimated，但 coverage 分子只计 known；新 RED/GREEN 和相关门禁均通过 |
+| 2026-09-09 18:10 +08:00 | Codex | 完成 M1-002 Food canonical schema | 新增前向 food migration、canonical/staging/FTS5 表与约束；先观察 migration 缺失 RED，再完成 7 个 schema tests 和全量门禁 |
 
 ## 11. 交接摘要
 

@@ -97,3 +97,178 @@ export const CORE_MIGRATIONS: readonly SqliteMigration[] = [
     `,
   },
 ];
+
+export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
+  {
+    version: "0002_food_canonical_schema",
+    sql: `
+      CREATE TABLE food_dataset (
+        id TEXT PRIMARY KEY,
+        dataset_key TEXT NOT NULL CHECK (length(trim(dataset_key)) > 0),
+        version TEXT NOT NULL CHECK (length(trim(version)) > 0),
+        source_name TEXT NOT NULL CHECK (length(trim(source_name)) > 0),
+        source_url TEXT,
+        source_notes TEXT,
+        checksum TEXT NOT NULL CHECK (length(trim(checksum)) > 0),
+        imported_at INTEGER NOT NULL,
+        promoted_at INTEGER,
+        status TEXT NOT NULL CHECK (status IN ('staging', 'active', 'archived', 'failed')),
+        record_count INTEGER NOT NULL CHECK (record_count >= 0),
+        validation_json TEXT NOT NULL,
+        metadata_json TEXT NOT NULL
+      );
+
+      CREATE INDEX food_dataset_key_version_idx ON food_dataset(dataset_key, version);
+      CREATE UNIQUE INDEX food_dataset_one_active_key_idx
+        ON food_dataset(dataset_key) WHERE status = 'active';
+      CREATE TRIGGER food_dataset_reject_active_delete
+        BEFORE DELETE ON food_dataset
+        WHEN OLD.status = 'active'
+      BEGIN
+        SELECT RAISE(ABORT, 'ACTIVE_FOOD_DATASET_DELETE_FORBIDDEN');
+      END;
+
+      CREATE TABLE food_category (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT REFERENCES food_category(id) ON DELETE RESTRICT,
+        name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+        sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
+        source_dataset_id TEXT REFERENCES food_dataset(id) ON DELETE RESTRICT
+      );
+
+      CREATE TABLE food_item (
+        id TEXT PRIMARY KEY,
+        canonical_key TEXT NOT NULL UNIQUE CHECK (length(trim(canonical_key)) > 0),
+        primary_name TEXT NOT NULL CHECK (length(trim(primary_name)) > 0),
+        english_name TEXT,
+        brand TEXT,
+        food_code TEXT,
+        category_id TEXT REFERENCES food_category(id) ON DELETE RESTRICT,
+        food_type TEXT NOT NULL CHECK (food_type IN ('generic', 'branded', 'recipe', 'custom')),
+        default_basis TEXT NOT NULL CHECK (default_basis IN ('edible_100g', 'liquid_100ml', 'serving')),
+        edible_ratio REAL CHECK (edible_ratio IS NULL OR edible_ratio BETWEEN 0 AND 1),
+        density_g_ml REAL CHECK (density_g_ml IS NULL OR density_g_ml > 0),
+        source_quality TEXT NOT NULL CHECK (source_quality IN ('A', 'B', 'C', 'D')),
+        active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX food_item_food_code_idx ON food_item(food_code);
+
+      CREATE TABLE food_source_record (
+        id TEXT PRIMARY KEY,
+        food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
+        dataset_id TEXT REFERENCES food_dataset(id) ON DELETE RESTRICT,
+        source_type TEXT NOT NULL CHECK (source_type IN ('cfcd6', 'user_label', 'custom', 'off', 'usda', 'ai_ocr_candidate')),
+        source_record_id TEXT,
+        raw_json TEXT NOT NULL,
+        source_url TEXT,
+        imported_at INTEGER NOT NULL,
+        is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
+        CHECK (NOT (source_type = 'ai_ocr_candidate' AND is_primary = 1))
+      );
+
+      CREATE INDEX food_source_record_food_idx ON food_source_record(food_id);
+
+      CREATE TABLE food_nutrient_definition (
+        id TEXT PRIMARY KEY,
+        display_name TEXT NOT NULL CHECK (length(trim(display_name)) > 0),
+        unit TEXT NOT NULL CHECK (unit IN ('kcal', 'g', 'mg', 'µg')),
+        nutrient_group TEXT NOT NULL CHECK (nutrient_group IN ('macro', 'vitamin', 'mineral', 'other')),
+        display_order INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
+        summable INTEGER NOT NULL DEFAULT 1 CHECK (summable IN (0, 1))
+      );
+
+      CREATE TABLE food_nutrient_value (
+        id TEXT PRIMARY KEY,
+        food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
+        source_record_id TEXT NOT NULL REFERENCES food_source_record(id) ON DELETE RESTRICT,
+        nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
+        amount_numeric REAL,
+        amount_raw TEXT,
+        value_status TEXT NOT NULL CHECK (value_status IN ('known', 'trace', 'unknown', 'not_applicable', 'estimated')),
+        basis_amount REAL NOT NULL CHECK (basis_amount > 0),
+        basis_unit TEXT NOT NULL CHECK (basis_unit IN ('g', 'ml', 'serving')),
+        confidence REAL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+        created_at INTEGER NOT NULL,
+        UNIQUE(food_id, source_record_id, nutrient_id)
+      );
+
+      CREATE INDEX food_nutrient_value_food_idx ON food_nutrient_value(food_id, nutrient_id);
+
+      CREATE TABLE food_alias (
+        id TEXT PRIMARY KEY,
+        food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
+        alias TEXT NOT NULL CHECK (length(trim(alias)) > 0),
+        alias_normalized TEXT NOT NULL CHECK (length(trim(alias_normalized)) > 0),
+        alias_type TEXT NOT NULL CHECK (alias_type IN ('synonym', 'regional', 'pinyin', 'abbreviation', 'english')),
+        user_defined INTEGER NOT NULL DEFAULT 0 CHECK (user_defined IN (0, 1))
+      );
+
+      CREATE INDEX food_alias_normalized_idx ON food_alias(alias_normalized);
+
+      CREATE TABLE food_serving (
+        id TEXT PRIMARY KEY,
+        food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
+        label TEXT NOT NULL CHECK (length(trim(label)) > 0),
+        amount REAL NOT NULL CHECK (amount > 0),
+        unit TEXT NOT NULL CHECK (unit IN ('g', 'ml')),
+        equivalent_g REAL CHECK (equivalent_g IS NULL OR equivalent_g > 0),
+        equivalent_ml REAL CHECK (equivalent_ml IS NULL OR equivalent_ml > 0),
+        sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
+        source TEXT NOT NULL CHECK (source IN ('built_in', 'user')),
+        is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1))
+      );
+
+      CREATE TABLE food_search_stats (
+        food_id TEXT PRIMARY KEY REFERENCES food_item(id) ON DELETE RESTRICT,
+        use_count INTEGER NOT NULL DEFAULT 0 CHECK (use_count >= 0),
+        last_used_at INTEGER,
+        favorite INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1)),
+        recent_score REAL NOT NULL DEFAULT 0 CHECK (recent_score >= 0)
+      );
+
+      CREATE TABLE food_staging_dataset (
+        id TEXT PRIMARY KEY,
+        dataset_key TEXT NOT NULL CHECK (length(trim(dataset_key)) > 0),
+        version TEXT NOT NULL CHECK (length(trim(version)) > 0),
+        source_name TEXT NOT NULL CHECK (length(trim(source_name)) > 0),
+        checksum TEXT NOT NULL CHECK (length(trim(checksum)) > 0),
+        imported_at INTEGER NOT NULL,
+        raw_manifest_json TEXT NOT NULL
+      );
+
+      CREATE TABLE food_staging_item (
+        id TEXT PRIMARY KEY,
+        staging_dataset_id TEXT NOT NULL REFERENCES food_staging_dataset(id) ON DELETE RESTRICT,
+        source_record_id TEXT,
+        raw_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX food_staging_item_dataset_idx ON food_staging_item(staging_dataset_id);
+
+      CREATE TABLE food_staging_nutrient (
+        id TEXT PRIMARY KEY,
+        staging_dataset_id TEXT NOT NULL REFERENCES food_staging_dataset(id) ON DELETE RESTRICT,
+        staging_item_id TEXT NOT NULL REFERENCES food_staging_item(id) ON DELETE RESTRICT,
+        nutrient_key TEXT NOT NULL CHECK (length(trim(nutrient_key)) > 0),
+        amount_raw TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX food_staging_nutrient_item_idx ON food_staging_nutrient(staging_item_id);
+
+      CREATE VIRTUAL TABLE food_search_fts USING fts5(
+        food_id UNINDEXED,
+        primary_name,
+        aliases,
+        english_name,
+        pinyin,
+        brand,
+        tokenize = 'unicode61'
+      );
+    `,
+  },
+];
