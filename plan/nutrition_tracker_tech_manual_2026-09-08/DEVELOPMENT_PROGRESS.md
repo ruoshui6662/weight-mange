@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 09:55 +08:00
+> 最后更新：2026-09-09 10:00 +08:00
 
 ## 1. 当前快照
 
@@ -12,10 +12,10 @@
 | 项目阶段 | M0 可验证基础实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-001 Nutrition Engine 基础 |
-| 下一步 | 先固定 nutrient scaling、单位换算、edible portion、coverage 和 rounding 的 golden tests |
+| 当前焦点 | M1-002 Food canonical schema |
+| 下一步 | 定义 dataset、item、source record、nutrient definition/value、alias、serving、search stats 和 staging schema，并先固定 raw string/Tr/— 与约束测试 |
 | 当前阻塞 | 无；根路径首页镜像已发布，等待飞牛端重新拉取验证 |
-| 业务代码 | M1-001 即将开始 |
+| 业务代码 | M1-001 Nutrition Engine 基础已完成 |
 | Git | 远程 `main` 已包含根路径修复；可用镜像 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 0/8 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 1/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -88,14 +88,16 @@
 
 ### M1-001 — Nutrition Engine 基础
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 08:20 +08:00
+- 完成时间：2026-09-09 10:00 +08:00
 - 操作者：Codex
 - 依赖：M0
 - 计划变更：实现 nutrient scaling、g/ml/serving 换算、edible portion、unknown/trace/estimated、coverage、rounding policy 和版本常量
 - 计划验收：`NUTRITION_ENGINE_SPEC` 全部 golden calculation tests 固定化；引擎不依赖 DB、网络、环境变量和系统时间
-- 当前进展：任务已启动，尚未写入失败测试
-- 下一步：先读取营养规范并写第一组 scaling/rounding 失败测试
+- 当前进展：新增纯函数包，固定 food scaling、portion conversion、status-aware aggregation、gram-equivalent coverage 与 display rounding；无 DB、网络、环境或时间依赖
+- 验收结果：EVD-M1-001-A；聚焦 6 tests、全量 7 test files/28 tests 通过；lint/typecheck/build/API smoke 通过；Docker CLI 环境缺失按 smoke 脚本报告 blocked 但退出码为 0
+- 下一步：进入 M1-002 Food canonical schema
 
 ## 4. DOC 任务板
 
@@ -170,6 +172,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-H | M0-007 | 2026-09-09 09:28 +08:00 | 飞牛日志：`Restarting (1)`、`chown: missing operand`；复核 Compose `entrypoint`/`command` 参数传递 | 确认上一版 Compose 在飞牛解析后把 shell 脚本拆成多个参数；已改为三段式 `entrypoint`，保证完整脚本作为 `/bin/sh -c` 单个参数执行；提交 `3d41734` 已推送，等待用户重建 |
 | EVD-M0-007-I | M0-007 | 2026-09-09 09:46 +08:00 | 飞牛截图访问 `/` 返回 `{"error":"NOT_FOUND"}`；先运行 `pnpm api:smoke` 得到 `API_SMOKE_FAILED:404/200/200`，实现根路径状态页后重新运行 | 根路径现在返回 200 HTML 状态页，`/healthz` 与 `/readyz` 仍为 200；lint、build、22 tests 全部通过；等待远程镜像构建 |
 | EVD-M0-007-J | M0-007 | 2026-09-09 09:55 +08:00 | GitHub Actions run `34296265518`（main）；GHCR package manifest | verify 与 multi-arch docker 均 `success`；镜像 `latest`/`cc60f7c62750202ef36d8601b67ee1e6b41dfaec` 已发布，manifest digest `sha256:4de30a0d390e1ce2a5f80399d6bed56f746fcdf7db0096bbe36be8b7e15f3557` |
+| EVD-M1-001-A | M1-001 | 2026-09-09 10:00 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 全部命令 exit 0；聚焦 1 file/6 tests、全量 7 files/28 tests；API smoke home/health/ready 均 200；Docker CLI 不存在但 smoke 正确报告环境阻塞 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -233,6 +236,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 09:28 +08:00 | Codex | 修复飞牛 Compose shell 参数解析 | 日志确认 `chown` 缺少操作数；将 entrypoint 改为三段式数组，提交 `3d41734` 已同步到 `main`；飞牛只需替换 Compose 并强制重建，无需改数据目录 |
 | 2026-09-09 09:46 +08:00 | Codex | 处理访问根路径显示 `NOT_FOUND` | 确认当前版本为 API 基础版，新增根路径中文运行状态页；新增 smoke 断言 `home=200`，本地验证通过，准备发布新镜像 |
 | 2026-09-09 09:55 +08:00 | Codex | 根路径首页镜像发布完成 | main run `34296265518` 成功；GHCR `latest` 已更新，飞牛重新拉取后访问 `/` 将显示服务状态页 |
+| 2026-09-09 10:00 +08:00 | Codex | 完成 M1-001 Nutrition Engine 基础 | 先观察模块缺失的失败测试；新增纯计算、状态/coverage 和展示取整 golden tests；所有本地门禁通过，Docker CLI 缺失由 smoke 脚本记录 |
 
 ## 11. 交接摘要
 
