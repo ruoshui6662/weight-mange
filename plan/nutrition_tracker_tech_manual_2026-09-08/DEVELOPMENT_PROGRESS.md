@@ -331,11 +331,11 @@
 - 依赖：M3-002、M1-004、M1-005、M1-007
 - 计划变更：在现有 React/Vite Dashboard 中提供菜谱列表、创建/编辑、原料搜索、营养结果、warnings、显式刷新、复制/删除和加入日记闭环；不新增数据库迁移，复用已完成 Recipe API 与 diary snapshot 边界。
 - 计划验收：先完成设计规格与实施计划；再按 TDD 补 Web 交互测试和 Playwright E2E，覆盖创建→计算→warnings→刷新/复制/删除→加入日记→历史快照不漂移；运行全量 lint/typecheck/test/integration/build/API smoke/E2E/diff gate。
-- 当前进展：已获得用户对推荐 UI 方案的确认，正在编写设计规格；尚未修改业务代码。
+- 当前进展：设计规格已获用户确认并提交；`docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md` 已完成，已通过占位符、spec coverage 和类型一致性自检；尚未修改业务代码。
 - 活动日志：2026-09-10 05:48 +08:00 开始 M3-003，操作者 Codex；计划验收命令为 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git -c safe.directory='D:/AI编程/体重管理' diff --check`。
 - 验收结果：待设计规格、实施与完整验收。
 - 阻塞/风险：本机 Docker CLI 缺失，仅影响容器实测，不影响本任务的 Web/API 验收和 CI buildx。
-- 下一步：完成 `docs/superpowers/specs/2026-09-10-recipe-ui-e2e-design.md`，自检后请求用户确认规格，再编写实施计划。
+- 下一步：选择执行方式后，按计划 Task 1 开始导航/API contract 的 TDD RED/GREEN。
 
 ## 4. DOC 任务板
 
@@ -592,6 +592,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 04:40 +08:00 | Codex | 完成 M3-002 Task 5并开始 Task 6 | 先观察 API/Web RED，再实现认证 recipe routes、error envelope、typed client 与规范同步；聚焦 5 tests、lint/typecheck/build/diff check 通过，提交 `1d5f701`；下一步完整验收 |
 | 2026-09-10 04:45 +08:00 | Codex | M3-002 完整验收首次发现 E2E 回归 | 体重记录写入后趋势可见但列表为空；确认前端 UTC 日期、用户时区 localDate 和空依赖回调共同造成边界不一致；登记 ISSUE-117，先写时区日期 RED 测试 |
 | 2026-09-10 04:48 +08:00 | Codex | 完成 ISSUE-117 修复与 M3-002 最终验收 | 新增 `localDateNow`/时区日期回归，Dashboard/Setup 使用 profile timezone，修正日期依赖闭包；`pnpm build` 后 `pnpm test:e2e` 1 passed；全量 174 files/993 tests、lint/typecheck/integration/build/API smoke/diff check 均 exit 0 |
+| 2026-09-10 06:07 +08:00 | Codex | 完成 M3-003 设计规格与实施计划 | 用户确认从第一性原理继续；提交 `e4f1b0a` 写入 UI/E2E 设计规格，新增 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，完成 spec coverage、placeholder scan、type consistency 自检；下一步执行 Task 1 |
 
 ## 11. 交接摘要
 
