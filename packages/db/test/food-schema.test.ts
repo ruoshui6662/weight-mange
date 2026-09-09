@@ -31,6 +31,7 @@ describe("food canonical schema", () => {
       "0002_food_canonical_schema",
       "0003_food_staging_validation",
       "0004_food_import_review_fixes",
+      "0005_food_search_key",
     ]);
     const names = sqlite
       .prepare(

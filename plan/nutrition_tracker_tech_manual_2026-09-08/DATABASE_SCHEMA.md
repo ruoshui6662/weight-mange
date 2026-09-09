@@ -194,6 +194,7 @@ Canonical 食物主表。
 | id | TEXT | PK | |
 | canonical_key | TEXT | UNIQUE | 稳定内部 key |
 | primary_name | TEXT | NOT NULL | 中文显示名 |
+| search_key | TEXT | NOT NULL | 规范化主名称；用于精确/前缀本地搜索索引 |
 | english_name | TEXT nullable | | |
 | brand | TEXT nullable | | 商品品牌 |
 | food_code | TEXT nullable | | CFCD foodCode |

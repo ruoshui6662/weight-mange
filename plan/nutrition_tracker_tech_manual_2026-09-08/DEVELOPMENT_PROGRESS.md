@@ -12,8 +12,8 @@
 | 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-004 Food search/detail API 复审修复确认 |
-| 下一步 | 对复审修复进行范围复核；通过后再进入 M1-005 |
+| 当前焦点 | M1-004 Food search/detail API 最终复审确认 |
+| 下一步 | 确认 search_key migration、PATCH validation 和 optional nutrient upsert 后进入 M1-005 |
 | 当前阻塞 | 无；M1-003 已完成并通过两轮复审 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
@@ -135,7 +135,7 @@
 - 依赖：M1-003
 - 计划变更：实现本地搜索、detail、custom food、alias、serving、favorite contracts，并接入 API；无本地结果不得触发 AI/外部网络
 - 计划验收：TDD RED/GREEN；精确名/别名/前缀/FTS、inactive 过滤、cursor、raw/status detail、custom/reference 编辑边界、alias/serving 校验、favorite 幂等与无网络空结果；全量门禁
-- 当前进展：已完成复审修复：custom nested writes 原子化、营养 revision source、staged exact/prefix/FTS keyset search、统一 error envelope 和 reference food 用户别名/份量添加。聚焦 2 files/6 tests、全量 28 files/135 tests 和本地门禁均通过，等待复审确认。
+- 当前进展：已完成最终复审修复：新增 `0005_food_search_key` 前向迁移与索引、PATCH runtime validation、optional nutrient revision upsert；聚焦 2 files/7 tests、全量 28 files/137 tests 和本地门禁均通过，等待复审确认。
 - 阻塞/风险：未测量 1,677/100k 的 p50/p95，不宣称 <100ms；当前搜索使用 indexed name/alias SQL，FTS/pinyin 的性能策略需在基准任务中量化。
 - 下一步：独立复审后处理发现项，才可标记 DONE
 
@@ -221,6 +221,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-003-B | M1-003 | 2026-09-09 18:37 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm vitest run packages/db/test/food-schema.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 审查修复聚焦 7 importer tests、8 schema tests；全量 13 files/63 tests；lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；等待复审确认 |
 | EVD-M1-004-A | M1-004 | 2026-09-09 20:42 +08:00 | `pnpm vitest run packages/food/test/food-api.test.ts apps/api/test/food-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 2 files/4 tests、全量 28 files/131 tests，lint/typecheck/integration/build/API smoke 均 exit 0；Docker CLI 缺失由 smoke 如实记录；实现等待独立复审，未测量 1,677/100k p50/p95 |
 | EVD-M1-004-B | M1-004 | 2026-09-09 20:52 +08:00 | `pnpm build`; focused 2 files/6 tests; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 复审 6 项 Important 修复后全量 28 files/135 tests；lint/typecheck/build/API smoke exit 0；Docker CLI 缺失如实记录；等待复审确认 |
+| EVD-M1-004-C | M1-004 | 2026-09-09 21:02 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search_key migration/index、PATCH runtime validation、optional nutrient upsert 回归后全量 28 files/137 tests；所有本地门禁 exit 0，Docker CLI 缺失如实记录 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -297,6 +298,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 20:35 +08:00 | Codex | 开始 M1-004 Food search/detail API | 固定本地查询、custom/reference 写边界、alias/serving/favorite 与无网络 fallback contract；先写 domain/route RED tests |
 | 2026-09-09 20:42 +08:00 | Codex + delegated implementer | M1-004 实现完成，等待复审 | 本地 search/detail/custom/alias/serving/favorite 路由和 domain 已完成；聚焦 4 tests、全量 131 tests 与门禁通过；100k 性能未测量并已记录限制 |
 | 2026-09-09 20:52 +08:00 | Codex + delegated implementer | M1-004 复审修复完成，等待确认 | nested custom transaction、source revision、FTS/keyset、error envelope、reference user additions 和 strict cursor 回归均通过；全量 135 tests |
+| 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |
 
 ## 11. 交接摘要
 

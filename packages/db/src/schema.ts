@@ -335,4 +335,12 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
       CREATE INDEX food_nutrient_value_food_idx ON food_nutrient_value(food_id, nutrient_id);
     `,
   },
+  {
+    version: "0005_food_search_key",
+    sql: `
+      ALTER TABLE food_item ADD COLUMN search_key TEXT NOT NULL DEFAULT '';
+      UPDATE food_item SET search_key = lower(primary_name) WHERE search_key = '';
+      CREATE INDEX food_item_search_key_idx ON food_item(search_key);
+    `,
+  },
 ];
