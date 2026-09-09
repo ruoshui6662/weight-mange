@@ -60,16 +60,18 @@ function clearSessionCookie(secure: boolean) {
 function serveStatic(response: ServerResponse, pathname: string, webDistDir: string) {
   const root = resolve(webDistDir);
   let relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  let shell = relative === "index.html";
   try { relative = decodeURIComponent(relative); } catch { return false; }
   let candidate = resolve(root, relative);
   if (!candidate.startsWith(`${root}/`) && !candidate.startsWith(`${root}\\`)) return false;
   if (!existsSync(candidate) || !statSync(candidate).isFile()) {
     if (extname(relative) !== "") return false;
     candidate = resolve(root, "index.html");
+    shell = true;
   }
   if (!existsSync(candidate) || !statSync(candidate).isFile()) return false;
   const contentTypes: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".ico": "image/x-icon" };
-  response.writeHead(200, { "content-type": contentTypes[extname(candidate).toLowerCase()] ?? "application/octet-stream", "cache-control": relative === "index.html" ? "no-cache" : "public, max-age=31536000, immutable" });
+  response.writeHead(200, { "content-type": contentTypes[extname(candidate).toLowerCase()] ?? "application/octet-stream", "cache-control": shell ? "no-cache" : "public, max-age=31536000, immutable" });
   response.end(readFileSync(candidate));
   return true;
 }
