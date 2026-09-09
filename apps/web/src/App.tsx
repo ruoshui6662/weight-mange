@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, api, type Dashboard, type Diary, type Profile } from "./api";
+import { ApiError, api, type AnalyticsOverview, type Dashboard, type Diary, type Profile, type TdeeEstimate, type WeightRecord, type WeightTrend } from "./api";
 import { bootstrapError, validateBootstrapInput, BOOTSTRAP_PASSWORD_MIN_LENGTH } from "./bootstrap-validation";
 import { DASHBOARD_TABS, nextScreen, offlineLabel, type DashboardTab, type Screen } from "./flow";
 import { searchStatusForResults, type FoodSearchStatus } from "./search-state";
 
 const today = new Date().toISOString().slice(0, 10);
+const daysAgo = (date: string, days: number) => { const value = new Date(`${date}T00:00:00Z`); value.setUTCDate(value.getUTCDate() - days); return value.toISOString().slice(0, 10); };
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
 function Field(props: { label: string; name: string; value: string; type?: string; onChange: (value: string) => void; min?: string; minLength?: number; step?: string }) {
@@ -92,6 +93,12 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   const [busy, setBusy] = useState(false);
   const [searchStatus, setSearchStatus] = useState<FoodSearchStatus>("idle");
   const [showImportGuide, setShowImportGuide] = useState(false);
+  const [weights, setWeights] = useState<WeightRecord[]>([]);
+  const [weightTrend, setWeightTrend] = useState<WeightTrend | null>(null);
+  const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverview | null>(null);
+  const [tdee, setTdee] = useState<TdeeEstimate | null>(null);
+  const [m2Loading, setM2Loading] = useState(false);
+  const [m2Error, setM2Error] = useState("");
   const kcalGoal = props.dashboard?.goal?.kcal ?? 0;
   const intake = props.dashboard?.intake.kcal ?? 0;
   const progress = kcalGoal > 0 ? Math.min(100, Math.round((intake / kcalGoal) * 100)) : 0;
@@ -125,13 +132,25 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
     } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); }
   }
 
+  const loadWeightPanel = useCallback(async () => {
+    setM2Loading(true); setM2Error("");
+    try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
+  }, []);
+
+  const loadAnalyticsPanel = useCallback(async () => {
+    setM2Loading(true); setM2Error("");
+    try { const from = daysAgo(today, 29); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
+  }, []);
+
+  useEffect(() => { if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadWeightPanel]);
+
   const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
   return <main className="app-shell"><header className="topbar"><div><p className="eyebrow">{activeTab.toUpperCase()} · {today}</p><h1>你好，{props.profile?.displayName ?? "朋友"}</h1></div><button className="text-button" onClick={() => void props.onLogout()}>退出</button></header>
     {activeTab === "today" ? <><section className="hero-card card"><div><p className="muted">今日热量</p><strong className="calorie-number">{Math.round(intake)}<small> / {kcalGoal || "—"} kcal</small></strong><div className="progress" aria-label={`今日热量完成 ${progress}%`}><span style={{ width: `${progress}%` }} /></div><p className="muted">剩余 {props.dashboard?.remainingKcal === null || props.dashboard?.remainingKcal === undefined ? "—" : Math.round(props.dashboard.remainingKcal)} kcal</p></div></section><section className="macro-grid" aria-label="营养概览"><Metric label="蛋白质" value={props.dashboard?.intake.proteinG ?? 0} unit="g" /><Metric label="脂肪" value={props.dashboard?.intake.fatG ?? 0} unit="g" /><Metric label="碳水" value={props.dashboard?.intake.carbG ?? 0} unit="g" /></section><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} /><section className="card add-card"><div className="section-heading"><h2>快速添加</h2><span className="muted">3 步完成记录</span></div>{searchCard}</section></> : null}
     {activeTab === "diary" ? <section className="card add-card"><div className="section-heading"><h2>饮食记录</h2><span className="status-chip">本地记录</span></div><p className="muted">搜索食物并添加到今天的餐次，历史营养以记录时快照保存。</p>{searchCard}</section> : null}
     {activeTab === "profile" ? <ProfilePanel profile={props.profile} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} /> : null}
-    {activeTab === "weight" ? <ComingSoon title="体重" detail="体重记录与趋势将在 M2 里程碑实现。" /> : null}
-    {activeTab === "analytics" ? <ComingSoon title="分析" detail="营养趋势和基础分析将在 M2 里程碑实现。" /> : null}
+    {activeTab === "weight" ? <WeightPanel records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
+    {activeTab === "analytics" ? <AnalyticsPanel overview={analyticsOverview} tdee={tdee} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
     {props.error ? <p className="error page-error" role="alert">{props.error}</p> : null}
     <nav className="bottom-nav" aria-label="主导航">{DASHBOARD_TABS.map((tab) => <button type="button" key={tab.key} className={activeTab === tab.key ? "active" : ""} aria-current={activeTab === tab.key ? "page" : undefined} onClick={() => { props.setError(""); setActiveTab(tab.key); }}>{tab.label}</button>)}</nav>
   </main>;
@@ -149,6 +168,15 @@ function ProfilePanel(props: { profile: Profile | null; showImportGuide: boolean
   return <section className="card profile-card"><div className="section-heading"><h2>我的</h2><span className="status-chip">本地账户</span></div><p>当前账户：{props.profile?.displayName ?? "朋友"}</p><p className="muted">数据保存在你自己的服务中。食物搜索使用本地目录，不会自动访问外部食品库。</p><button type="button" className="soft-button" onClick={() => props.setShowImportGuide(!props.showImportGuide)}>{props.showImportGuide ? "收起导入说明" : "查看食物目录导入说明"}</button>{props.showImportGuide ? <div className="import-guide" role="note"><strong>受控离线导入</strong><p>请在服务端使用仓库中的 <code>tools/food-import</code> 导入受控 JSON 数据，再回到饮食页面搜索。</p></div> : null}</section>;
 }
 
-function ComingSoon(props: { title: string; detail: string }) { return <section className="card tab-placeholder" role="status"><h2>{props.title}</h2><p>{props.detail}</p><span className="status-chip">后续开发中</span></section>; }
+export function WeightPanel(props: { records: WeightRecord[]; trend: WeightTrend | null; loading: boolean; error: string; onRetry: () => Promise<void>; onAdd: (input: { measuredAt: string; weightKg: number; note?: string }) => Promise<void> }) {
+  const [weight, setWeight] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function submit(event: React.FormEvent) { event.preventDefault(); setBusy(true); try { await props.onAdd({ measuredAt: new Date().toISOString(), weightKg: Number(weight) }); setWeight(""); } finally { setBusy(false); } }
+  return <section className="card add-card"><div className="section-heading"><h2>体重</h2><span className="status-chip">本地记录</span></div>{props.loading ? <p className="loading" role="status">正在加载体重记录…</p> : null}{props.error ? <div className="empty-state" role="alert"><strong>体重服务暂时不可用</strong><p>{props.error}</p><button type="button" className="soft-button" onClick={() => void props.onRetry()}>重试</button></div> : null}{!props.loading && !props.error && props.records.length === 0 ? <div className="empty-state" role="status"><strong>暂无体重记录</strong><p>添加第一条记录后，这里会显示当前体重和趋势。</p></div> : null}{props.records.length > 0 ? <div className="meals">{props.records.slice().reverse().slice(0, 10).map((record) => <div className="meal" key={record.id}><strong>{record.localDate}</strong><span>{record.weightKg.toFixed(1)} kg</span></div>)}</div> : null}{props.trend && props.trend.points.length > 0 ? <p className="muted">趋势体重：{props.trend.points[props.trend.points.length - 1]!.trendWeightKg.toFixed(1)} kg（{props.trend.method === "ewma" ? "EWMA" : "rolling"}）</p> : null}<form className="add-form" onSubmit={(event) => void submit(event)}><Field label="当前体重（kg）" name="weightKg" type="number" min="1" step="0.1" value={weight} onChange={setWeight} /><button className="primary" disabled={busy}>{busy ? "保存中…" : "添加体重"}</button></form></section>;
+}
+
+export function AnalyticsPanel(props: { overview: AnalyticsOverview | null; tdee: Pick<TdeeEstimate, "status" | "estimatedTdeeKcal" | "reason" | "confidence"> | null; loading: boolean; error: string; onRetry: () => Promise<void> }) {
+  return <section className="card add-card"><div className="section-heading"><h2>分析</h2><span className="status-chip">只读估算</span></div>{props.loading ? <p className="loading" role="status">正在加载分析…</p> : null}{props.error ? <div className="empty-state" role="alert"><strong>分析服务暂时不可用</strong><p>{props.error}</p><button type="button" className="soft-button" onClick={() => void props.onRetry()}>重试</button></div> : null}{!props.loading && !props.error && props.overview ? <><div className="macro-grid"><Metric label="平均摄入" value={props.overview.averages.intakeKcal ?? 0} unit="kcal" /><Metric label="平均蛋白质" value={props.overview.averages.proteinG ?? 0} unit="g" /><Metric label="记录覆盖" value={props.overview.recordCoverage.ratio * 100} unit="%" /></div><p className="muted">体重变化：{props.overview.weight.deltaKg === null ? "—" : `${props.overview.weight.deltaKg.toFixed(1)} kg`}</p></> : null}{!props.loading && !props.error && (!props.tdee || props.tdee.status !== "estimated") ? <div className="empty-state" role="status"><strong>数据不足</strong><p>当前数据不足以生成 Adaptive TDEE，不会伪造估算。</p></div> : null}{props.tdee?.status === "estimated" ? <p className="muted">估算维持热量：{Math.round(props.tdee.estimatedTdeeKcal ?? 0)} kcal · 置信度 {(props.tdee.confidence * 100).toFixed(0)}%</p> : null}</section>;
+}
 
 function Metric(props: { label: string; value: number; unit: string }) { return <div className="metric card"><span className="muted">{props.label}</span><strong>{Math.round(props.value)}<small>{props.unit}</small></strong></div>; }

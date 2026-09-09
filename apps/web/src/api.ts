@@ -4,6 +4,10 @@ export class ApiError extends Error { constructor(readonly code: string, readonl
 export type Profile = { id: string; displayName: string; timezone: string; body: { heightCm: number | null; sexForFormula: string | null; activityLevel: string | null } | null };
 export type Dashboard = { date: string; goal: { kcal: number; proteinG: number | null; fatG: number | null; carbG: number | null } | null; intake: { kcal: number; proteinG: number; fatG: number; carbG: number }; remainingKcal: number | null; meals: Array<{ key: string; displayName: string; totals: { kcal: number } }> };
 export type Diary = { meals: Array<{ mealSlot: { key: string; displayName: string }; entries: Array<{ id: string; displayName: string; amount: number; unit: string }> }> };
+export type WeightRecord = { id: string; measuredAt: string; localDate: string; weightKg: number; source: string; note: string | null; version: number };
+export type WeightTrend = { methodVersion: string; windowDays: number; method: string; alpha: number; observedDays: number; points: Array<{ localDate: string; weightKg: number; trendWeightKg: number }> };
+export type AnalyticsOverview = { period: { from: string; to: string; days: number }; recordCoverage: { recordedDays: number; totalDays: number; ratio: number }; averages: { intakeKcal: number | null; proteinG: number | null; fatG: number | null; carbG: number | null }; goal: { days: number; averageKcal: number | null; averageDifferenceKcal: number | null }; weight: { observedDays: number; startKg: number | null; endKg: number | null; deltaKg: number | null } };
+export type TdeeEstimate = { methodVersion: string; status: "estimated" | "insufficient_data" | "throttled"; reason: string | null; rawTdeeKcal: number | null; estimatedTdeeKcal: number | null; confidence: number; recommendedCalorieTargetKcal: null; period: { from: string; to: string } };
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(path, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) } });
@@ -27,4 +31,9 @@ export const api = {
   getDiary: (date: string) => request<Diary>(`/api/v1/diary/${encodeURIComponent(date)}`),
   searchFoods: (query: string) => request<{ data: Array<{ id: string; name: string; summary: { energyKcal: number | null } }>; meta: { nextCursor: string | null } }>(`/api/v1/foods/search?q=${encodeURIComponent(query)}&limit=10`),
   createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(input) }),
+  getWeights: (from: string, to: string) => request<WeightRecord[]>(`/api/v1/body/weights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  createWeight: (input: { measuredAt: string; weightKg: number; note?: string }) => request<WeightRecord>("/api/v1/body/weights", { method: "POST", body: JSON.stringify(input) }),
+  getWeightTrend: (days = 30) => request<WeightTrend>(`/api/v1/body/weight-trend?days=${days}&method=ewma&sampling=last`),
+  getAnalyticsOverview: (from: string, to: string) => request<AnalyticsOverview>(`/api/v1/analytics/overview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  getTdee: (from: string, to: string) => request<TdeeEstimate>(`/api/v1/analytics/tdee?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
 };
