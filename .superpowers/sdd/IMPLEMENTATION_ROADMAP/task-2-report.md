@@ -61,4 +61,4 @@ All commands ran from `D:\AI编程\体重管理\.worktrees\m0-foundation`.
 
 ## Commit hashes
 
-- Implementation commit: pending local commit.
+- Implementation commit: `5419010a95d148e859b74ed5097e843f1d99a0e2` (`feat(db): add food canonical schema`).
