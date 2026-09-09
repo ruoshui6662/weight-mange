@@ -14,7 +14,12 @@ type RecipeMode = "list" | "editor" | "detail";
 
 const emptyRow = (): RecipeDraftIngredient => ({ key: crypto.randomUUID(), foodId: "", name: "", amount: "100" });
 const emptyDraft = (): RecipeDraft => ({ name: "", cookedWeightG: "", servingCount: "", ingredients: [emptyRow()] });
-const displayError = (error: unknown) => error instanceof ApiError ? (error.message || error.code) : "请求未完成，请检查服务状态后重试。";
+const displayError = (error: unknown) => {
+  if (!(error instanceof ApiError)) return "请求未完成，请检查服务状态后重试。";
+  if (error.code === "RECIPE_VERSION_CONFLICT") return "菜谱已被更新，请重新加载后再编辑。";
+  if (["RECIPE_NOT_FOUND", "RECIPE_FOOD_NOT_FOUND", "RECIPE_INGREDIENT_NOT_FOUND"].includes(error.code)) return "菜谱或原料已不可用，请返回菜谱列表。";
+  return error.message || error.code;
+};
 
 export function RecipePanel(props: RecipePanelProps): ReactElement {
   const [mode, setMode] = useState<RecipeMode>("list");

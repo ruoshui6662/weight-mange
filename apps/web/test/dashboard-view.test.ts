@@ -21,6 +21,7 @@ describe("dashboard interaction feedback", () => {
     expect(html.match(/<button type="button"/g)?.length).toBeGreaterThanOrEqual(5);
     expect(html).toContain("今日");
     expect(html).toContain("饮食");
+    expect(html).toContain("菜谱");
     expect(html).toContain("体重");
     expect(html).toContain("分析");
     expect(html).toContain("我的");
