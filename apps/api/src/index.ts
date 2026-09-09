@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
-import { CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { ANALYTICS_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
 import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
 
@@ -80,7 +80,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   let ready = false;
 
   try {
-    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS]);
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS]);
     sqlite.prepare("INSERT OR IGNORE INTO profile_user (id,display_name,timezone,created_at,updated_at) VALUES ('local-user','Local user','UTC',?,?)").run(Date.now(), Date.now());
     const foods = createFoodCatalog(sqlite);
     const diary = createDiaryService(sqlite);

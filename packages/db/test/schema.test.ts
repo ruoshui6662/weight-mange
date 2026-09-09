@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyMigrations, openDatabase } from "../src/index.js";
-import { CORE_MIGRATIONS } from "../src/schema.js";
+import { ANALYTICS_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "../src/schema.js";
 
 describe("core/profile schema baseline", () => {
   it("creates the required tables from an empty database", () => {
@@ -57,5 +57,12 @@ describe("core/profile schema baseline", () => {
         )
         .run("goal_2", "user_1", "2026-02-01", "loss", 1800, "manual", 2000),
     ).toThrow();
+  });
+
+  it("adds an analytics daily summary keyed by user and local date", () => {
+    const { sqlite } = openDatabase(":memory:");
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS]);
+    expect(sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='analytics_daily_summary'").get()).toMatchObject({ sql: expect.stringContaining("PRIMARY KEY (user_id, local_date)") });
+    expect(sqlite.prepare("PRAGMA table_info(analytics_daily_summary)").all()).toEqual(expect.arrayContaining([expect.objectContaining({ name: "calc_version" })]));
   });
 });

@@ -415,3 +415,26 @@ export const DIARY_MIGRATIONS: readonly SqliteMigration[] = [
     `,
   },
 ];
+
+export const ANALYTICS_MIGRATIONS: readonly SqliteMigration[] = [
+  {
+    version: "0009_analytics_daily_summary",
+    sql: `
+      CREATE TABLE analytics_daily_summary (
+        user_id TEXT NOT NULL REFERENCES profile_user(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL CHECK (local_date GLOB '????-??-??'),
+        intake_kcal REAL NOT NULL,
+        exercise_kcal REAL NOT NULL DEFAULT 0,
+        protein_g REAL NOT NULL,
+        fat_g REAL NOT NULL,
+        carb_g REAL NOT NULL,
+        fiber_g REAL,
+        weight_kg REAL,
+        goal_kcal REAL,
+        computed_at INTEGER NOT NULL,
+        calc_version TEXT NOT NULL,
+        PRIMARY KEY (user_id, local_date)
+      );
+    `,
+  },
+];

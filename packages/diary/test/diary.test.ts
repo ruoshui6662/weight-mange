@@ -102,3 +102,12 @@ it("rolls back an entire copied meal if a later serving cannot be resolved", () 
   expect(() => diary.copyMeal({ userId: "user-1", date: "2026-09-09", fromDate: "2026-09-08", fromMealSlotId: "breakfast", toMealSlotId: "lunch" })).toThrow("DIARY_SERVING_NOT_FOUND");
   expect(sqlite.prepare("SELECT count(*) count FROM diary_entry e JOIN diary_day d ON d.id=e.diary_day_id WHERE d.local_date='2026-09-09'").get()).toMatchObject({ count: 0 });
 });
+
+it("binds the goal effective on a new day and never rewrites an existing day", () => {
+  const { sqlite, diary } = setup();
+  sqlite.prepare("INSERT INTO profile_nutrition_goal (id,user_id,effective_from,goal_type,calorie_target_kcal,source,created_at) VALUES ('goal-old','user-1','2026-09-01','maintain',2000,'manual',1)").run();
+  diary.getDay({ userId: "user-1", date: "2026-09-09" });
+  sqlite.prepare("UPDATE profile_nutrition_goal SET effective_to='2026-09-09' WHERE id='goal-old'").run();
+  sqlite.prepare("INSERT INTO profile_nutrition_goal (id,user_id,effective_from,goal_type,calorie_target_kcal,source,created_at) VALUES ('goal-new','user-1','2026-09-10','loss',1800,'manual',2)").run();
+  expect(sqlite.prepare("SELECT goal_id goalId FROM diary_day WHERE user_id='user-1' AND local_date='2026-09-09'").get()).toEqual({ goalId: "goal-old" });
+});
