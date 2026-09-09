@@ -37,7 +37,7 @@ describe("nutrition engine", () => {
     expect(() => convertPortionToGrams({ amount: 10, unit: "g", edibleRatio: 1.1 })).toThrow(/edibleRatio/i);
   });
 
-  it("sums known and estimated values while retaining trace and unknown coverage", () => {
+  it("does not count estimated values as known nutrient coverage", () => {
     const inputs: NutrientInput[] = [
       { amountGrams: 100, nutrients: { iron_mg: { status: "known", value: 8.42 } } },
       { amountGrams: 50, nutrients: { iron_mg: { status: "unknown" } } },
@@ -47,7 +47,7 @@ describe("nutrition engine", () => {
 
     expect(sumNutrients(inputs).nutrients.iron_mg).toEqual({
       amount: 10.42,
-      coverage: 0.625,
+      coverage: 0.5,
       hasTrace: true,
       hasEstimated: true,
     });

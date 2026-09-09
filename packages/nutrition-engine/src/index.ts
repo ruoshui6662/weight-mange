@@ -127,6 +127,8 @@ export function sumNutrients(inputs: readonly NutrientInput[]): NutritionResult 
       total.relevantWeight += input.amountGrams;
       if (value.status === "known" || value.status === "estimated") {
         total.amount += value.value;
+      }
+      if (value.status === "known") {
         total.coveredWeight += input.amountGrams;
       }
       total.hasTrace ||= value.status === "trace";
