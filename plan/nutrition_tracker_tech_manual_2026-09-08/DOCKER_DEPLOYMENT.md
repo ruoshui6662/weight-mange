@@ -694,6 +694,45 @@ image tag
 release notes
 ```
 
+## 28.1 GitHub 公开仓库与镜像发布方法
+
+Docker 构建相关的公开内容，后续计划放入用户指定的仓库：
+
+<https://github.com/ruoshui6662/weight-mange>
+
+当前仅记录方法，暂不执行远程绑定、`git push`、GitHub Actions 发布或 GHCR 推送。
+
+### 发布范围
+
+公开仓库可包含：
+
+- Dockerfile、`.dockerignore`、安全的 Compose 模板、entrypoint、healthcheck 和 CI 构建工作流；
+- 构建镜像所需的、已完成脱敏检查的源码、迁移和测试夹具；
+- 不含内部规划和敏感值的部署文档、配置模板、版本说明、SBOM 和镜像 checksum。
+
+以下内容必须排除：
+
+- `.env`、真实环境变量、API Key、APP_SECRET、密码、Cookie、Authorization、证书和 SSH 私钥；
+- `/data` 下的 live DB、uploads、backups、imports、cache、logs，以及任何个人健康/饮食数据；
+- `plan/` 规划与进度文档、内部决策记录和未脱敏诊断信息；
+- 没有明确再分发许可的第三方数据或原始书籍素材。
+
+### 发布前检查
+
+未来每个发布任务都必须先在本地完成：
+
+```text
+1. 按公开文件白名单准备发布内容
+2. 检查 git diff、未跟踪文件和 Docker build context
+3. 扫描凭据、个人数据和内部规划文件
+4. 运行 lint、typecheck、unit/integration tests 和 web/api build
+5. 构建 linux/amd64 与 linux/arm64 镜像并运行 Docker smoke test
+6. 生成人工可读的文件清单、镜像 digest、SBOM 和 release notes
+7. 由用户明确确认后，才允许 push 仓库和 GHCR
+```
+
+镜像发布使用不可变版本标签（例如 `0.1.0`），稳定版本再按需要补充 `0.1`、`0` 或 `latest`；仓库提交、镜像标签与 release notes 必须能相互追溯。若发现泄露或错误发布，立即停止后续发布，撤销凭据并按备份/回滚流程处理；不能把删除文件当作唯一补救措施。
+
 ---
 
 # 29. 测试数据库 Fixtures
