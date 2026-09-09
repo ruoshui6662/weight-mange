@@ -64,7 +64,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .import-guide { margin-top: 12px; padding: 14px; border-left: 4px solid #56ae83; color: #496256; background: #f1f8f3; }
 .tab-placeholder, .profile-card { padding: 22px; }
 .page-error { margin-top: 14px; }
-.bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin: 0 auto; padding: 8px max(12px, calc((100% - 560px) / 2)); border-top: 1px solid #e0ebe4; background: rgb(255 255 255 / 94%); backdrop-filter: blur(12px); }
+.bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin: 0 auto; padding: 8px max(12px, calc((100% - 560px) / 2)); border-top: 1px solid #e0ebe4; background: rgb(255 255 255 / 94%); backdrop-filter: blur(12px); }
 .bottom-nav button { color: #718278; background: transparent; }
 .bottom-nav button.active { color: #2c8a60; background: #e5f4eb; }
 @media (min-width: 720px) { .shell, .app-shell { width: min(100% - 64px, 720px); } .bottom-nav { padding-left: max(24px, calc((100% - 720px) / 2)); padding-right: max(24px, calc((100% - 720px) / 2)); } }

@@ -20,9 +20,10 @@ describe("onboarding flow", () => {
   });
 
   it("defines observable dashboard tabs and planned boundaries", () => {
-    expect(DASHBOARD_TABS.map((tab) => tab.key)).toEqual(["today", "diary", "weight", "analytics", "profile"]);
+    expect(DASHBOARD_TABS.map((tab) => tab.key)).toEqual(["today", "diary", "recipe", "weight", "analytics", "profile"]);
     expect(DASHBOARD_TABS.find((tab) => tab.key === "today")?.status).toBe("ready");
     expect(DASHBOARD_TABS.find((tab) => tab.key === "diary")?.status).toBe("ready");
+    expect(DASHBOARD_TABS.find((tab) => tab.key === "recipe")?.status).toBe("ready");
     expect(DASHBOARD_TABS.find((tab) => tab.key === "profile")?.status).toBe("ready");
     expect(DASHBOARD_TABS.find((tab) => tab.key === "weight")?.status).toBe("planned");
     expect(DASHBOARD_TABS.find((tab) => tab.key === "analytics")?.status).toBe("planned");
@@ -30,6 +31,7 @@ describe("onboarding flow", () => {
 
   it("normalizes unknown dashboard tab values to today", () => {
     expect(normalizeDashboardTab("diary")).toBe("diary");
+    expect(normalizeDashboardTab("recipe")).toBe("recipe");
     expect(normalizeDashboardTab("unknown")).toBe("today");
   });
 });

@@ -1,10 +1,11 @@
 export type Screen = "loading" | "bootstrap" | "login" | "setup" | "dashboard";
 
-export type DashboardTab = "today" | "diary" | "weight" | "analytics" | "profile";
+export type DashboardTab = "today" | "diary" | "recipe" | "weight" | "analytics" | "profile";
 
 export const DASHBOARD_TABS: ReadonlyArray<{ key: DashboardTab; label: string; status: "ready" | "planned" }> = [
   { key: "today", label: "今日", status: "ready" },
   { key: "diary", label: "饮食", status: "ready" },
+  { key: "recipe", label: "菜谱", status: "ready" },
   { key: "weight", label: "体重", status: "planned" },
   { key: "analytics", label: "分析", status: "planned" },
   { key: "profile", label: "我的", status: "ready" },

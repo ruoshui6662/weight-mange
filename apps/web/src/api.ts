@@ -11,8 +11,24 @@ export type WeightRecord = { id: string; measuredAt: string; localDate: string; 
 export type WeightTrend = { methodVersion: string; windowDays: number; method: string; alpha: number; observedDays: number; points: Array<{ localDate: string; weightKg: number; trendWeightKg: number }> };
 export type AnalyticsOverview = { period: { from: string; to: string; days: number }; recordCoverage: { recordedDays: number; totalDays: number; ratio: number }; averages: { intakeKcal: number | null; proteinG: number | null; fatG: number | null; carbG: number | null }; goal: { days: number; averageKcal: number | null; averageDifferenceKcal: number | null }; weight: { observedDays: number; startKg: number | null; endKg: number | null; deltaKg: number | null } };
 export type TdeeEstimate = { methodVersion: string; status: "estimated" | "insufficient_data" | "throttled"; reason: string | null; rawTdeeKcal: number | null; estimatedTdeeKcal: number | null; confidence: number; recommendedCalorieTargetKcal: null; period: { from: string; to: string } };
-export type Recipe = { id: string; userId: string; name: string; cookedWeightG: number | null; servingCount: number | null; note: string | null; version: number; ingredients: Array<Record<string, unknown>>; total: Record<string, Record<string, unknown>>; per100g: Record<string, Record<string, unknown>> | null; perServing: Record<string, Record<string, unknown>> | null; warnings: Array<Record<string, unknown>>; calcVersion: string };
+export type RecipeNutrientSummary = { amount: number; coverage: number; hasTrace: boolean; hasEstimated: boolean };
+export type RecipeWarning = { code: "COOKED_WEIGHT_MISSING" | "SERVING_COUNT_MISSING" | "NUTRIENT_COVERAGE_INCOMPLETE" | "NUTRIENT_TRACE" | "NUTRIENT_ESTIMATED" | "NUTRIENT_UNKNOWN" | "RECIPE_INGREDIENT_REFRESH_UNAVAILABLE"; nutrientId?: string; ingredientId?: string };
+export type RecipeIngredient = { id: string; foodId: string | null; servingId: string | null; nameSnapshot: string; inputAmount: number; inputUnit: "g" | "ml" | "serving"; gramEquivalent: number | null; sortOrder: number; sourceSnapshot: Record<string, unknown> | null; nutrients: Array<{ id: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: "known" | "trace" | "unknown" | "estimated" | "not_applicable"; sourceBasisJson: string; nutritionEngineVersion: string }> };
+export type Recipe = { id: string; userId: string; name: string; cookedWeightG: number | null; servingCount: number | null; note: string | null; version: number; deletedAt: number | null; createdAt: number; updatedAt: number; ingredients: RecipeIngredient[]; total: Record<string, RecipeNutrientSummary>; per100g: Record<string, RecipeNutrientSummary> | null; perServing: Record<string, RecipeNutrientSummary> | null; warnings: RecipeWarning[]; calcVersion: string };
 export type RecipeIngredientInput = { foodId: string; amount: number; unit: "g" | "ml" | "serving"; servingId?: string | null };
+export type RecipeCreateInput = { name: string; cookedWeightG?: number | null; servingCount?: number | null; note?: string | null; ingredients: RecipeIngredientInput[] };
+export type RecipeUpdateInput = { version: number; name?: string; cookedWeightG?: number | null; servingCount?: number | null; note?: string | null; ingredients?: RecipeIngredientInput[] };
+export type RecipeClient = {
+  getRecipes: () => Promise<Recipe[]>;
+  getRecipe: (recipeId: string) => Promise<Recipe>;
+  createRecipe: (input: RecipeCreateInput) => Promise<Recipe>;
+  updateRecipe: (recipeId: string, input: RecipeUpdateInput) => Promise<Recipe>;
+  copyRecipe: (recipeId: string, name?: string) => Promise<Recipe>;
+  deleteRecipe: (recipeId: string) => Promise<{ ok: boolean }>;
+  refreshRecipeIngredients: (recipeId: string, ingredientIds?: string[]) => Promise<Recipe>;
+  addRecipeToDiary: (recipeId: string, input: { date: string; mealSlotId: string; amount: number; unit: "g"; note?: string | null }) => Promise<Record<string, unknown>>;
+  searchFoods: (query: string) => Promise<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>;
+};
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(path, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) } });
@@ -36,8 +52,8 @@ export const api = {
   getDiary: (date: string) => request<Diary>(`/api/v1/diary/${encodeURIComponent(date)}`),
   getRecipes: () => request<Recipe[]>("/api/v1/recipes"),
   getRecipe: (recipeId: string) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`),
-  createRecipe: (input: { name: string; cookedWeightG?: number | null; servingCount?: number | null; note?: string | null; ingredients: RecipeIngredientInput[] }) => request<Recipe>("/api/v1/recipes", { method: "POST", body: JSON.stringify(input) }),
-  updateRecipe: (recipeId: string, input: Record<string, unknown>) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`, { method: "PATCH", body: JSON.stringify(input) }),
+  createRecipe: (input: RecipeCreateInput) => request<Recipe>("/api/v1/recipes", { method: "POST", body: JSON.stringify(input) }),
+  updateRecipe: (recipeId: string, input: RecipeUpdateInput) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`, { method: "PATCH", body: JSON.stringify(input) }),
   copyRecipe: (recipeId: string, name?: string) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/copy`, { method: "POST", body: JSON.stringify(name === undefined ? {} : { name }) }),
   deleteRecipe: (recipeId: string) => request<{ ok: boolean }>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`, { method: "DELETE" }),
   refreshRecipeIngredients: (recipeId: string, ingredientIds?: string[]) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/refresh-ingredients`, { method: "POST", body: JSON.stringify(ingredientIds === undefined ? {} : { ingredientIds }) }),
