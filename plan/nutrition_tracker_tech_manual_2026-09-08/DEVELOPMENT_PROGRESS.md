@@ -14,7 +14,7 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-006 Dashboard read model |
 | 下一步 | 从 diary 的已存快照构建可重建的日汇总；不得重算历史 food 数据 |
-| 当前阻塞 | 无；M1-005 独立复审已通过 |
+| 当前阻塞 | M1-006 设计待用户确认：goal snapshot 需要与既有 diary_day 绑定 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
@@ -152,6 +152,18 @@
 - 验收结果：EVD-M1-005-A/B/C；最终聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0；独立复审无 Critical/Important/Minor。
 - 阻塞/风险：菜谱、照片、goal snapshot、Dashboard/UI 与外部调用均未扩展到本任务；API 当前以基础单用户 `local-user` 承载，后续鉴权路由应接入 session user。
 - 下一步：进入 M1-006 Dashboard read model。
+
+### M1-006 — Dashboard read model
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 21:45 +08:00
+- 操作者：Codex
+- 依赖：M1-005
+- 计划变更：从 diary 已存营养快照构建当日 Dashboard 与可重建 `analytics_daily_summary`；按日期固定目标快照，不重算历史 food 数据。
+- 计划验收：TDD RED/GREEN；Dashboard API envelope、meal/intake/macros/coverage/remaining、缓存删除后重建一致、目标变更不覆盖历史；全量门禁与本地查询基准证据。
+- 当前进展：已完成规范核对；发现目标快照需要在 `diary_day.goal_id` 创建时固定，待用户确认最小实现边界。
+- 阻塞/风险：现有 profile goal schema 已存在，但尚无 goal domain/API；需决定本任务是否只消费既有目标记录，还是同时补齐目标写入 API。
+- 下一步：确认设计方案后写入实施计划，再以测试先行实现 dashboard read model。
 
 ## 4. DOC 任务板
 
@@ -325,6 +337,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |
 | 2026-09-09 21:06 +08:00 | Codex + delegated implementer | M1-004 NOCASE prefix 与 empty-array 修复完成 | 新增 `0006` 前向索引，prefix EXPLAIN 使用 NOCASE index；`nutrients: []` 返回 validation envelope；全量 137 tests |
 | 2026-09-09 21:40 +08:00 | Codex + independent reviewer | 完成 M1-005 最终 scoped re-review | 聚焦 diary/API 2 files/9 tests、typecheck 通过；coverage 与复制事务问题均确认修复，无 Critical/Important/Minor；M1-005 标记 DONE，下一步进入 M1-006 |
+| 2026-09-09 21:45 +08:00 | Codex | 开始 M1-006 Dashboard read model 设计 | 已读 README、PRODUCT_SPEC、API_SPEC、DATABASE_SCHEMA、NUTRITION_ENGINE_SPEC 与路线图；记录 goal snapshot 绑定决策点，计划先获确认再实现 |
 
 ## 11. 交接摘要
 
