@@ -42,8 +42,14 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .status-chip { border-radius: 99px; padding: 6px 10px; color: #397c5c; background: #e5f4eb; font-size: 12px; font-weight: 800; }
 .meals { display: grid; gap: 4px; margin-top: 14px; }
 .meal { min-height: 58px; border-top: 1px solid #edf2ee; padding: 12px 0; }
+.meal-content { min-width: 0; flex: 1; }
+.meal-side { display: grid; justify-items: end; gap: 8px; }
 .meal > span { color: #557062; font-size: 13px; font-weight: 800; }
 .meal-entry { margin: 6px 0 0; color: #718278; font-size: 13px; }
+.meal-entry-row { display: grid; gap: 4px; }
+.entry-actions, .diary-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.entry-actions .text-button { min-height: 36px; padding: 0 8px; }
+.entry-edit-form { display: grid; gap: 12px; margin-top: 8px; }
 .add-card { margin-top: 12px; padding: 20px; }
 .search-row { align-items: stretch; margin-top: 14px; }
 .search-row input { flex: 1; }

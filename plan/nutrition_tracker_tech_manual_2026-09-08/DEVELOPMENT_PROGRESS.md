@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 06:30 +08:00
+> 最后更新：2026-09-10 07:05 +08:00
 
 ## 1. 当前快照
 
@@ -12,11 +12,11 @@
 | 项目阶段 | M1 饮食记录纵向切片实施；M2 目标与能量估算已开始 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-007 Mobile-first 核心 UI：补齐记录编辑/复制/删除操作 |
-| 下一步 | 先确认记录操作交互设计，再按 TDD 接入现有 Diary API 并补浏览器验收 |
+| 当前焦点 | M3-001 菜谱数据决策：ingredient nutrition snapshot 与刷新边界 |
+| 下一步 | 进入 M3 前先确认菜谱 ingredient 快照、重算和历史日记边界的决策记录 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-006、M1-008、M1-009、M2-001 至 M2-006 已完成；M1-007 的首次设置、登录、搜索、添加和响应式浏览器门禁已完成，记录编辑/复制/删除 UI 仍待补齐 |
-| Git | 本地 `main` 当前基线为 `a4e1d41`，本轮 Playwright/CI 与前端契约修复尚未提交；远程发布未在本轮执行 |
+| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006 已完成；M3-001 为下一项规划任务 |
+| Git | 本地 `main` 当前基线为 `733f5cc`，M1-007 记录操作补齐已提交；远程发布未在本轮执行 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 8/9 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -169,16 +169,18 @@
 
 ### M1-007 — Mobile-first 核心 UI
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 22:20 +08:00
+- 完成时间：2026-09-10 07:05 +08:00
 - 操作者：Codex
 - 依赖：M1-004、M1-006
 - 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 bootstrap、login/logout/session、profile/goal、food search、diary 和 Dashboard API，完成首次设置、登录和移动端核心记录流程与可访问状态。
 - 计划验收：360/390/430px 无横向溢出；键盘/focus trap/44px hit area/reduced motion/非颜色状态表达；Dashboard 视觉基线、空/加载/错误/offline 状态。
-- 当前进展：首次设置、登录/退出、目标设置、Dashboard、受控食物搜索、快速记账和 360/390/430 响应式浏览器验收已通过；本轮修复搜索 API 客户端二次解包和 diary `mealSlots + entries` 到页面餐次模型的契约错位。路线要求的记录编辑、复制、删除按钮及交互仍未实现，任务保持 IN_PROGRESS。
-- 验收结果：浏览器基础路径纳入 EVD-M2-006-B；M1-007 完整退出门槛待记录操作 UI 完成后追加。
-- 阻塞/风险：`BLK-007` 已由 CI Playwright 解除；本机 Docker CLI 缺失仍只影响容器实测。
-- 下一步：先获记录操作交互设计确认，再接入 PATCH/DELETE/copy-meal/copy-day API，并补对应 Web/E2E 测试。
+- 当前进展：首次设置、登录/退出、目标设置、Dashboard、受控食物搜索、快速记账、记录编辑/删除、复制昨日整天/单餐和 360/390/430 响应式浏览器验收已通过；复用现有 PATCH/DELETE/copy API，不新增迁移，历史 diary snapshot 语义保持不变。
+- 活动日志：2026-09-10 06:55 +08:00 开始记录操作补齐；2026-09-10 07:05 +08:00 完成验收，操作者 Codex。
+- 验收结果：EVD-M1-007-F；全量 138 files/733 tests、lint/typecheck/build/API smoke、Playwright 1 passed、编辑/删除/复制流程与 360/390/430 无横向溢出通过。
+- 阻塞/风险：无；本机 Docker CLI 缺失仍只影响容器实测。
+- 下一步：进入 M3-001，先确认菜谱 ingredient nutrition snapshot 与重算边界。
 
 ### M1-008 — 核心 E2E 与数据安全
 
@@ -414,6 +416,7 @@ result: 42 passed, 0 failed
 | EVD-M2-005-A | M2-005 | 2026-09-10 03:55 +08:00 | `pnpm exec vitest run packages/analytics/test/analytics.test.ts apps/api/test/analytics-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | TDD 先观察 Adaptive 函数缺失，再实现后聚焦 2 files/7 tests；全量 138 files/730 tests；lint/typecheck/build/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；21 天/8 次/coverage 门槛、固定公式、平滑、7 天节流和不自动改目标通过 |
 | EVD-M2-006-A | M2-006 | 2026-09-10 04:10 +08:00 | `pnpm exec vitest run apps/web/test/dashboard-view.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 30 天 EWMA 100 次本地基准 | 聚焦 Web 1 file/3 tests；全量 138 files/731 tests；lint/typecheck/build/API smoke/test:integration/diff check exit 0；EWMA p50 0.061ms、p95 0.135ms、max 11.989ms；docker smoke exit 0 但本机 Docker CLI 不可用；IAB/viewport 限制导致 M2-006 保持 BLOCKED |
 | EVD-M2-006-B | M2-006 | 2026-09-10 06:30 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 本地 Chromium Playwright 截图 | 全量 138 files/732 tests；integration 无测试文件正常 exit 0；lint/typecheck/build/API smoke/diff check exit 0；Playwright 1 passed，覆盖 bootstrap/login/logout、食物搜索成功/空状态、记账、体重写入、分析不足、44px 导航命中区和 360/390/430 无横向溢出，三档截图写入 test-results 并被 gitignore；BLK-007 解除 |
+| EVD-M1-007-F | M1-007 | 2026-09-10 07:05 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全量 138 files/733 tests；integration 无测试文件正常 exit 0；Playwright 1 passed，真实 Chromium 覆盖编辑 100→120g、复制昨日整天入口、删除确认、搜索成功/空状态、体重写入、分析不足、登录/退出、44px 命中区和 360/390/430 无横向溢出；M1-007 退出门槛通过 |
 
 ## 9. 问题队列
 
@@ -527,13 +530,15 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 04:10 +08:00 | Codex | M2-006 代码完成但验收阻塞 | 前端接入和 30 天趋势性能通过；真实浏览器 E2E、390/430 viewport 仍受 BLK-007 阻塞，任务保持 BLOCKED |
 | 2026-09-10 04:20 +08:00 | Codex | 恢复 M2-006 浏览器验收 | 读取路线与 UI/API 规范；新增 Playwright Chromium CI 路径和临时受控食物 seed，计划验收首次设置/登录、搜索、记账、体重、分析不足和 360/390/430 viewport |
 | 2026-09-10 06:30 +08:00 | Codex | 完成 M2-006，解除 BLK-007 | 修复 Web API 搜索二次解包和 diary `mealSlots + entries` 映射；全量 732 tests、Playwright 1 passed、三档截图/无横向溢出/44px 命中区通过；M2 6/6 DONE；复核发现 M1-007 仍缺记录编辑/复制/删除 UI，下一步回到 M1-007 |
+| 2026-09-10 06:55 +08:00 | Codex | 开始 M1-007 记录操作补齐 | 用户确认按后续规划继续；先写 Dashboard 现有记录的编辑/删除/复制动作回归测试，复用现有 PATCH/DELETE/copy API，不新增迁移 |
+| 2026-09-10 07:05 +08:00 | Codex | 完成 M1-007，M1 9/9 DONE | 新增 inline 编辑、删除确认、复制昨日整天/单餐和 API client；RED/GREEN、全量 733 tests、Playwright 编辑/删除/复制与三档 viewport 门禁通过；下一步进入 M3-001 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1-001 至 M1-006、M1-008、M1-009 和 M2 全部任务已完成；M1-007 已通过首次设置、登录、搜索、添加、响应式浏览器门禁，但记录编辑/复制/删除 UI 仍待补齐。后续接手者应：
+M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁。后续接手者应：
 
-1. 先阅读本页并按 M1-007 记录操作设计确认；不要把未实现的编辑/复制/删除 UI 误标为完成；
-2. 接入已有 PATCH/DELETE/copy-meal/copy-day API，保持 diary snapshot、幂等和版本冲突语义；
+1. 进入 M3-001 前先确认菜谱 ingredient nutrition snapshot、重算触发和历史边界，并把决策写入文档；
+2. 保持现有 diary snapshot、幂等和版本冲突语义，不让菜谱或食物更新漂移历史日记；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 

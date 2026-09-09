@@ -35,6 +35,20 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await page.getByRole("button", { name: "今日" }).click();
   await expect(page.getByText("馒头 · 100g", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "编辑馒头" }).click();
+  await page.locator('input[name^="edit-amount-"]').fill("120");
+  await page.getByRole("button", { name: "保存修改" }).click();
+  await expect(page.getByText("馒头 · 120g", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "饮食" }).click();
+  await expect(page.getByRole("button", { name: "复制昨日整天" })).toBeVisible();
+  await page.getByRole("button", { name: "复制昨日整天" }).click();
+  await expectNoHorizontalOverflow(page);
+  await page.getByRole("button", { name: "今日" }).click();
+  page.once("dialog", (dialog) => { void dialog.accept(); });
+  await page.getByRole("button", { name: "删除馒头" }).click();
+  await expect(page.getByText("馒头 · 120g", { exact: true })).toHaveCount(0);
+
   await page.getByRole("button", { name: "饮食" }).click();
   await page.getByLabel("搜索食物").fill("不存在食物");
   await page.getByRole("button", { name: "搜索" }).click();

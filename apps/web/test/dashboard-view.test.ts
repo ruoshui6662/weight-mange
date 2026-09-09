@@ -66,4 +66,19 @@ describe("dashboard interaction feedback", () => {
     expect(analyticsHtml).toContain("分析服务暂时不可用");
     expect(analyticsHtml).toContain("重试");
   });
+
+  it("renders record edit, delete, and copy actions for an existing diary entry", () => {
+    const html = renderToStaticMarkup(React.createElement(DashboardView, {
+      dashboard: { date: "2026-09-10", goal: { kcal: 1800, proteinG: null, fatG: null, carbG: null }, intake: { kcal: 223, proteinG: 7, fatG: 1, carbG: 47 }, remainingKcal: 1577, meals: [{ key: "breakfast", displayName: "早餐", totals: { kcal: 223 } }] },
+      diary: { mealSlots: [{ id: "u:breakfast", key: "breakfast", displayName: "早餐" }], entries: [{ id: "entry-1", mealSlotId: "u:breakfast", displayNameSnapshot: "馒头", amount: 100, unit: "g", version: 0 }] },
+      profile: { id: "u1", displayName: "ruoshui", timezone: "Asia/Shanghai", body: null },
+      loadDashboard: noopAsync,
+      onLogout: noopAsync,
+      error: "",
+      setError: vi.fn(),
+    }));
+    expect(html).toContain("编辑");
+    expect(html).toContain("删除");
+    expect(html).toContain("复制昨日早餐");
+  });
 });

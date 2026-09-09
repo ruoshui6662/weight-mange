@@ -99,12 +99,14 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   const [tdee, setTdee] = useState<TdeeEstimate | null>(null);
   const [m2Loading, setM2Loading] = useState(false);
   const [m2Error, setM2Error] = useState("");
+  const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
+  const [entryBusy, setEntryBusy] = useState<string | null>(null);
   const kcalGoal = props.dashboard?.goal?.kcal ?? 0;
   const intake = props.dashboard?.intake.kcal ?? 0;
   const progress = kcalGoal > 0 ? Math.min(100, Math.round((intake / kcalGoal) * 100)) : 0;
   const mealEntries = useMemo(() => new Map((props.diary?.mealSlots ?? []).map((slot) => [slot.key, {
     mealSlot: { key: slot.key, displayName: slot.displayName },
-    entries: (props.diary?.entries ?? []).filter((entry) => entry.mealSlotId === slot.id).map((entry) => ({ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit })),
+    entries: (props.diary?.entries ?? []).filter((entry) => entry.mealSlotId === slot.id).map((entry) => ({ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit, mealSlotId: slot.key, version: entry.version })),
   }])), [props.diary]);
 
   async function search(event: React.FormEvent) {
@@ -135,6 +137,37 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
     } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); }
   }
 
+  async function saveEntry(entry: EditableDiaryEntry) {
+    setEntryBusy(entry.id); props.setError("");
+    try {
+      await api.updateDiaryEntry(today, entry.id, { amount: Number(entry.amount), mealSlotId: entry.mealSlotId, unit: "g", version: entry.version });
+      setEditingEntry(null); await props.loadDashboard();
+    } catch (caught) { props.setError(errorText(caught)); }
+    finally { setEntryBusy(null); }
+  }
+
+  async function removeEntry(entry: EditableDiaryEntry) {
+    if (!window.confirm(`删除“${entry.displayName}”？`)) return;
+    setEntryBusy(entry.id); props.setError("");
+    try { await api.deleteDiaryEntry(today, entry.id); setEditingEntry(null); await props.loadDashboard(); }
+    catch (caught) { props.setError(errorText(caught)); }
+    finally { setEntryBusy(null); }
+  }
+
+  async function copyDay() {
+    setEntryBusy("copy-day"); props.setError("");
+    try { await api.copyDiaryDay(today, daysAgo(today, 1)); await props.loadDashboard(); }
+    catch (caught) { props.setError(errorText(caught)); }
+    finally { setEntryBusy(null); }
+  }
+
+  async function copyMeal(mealSlotId: string) {
+    setEntryBusy(`copy-meal:${mealSlotId}`); props.setError("");
+    try { await api.copyDiaryMeal(today, { fromDate: daysAgo(today, 1), fromMealSlotId: mealSlotId, toMealSlotId: mealSlotId }); await props.loadDashboard(); }
+    catch (caught) { props.setError(errorText(caught)); }
+    finally { setEntryBusy(null); }
+  }
+
   const loadWeightPanel = useCallback(async () => {
     setM2Loading(true); setM2Error("");
     try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
@@ -149,8 +182,8 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
 
   const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
   return <main className="app-shell"><header className="topbar"><div><p className="eyebrow">{activeTab.toUpperCase()} · {today}</p><h1>你好，{props.profile?.displayName ?? "朋友"}</h1></div><button className="text-button" onClick={() => void props.onLogout()}>退出</button></header>
-    {activeTab === "today" ? <><section className="hero-card card"><div><p className="muted">今日热量</p><strong className="calorie-number">{Math.round(intake)}<small> / {kcalGoal || "—"} kcal</small></strong><div className="progress" aria-label={`今日热量完成 ${progress}%`}><span style={{ width: `${progress}%` }} /></div><p className="muted">剩余 {props.dashboard?.remainingKcal === null || props.dashboard?.remainingKcal === undefined ? "—" : Math.round(props.dashboard.remainingKcal)} kcal</p></div></section><section className="macro-grid" aria-label="营养概览"><Metric label="蛋白质" value={props.dashboard?.intake.proteinG ?? 0} unit="g" /><Metric label="脂肪" value={props.dashboard?.intake.fatG ?? 0} unit="g" /><Metric label="碳水" value={props.dashboard?.intake.carbG ?? 0} unit="g" /></section><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} /><section className="card add-card"><div className="section-heading"><h2>快速添加</h2><span className="muted">3 步完成记录</span></div>{searchCard}</section></> : null}
-    {activeTab === "diary" ? <section className="card add-card"><div className="section-heading"><h2>饮食记录</h2><span className="status-chip">本地记录</span></div><p className="muted">搜索食物并添加到今天的餐次，历史营养以记录时快照保存。</p>{searchCard}</section> : null}
+    {activeTab === "today" ? <><section className="hero-card card"><div><p className="muted">今日热量</p><strong className="calorie-number">{Math.round(intake)}<small> / {kcalGoal || "—"} kcal</small></strong><div className="progress" aria-label={`今日热量完成 ${progress}%`}><span style={{ width: `${progress}%` }} /></div><p className="muted">剩余 {props.dashboard?.remainingKcal === null || props.dashboard?.remainingKcal === undefined ? "—" : Math.round(props.dashboard.remainingKcal)} kcal</p></div></section><section className="macro-grid" aria-label="营养概览"><Metric label="蛋白质" value={props.dashboard?.intake.proteinG ?? 0} unit="g" /><Metric label="脂肪" value={props.dashboard?.intake.fatG ?? 0} unit="g" /><Metric label="碳水" value={props.dashboard?.intake.carbG ?? 0} unit="g" /></section><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyMeal={copyMeal} /><section className="card add-card"><div className="section-heading"><h2>快速添加</h2><span className="muted">3 步完成记录</span></div>{searchCard}</section></> : null}
+    {activeTab === "diary" ? <><section className="card add-card"><div className="section-heading"><h2>饮食记录</h2><div className="diary-actions"><span className="status-chip">本地记录</span><button type="button" className="soft-button" disabled={entryBusy === "copy-day"} onClick={() => void copyDay()}>{entryBusy === "copy-day" ? "复制中…" : "复制昨日整天"}</button></div></div><p className="muted">搜索食物并添加到今天的餐次，历史营养以记录时快照保存。</p><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyMeal={copyMeal} />{searchCard}</section></> : null}
     {activeTab === "profile" ? <ProfilePanel profile={props.profile} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} /> : null}
     {activeTab === "weight" ? <WeightPanel records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
     {activeTab === "analytics" ? <AnalyticsPanel overview={analyticsOverview} tdee={tdee} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
@@ -159,10 +192,11 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   </main>;
 }
 
-type MealEntryGroup = { mealSlot: { key: string; displayName: string }; entries: Array<{ id: string; displayName: string; amount: number; unit: string }> };
+type EditableDiaryEntry = { id: string; displayName: string; amount: number; unit: string; mealSlotId: string; version: number };
+type MealEntryGroup = { mealSlot: { key: string; displayName: string }; entries: EditableDiaryEntry[] };
 
-function MealSummary(props: { dashboard: Dashboard | null; mealEntries: Map<string, MealEntryGroup> }) {
-  return <section className="card"><div className="section-heading"><h2>今天吃了什么</h2><span className="status-chip">本地记录</span></div><div className="meals">{["breakfast", "lunch", "dinner", "snack"].map((key) => <div className="meal" key={key}><div><strong>{props.mealEntries.get(key)?.mealSlot.displayName ?? ({ breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" } as Record<string, string>)[key]}</strong>{(props.mealEntries.get(key)?.entries ?? []).map((entry) => <p className="meal-entry" key={entry.id}>{entry.displayName} · {entry.amount}{entry.unit}</p>)}</div><span>{Math.round(props.dashboard?.meals.find((item) => item.key === key)?.totals.kcal ?? 0)} kcal</span></div>)}</div></section>;
+function MealSummary(props: { dashboard: Dashboard | null; mealEntries: Map<string, MealEntryGroup>; editingEntry: EditableDiaryEntry | null; busyEntry: string | null; onEdit: (entry: EditableDiaryEntry) => void; onDelete: (entry: EditableDiaryEntry) => Promise<void>; onSave: (entry: EditableDiaryEntry) => Promise<void>; onCancelEdit: () => void; onCopyMeal?: (mealSlotId: string) => Promise<void> }) {
+  return <section className="card"><div className="section-heading"><h2>今天吃了什么</h2><span className="status-chip">本地记录</span></div><div className="meals">{["breakfast", "lunch", "dinner", "snack"].map((key) => { const group = props.mealEntries.get(key); const label = group?.mealSlot.displayName ?? ({ breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" } as Record<string, string>)[key]; return <div className="meal" key={key}><div className="meal-content"><strong>{label}</strong>{(group?.entries ?? []).map((entry) => <div className="meal-entry-row" key={entry.id}><p className="meal-entry">{entry.displayName} · {entry.amount}{entry.unit}</p><div className="entry-actions"><button type="button" className="text-button" aria-label={`编辑${entry.displayName}`} onClick={() => props.onEdit(entry)}>编辑</button><button type="button" className="text-button" aria-label={`删除${entry.displayName}`} disabled={props.busyEntry === entry.id} onClick={() => void props.onDelete(entry)}>删除</button></div>{props.editingEntry?.id === entry.id ? <form className="entry-edit-form" onSubmit={(event) => { event.preventDefault(); void props.onSave(props.editingEntry!); }}><Field label="份量（g）" name={`edit-amount-${entry.id}`} type="number" min="1" step="0.1" value={String(props.editingEntry.amount)} onChange={(value) => props.onEdit({ ...props.editingEntry!, amount: Number(value) })} /><label className="field"><span>餐次</span><select aria-label={`编辑餐次-${entry.displayName}`} value={props.editingEntry.mealSlotId} onChange={(event) => props.onEdit({ ...props.editingEntry!, mealSlotId: event.target.value })}><option value="breakfast">早餐</option><option value="lunch">午餐</option><option value="dinner">晚餐</option><option value="snack">加餐</option></select></label><div className="entry-actions"><button type="submit" className="primary" disabled={props.busyEntry === entry.id}>{props.busyEntry === entry.id ? "保存中…" : "保存修改"}</button><button type="button" className="soft-button" onClick={props.onCancelEdit}>取消</button></div></form> : null}</div>)}</div><div className="meal-side"><span>{Math.round(props.dashboard?.meals.find((item) => item.key === key)?.totals.kcal ?? 0)} kcal</span>{props.onCopyMeal ? <button type="button" className="soft-button" disabled={props.busyEntry === `copy-meal:${group?.mealSlot.key ?? key}`} onClick={() => void props.onCopyMeal!(group?.mealSlot.key ?? key)}>{props.busyEntry === `copy-meal:${group?.mealSlot.key ?? key}` ? "复制中…" : `复制昨日${label}`}</button> : null}</div></div>; })}</div></section>;
 }
 
 export function FoodSearchCard(props: { query: string; setQuery: (value: string) => void; results: Array<{ id: string; name: string; summary: { energyKcal: number | null } }>; selected: string | null; setSelected: (value: string) => void; amount: string; setAmount: (value: string) => void; meal: string; setMeal: (value: string) => void; busy: boolean; searchStatus: FoodSearchStatus; showImportGuide: boolean; setShowImportGuide: (value: boolean) => void; onSearch: (event: React.FormEvent) => Promise<void>; onAddEntry: (event: React.FormEvent) => Promise<void> }) {

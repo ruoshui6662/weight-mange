@@ -5,7 +5,7 @@ export type Profile = { id: string; displayName: string; timezone: string; body:
 export type Dashboard = { date: string; goal: { kcal: number; proteinG: number | null; fatG: number | null; carbG: number | null } | null; intake: { kcal: number; proteinG: number; fatG: number; carbG: number }; remainingKcal: number | null; meals: Array<{ key: string; displayName: string; totals: { kcal: number } }> };
 export type Diary = {
   mealSlots: Array<{ id: string; key: string; displayName: string }>;
-  entries: Array<{ id: string; mealSlotId: string; displayNameSnapshot: string; amount: number; unit: string }>;
+  entries: Array<{ id: string; mealSlotId: string; displayNameSnapshot: string; amount: number; unit: string; version: number }>;
 };
 export type WeightRecord = { id: string; measuredAt: string; localDate: string; weightKg: number; source: string; note: string | null; version: number };
 export type WeightTrend = { methodVersion: string; windowDays: number; method: string; alpha: number; observedDays: number; points: Array<{ localDate: string; weightKg: number; trendWeightKg: number }> };
@@ -34,6 +34,10 @@ export const api = {
   getDiary: (date: string) => request<Diary>(`/api/v1/diary/${encodeURIComponent(date)}`),
   searchFoods: (query: string) => request<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>(`/api/v1/foods/search?q=${encodeURIComponent(query)}&limit=10`),
   createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(input) }),
+  updateDiaryEntry: (date: string, entryId: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: JSON.stringify(input) }),
+  deleteDiaryEntry: (date: string, entryId: string) => request<{ ok: boolean }>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "DELETE" }),
+  copyDiaryMeal: (date: string, input: { fromDate: string; fromMealSlotId: string; toMealSlotId: string }) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-meal`, { method: "POST", body: JSON.stringify(input) }),
+  copyDiaryDay: (date: string, fromDate: string) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-day`, { method: "POST", body: JSON.stringify({ fromDate }) }),
   getWeights: (from: string, to: string) => request<WeightRecord[]>(`/api/v1/body/weights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   createWeight: (input: { measuredAt: string; weightKg: number; note?: string }) => request<WeightRecord>("/api/v1/body/weights", { method: "POST", body: JSON.stringify(input) }),
   getWeightTrend: (days = 30) => request<WeightTrend>(`/api/v1/body/weight-trend?days=${days}&method=ewma&sampling=last`),
