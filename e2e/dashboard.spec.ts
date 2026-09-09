@@ -43,6 +43,10 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await expect(page.getByText("223", { exact: true })).toBeVisible();
   await expect(page.getByText(/计算版本/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  const detailNavButtons = page.getByRole("navigation", { name: "主导航" }).getByRole("button");
+  await expect(detailNavButtons).toHaveCount(6);
+  const detailNavHeights = await detailNavButtons.evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+  expect(detailNavHeights.every((height) => height >= 44)).toBe(true);
 
   await page.getByRole("button", { name: "返回菜谱列表" }).click();
   await expectNoHorizontalOverflow(page);
