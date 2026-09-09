@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 08:20 +08:00
+> 最后更新：2026-09-09 08:40 +08:00
 
 ## 1. 当前快照
 
@@ -16,7 +16,7 @@
 | 下一步 | 先固定 nutrient scaling、单位换算、edible portion、coverage 和 rounding 的 golden tests |
 | 当前阻塞 | 无；本地 Docker CLI 缺失已由 GitHub Actions 多架构 buildx 验证解除 |
 | 业务代码 | M1-001 即将开始 |
-| Git | `feat/m0-foundation` 已推送 `origin`；远程 CI run `34291487487` verify 与 Docker buildx 均成功 |
+| Git | 远程 `main` 已更新至 `206adb4`；GHCR 已发布 `ghcr.io/ruoshui6662/weight-mange:latest` 与 commit SHA 标签 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -164,6 +164,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-B | M0-007 | 2026-09-09 07:50 +08:00 | `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm docker:smoke` | 全部 exit 0；API smoke 脚本纳入可重复门禁并返回 health=200、ready=200；Docker smoke 仍因 CLI 缺失保持 BLOCKED |
 | EVD-M0-007-C | M0-007 | 2026-09-09 08:00 +08:00 | GitHub Actions run `34291079576`；本地 `pnpm install --frozen-lockfile`（强制重链）及完整 lint/typecheck/test/build/api smoke | 首次远程 verify 在 install 阶段失败；根因是 `allowBuilds` 占位值；修正为 `esbuild: true` 后本地干净安装 exit 0，完整门禁重新通过，等待远程重跑 |
 | EVD-M0-007-D | M0-007 | 2026-09-09 08:20 +08:00 | GitHub Actions run `34291487487`：verify + `docker/build-push-action@v6`，platforms `linux/amd64,linux/arm64` | verify `success`；Docker buildx `success`；M0-002/M0-007 阻塞解除，M0 关闭 |
+| EVD-M0-007-E | M0-007 | 2026-09-09 08:40 +08:00 | GitHub Actions run `34292835823`；GHCR package 页面与 manifest | 实际 push 成功；`latest` 和 `206adb469a8a34f640705de06abea255f50dca12` 标签可用，包含 linux/amd64、linux/arm64；manifest digest `sha256:28045d2384efeabac7cc02da393d2af3c079421e19c671f08f54655a4564bc85` |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -221,6 +222,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 07:50 +08:00 | Codex | 加强 M0-007 可重复验证 | 新增 `pnpm api:smoke` 并纳入 CI；构建后 smoke 通过，Docker CLI 缺失继续记录为 BLK-005 |
 | 2026-09-09 08:00 +08:00 | Codex | 修复首次 GitHub CI 安装失败 | 远程 run `34291079576` 在 `pnpm install --frozen-lockfile` 失败；将 `allowBuilds` 占位值修正为 `esbuild: true`，本地强制重链和完整门禁通过，准备推送修复 |
 | 2026-09-09 08:20 +08:00 | Codex | M0 完成并开始 M1 | 远程 run `34291487487` verify 与 amd64/arm64 Docker buildx 均成功；接受 DEC-004，解除 BLK-001/005，M0 7/7 DONE；开始 M1-001 Nutrition Engine |
+| 2026-09-09 08:40 +08:00 | Codex | 修正镜像发布流程并完成 GHCR 发布 | 发现原 workflow 仅 `push: false`、只做构建校验；改为 main 登录 GHCR 并 push `latest`/SHA 标签，run `34292835823` 成功，镜像已可拉取 |
 
 ## 11. 交接摘要
 
