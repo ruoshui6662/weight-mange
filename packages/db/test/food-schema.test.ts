@@ -29,6 +29,7 @@ describe("food canonical schema", () => {
     expect(applyMigrations(sqlite, migrations, { now: () => 1000 }).applied).toEqual([
       "0001_core_profile",
       "0002_food_canonical_schema",
+      "0003_food_staging_validation",
     ]);
     const names = sqlite
       .prepare(

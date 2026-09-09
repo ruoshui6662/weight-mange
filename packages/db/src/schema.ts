@@ -277,4 +277,15 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
       );
     `,
   },
+  {
+    version: "0003_food_staging_validation",
+    sql: `
+      ALTER TABLE food_staging_dataset ADD COLUMN status TEXT NOT NULL DEFAULT 'staged'
+        CHECK (status IN ('staged', 'validated', 'failed', 'promoted'));
+      ALTER TABLE food_staging_dataset ADD COLUMN validation_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE food_staging_dataset ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}';
+      CREATE UNIQUE INDEX food_staging_dataset_identity_idx
+        ON food_staging_dataset(dataset_key, version, checksum);
+    `,
+  },
 ];

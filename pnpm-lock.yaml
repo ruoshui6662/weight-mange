@@ -53,6 +53,12 @@ importers:
 
   packages/shared: {}
 
+  tools/food-import:
+    dependencies:
+      '@nutrition-tracker/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+
 packages:
 
   '@cacheable/memory@2.2.0':
