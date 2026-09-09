@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 23:45 +08:00
+> 最后更新：2026-09-10 00:15 +08:00
 
 ## 1. 当前快照
 
@@ -14,9 +14,9 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-007 Mobile-first 核心 UI |
 | 下一步 | 完成 M1-007 独立复审与 360/390/430 视觉验收，再进入 M1-008 核心 E2E 与备份恢复流程 |
-| 当前阻塞 | `BLK-006`：合并后远程 CI 的重复 `pnpm docker:smoke` 失败，Docker 发布 job 被跳过；已改为由多架构 build-push job 承担唯一镜像构建门禁，等待重跑 |
+| 当前阻塞 | 无；M1-007 核心实现已发布，视觉基线与 M1-008 E2E 尚未开始 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model 已完成；M1-007 核心实现已完成，待视觉/复审验收 |
-| Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
+| Git | 远程 `main` 已包含 M1-007 核心实现（`3a47945`）；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -213,7 +213,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-003 Recipe snapshot 语义未落库 | M3-001 | 接受 ingredient 计算输入快照设计并修订 schema | `OPEN` |
 | BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
 | BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
-| BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；重跑 CI 成功且 GHCR `latest` 更新 | `IN_PROGRESS` |
+| BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 已将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；后续 run `34342506965` 成功并更新 GHCR `latest` | `RESOLVED` |
 
 ## 7. 决策记录
 
@@ -275,6 +275,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-006-A | M1-006 | 2026-09-09 22:15 +08:00 | `pnpm vitest run packages/dashboard/test/dashboard.test.ts apps/api/test/dashboard-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `node scripts/dashboard-benchmark.mjs`; independent scoped review | focused 2 files/4 tests、full 94 files/505 tests；全部命令 exit 0，integration 无测试文件正常 exit 0；benchmark n=1000 p50=0.321ms/p95=0.573ms；独立复审 ACCEPTED，无 Critical/Important/Minor；Docker CLI 缺失已记录 |
 | EVD-M1-007-A | M1-007 | 2026-09-09 23:20 +08:00 | `pnpm exec vitest run apps/api/test/auth-routes.test.ts apps/api/test/profile-routes.test.ts apps/api/test/static-routes.test.ts apps/web/test`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | focused auth/profile/static/web 5 files/8 tests；full 104 files/533 tests；lint/typecheck/build/API smoke/diff check exit 0；API smoke home/health/ready=200 且命中 web app shell；Docker smoke exit 0 with environment message that Docker CLI is unavailable；视觉截图与 M1-008 E2E 未宣称完成 |
 | EVD-M1-007-B | M1-007 | 2026-09-09 23:45 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | 复审修复后 lint/typecheck/build/API smoke/diff check exit 0；full 104 files/535 tests；integration 无测试文件正常 exit 0；新增 204 logout、非法日期 400、离线状态文案、首次设置用户状态和静态 symlink canonical containment 回归；Docker smoke exit 0 但本机无 Docker CLI |
+| EVD-M1-007-C | M1-007 | 2026-09-10 00:15 +08:00 | GitHub Actions run `34342506965`；GHCR manifest 查询 | verify 与多架构 `docker/build-push-action@v6` 均 `success`；`latest` manifest `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d`，包含 linux/amd64 与 linux/arm64；本机 Docker CLI 仍未安装 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -368,6 +369,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 23:45 +08:00 | Codex | 完成复审修复后的全量验证 | full 104 files/535 tests；integration、lint、typecheck、build、API smoke、diff check 均 exit 0；Docker smoke 如实记录 Docker CLI 不可用；M1-007 仍等待目标 viewport 视觉基线后关闭 |
 | 2026-09-09 23:55 +08:00 | Codex | 合并后远程 CI 首次验证失败 | run `34341237744` 的 verify 中 lint/typecheck/test/build/API smoke 全部成功，仅重复 `pnpm docker:smoke` 失败，导致 docker 发布 job 被跳过；登记 `BLK-006`，将验证与镜像构建职责拆开后重跑 |
 | 2026-09-10 00:05 +08:00 | Codex | 定位 Docker build 根因并完成 RED 复现 | run `34341890201` 的 Docker job 失败于 Dockerfile `pnpm build`；干净 context 移除 `tools/` 后本地复现 `TS5083`，确认根因是 build stage 未复制 `tools/food-import`；补充 `COPY tools ./tools`，等待远程复验 |
+| 2026-09-10 00:15 +08:00 | Codex | main 合并与 GHCR latest 发布完成 | `main` 已推送至 `3a47945`；run `34342506965` verify/Docker 均 success；GHCR `latest` 已更新为 amd64/arm64 多架构镜像；飞牛后续直接 pull `latest`，下一步进行 360/390/430 视觉验收与 M1-008 E2E |
 | 2026-09-09 07:10 +08:00 | Codex | 开始 DOC-004 | 用户指定公开 GitHub 仓库作为后续 Docker 内容承载位置；先建立发布白名单、排除项与上传前验收，当前不上传 |
 | 2026-09-09 07:12 +08:00 | Codex | 完成 DOC-004 验证 | README 与 Docker 部署规范已同步发布边界、排除项、发布闸门和镜像标签方法；文档检查通过；未执行远程绑定、push、Actions 或 GHCR 操作 |
 
