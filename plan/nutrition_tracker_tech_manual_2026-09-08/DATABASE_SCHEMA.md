@@ -553,7 +553,27 @@ PRIMARY KEY(entry_id, nutrient_id)
 | gram_equivalent | REAL nullable |
 | sort_order | INTEGER |
 
-## 10.3 recipe_nutrient_cache
+`recipe_ingredient` 保存创建/显式刷新时的输入投影。`food_id` 只用于来源追溯和显式刷新，不参与历史结果的实时 join；`name_snapshot`、`input_amount`、`input_unit`、`gram_equivalent` 与下列营养快照共同构成该原料的计算事实。
+
+## 10.3 recipe_ingredient_nutrient_snapshot
+
+每次 ingredient 创建或显式刷新时，在同一事务写入一组不可变营养快照；替换 ingredient 时旧组随旧 ingredient 一起失效，不覆盖 diary 已保存的快照。
+
+| 字段 | 类型 |
+|---|---|
+| id | TEXT PK |
+| ingredient_id | TEXT FK |
+| nutrient_id | TEXT |
+| amount_numeric | REAL nullable |
+| amount_raw | TEXT nullable |
+| value_status | TEXT |
+| source_basis_json | TEXT |
+| nutrition_engine_version | TEXT |
+| created_at | INTEGER |
+
+`value_status` 保留 `known/trace/unknown/estimated/not_applicable` 语义；unknown 不得静默变成 0，coverage/warnings 由计算层输出。
+
+## 10.4 recipe_nutrient_cache
 
 用于加速，不是唯一事实。
 
@@ -566,8 +586,9 @@ PRIMARY KEY(entry_id, nutrient_id)
 | per_serving_amount | REAL nullable |
 | computed_at | INTEGER |
 | calc_version | TEXT |
+| invalidated_at | INTEGER nullable |
 
-如果 ingredient 变化，cache 失效。
+如果 ingredient、cooked weight 或 serving count 变化，必须在同一事务标记 cache 失效；cache 可懒重算，不是唯一事实。V1 固定 `calc_version=recipe_yield_v1`，不自动监听 food dataset 变化。
 
 ---
 

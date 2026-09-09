@@ -476,9 +476,17 @@ Response：
 - total nutrient；
 - per100g；
 - per serving；
-- warnings。
+- warnings；
+- `recipe_calc_version`；
+- ingredient source/snapshot metadata。
 
 ## PATCH /api/v1/recipes/:id
+
+编辑原料、成品重量或份数时，服务端在同一事务内重建受影响 ingredient snapshot 并使 nutrient cache 失效。不会自动读取 food 的最新值覆盖已有 recipe snapshot；需要显式刷新动作。
+
+## POST /api/v1/recipes/:id/refresh-ingredients
+
+显式按当前 active food 重新解析指定或全部 ingredients。无法解析的原料保留已有 snapshot 并返回 warning；没有可用 snapshot 的新原料拒绝保存。响应必须包含新的 `recipe_calc_version`、warnings 和每个 ingredient 的 source/snapshot 信息。
 
 ## DELETE /api/v1/recipes/:id
 
@@ -515,6 +523,8 @@ limit
   "note": ""
 }
 ```
+
+加入日记只通过 application service 写入 diary nutrition snapshot；后续 recipe 或 food 更新不得改变该日记历史值。
 
 创建成功返回 `201` 和记录对象，记录包含服务端规范化的 UTC `measuredAt`、按当前 profile timezone 计算的 `localDate`、`source` 和 `version`。
 同一 `localDate` 允许多条记录。
