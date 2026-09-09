@@ -8,6 +8,7 @@
     { "path": "packages/auth" },
     { "path": "packages/food" },
     { "path": "packages/diary" },
+    { "path": "packages/dashboard" },
     { "path": "tools/food-import" },
     { "path": "apps/api" }
   ]

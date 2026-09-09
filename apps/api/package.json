@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@nutrition-tracker/dashboard": "workspace:*",
     "@nutrition-tracker/db": "workspace:*",
     "@nutrition-tracker/food": "workspace:*",
     "@nutrition-tracker/diary": "workspace:*"

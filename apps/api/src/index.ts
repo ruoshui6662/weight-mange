@@ -8,6 +8,7 @@ import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
 import { ANALYTICS_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
 import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
+import { createDashboardService, DashboardError } from "@nutrition-tracker/dashboard";
 
 export type ApiOptions = {
   dbPath: string;
@@ -74,6 +75,13 @@ function diaryError(response: ServerResponse, error: unknown, requestId: string)
   return false;
 }
 
+function dashboardError(response: ServerResponse, error: unknown, requestId: string) {
+  if (error instanceof DashboardError) {
+    writeJson(response, 400, { error: { code: error.code, message: error.code, ...(error.details ? { details: error.details } : {}), requestId } }); return true;
+  }
+  return false;
+}
+
 export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   mkdirSync(dirname(options.dbPath), { recursive: true });
   const { sqlite } = openDatabase(options.dbPath);
@@ -84,6 +92,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
     sqlite.prepare("INSERT OR IGNORE INTO profile_user (id,display_name,timezone,created_at,updated_at) VALUES ('local-user','Local user','UTC',?,?)").run(Date.now(), Date.now());
     const foods = createFoodCatalog(sqlite);
     const diary = createDiaryService(sqlite);
+    const dashboard = createDashboardService(sqlite);
     const server = createServer(async (request, response) => {
       const requestId = randomUUID();
       try {
@@ -96,6 +105,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         const diaryMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
         const copyMealMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-meal$/.exec(url.pathname);
         const copyDayMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-day$/.exec(url.pathname);
+        const dashboardMatch = /^\/api\/v1\/dashboard\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
         if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
         if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) throw new FoodError("FOOD_NOT_FOUND"); writeJson(response, 200, { data: detail }); return; }
@@ -112,6 +122,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (diaryEntryMatch && request.method === "DELETE" && diaryEntryMatch[2]) { diary.deleteEntry({ userId: "local-user", date: diaryEntryMatch[1]!, entryId: decodeURIComponent(diaryEntryMatch[2]) }); writeJson(response, 200, { data: { ok: true } }); return; }
         if (copyMealMatch && request.method === "POST") { const body = await readJson(request); const entries = diary.copyMeal({ userId: "local-user", date: copyMealMatch[1]!, fromDate: String(body.fromDate ?? ""), fromMealSlotId: String(body.fromMealSlotId ?? ""), toMealSlotId: String(body.toMealSlotId ?? "") }); writeJson(response, 201, { data: entries }); return; }
         if (copyDayMatch && request.method === "POST") { const body = await readJson(request); const entries = diary.copyDay({ userId: "local-user", date: copyDayMatch[1]!, fromDate: String(body.fromDate ?? "") }); writeJson(response, 201, { data: entries }); return; }
+        if (dashboardMatch && request.method === "GET") { writeJson(response, 200, { data: dashboard.getDashboard({ userId: "local-user", date: dashboardMatch[1]! }) }); return; }
       if (request.method === "GET" && request.url === "/") {
         writeHome(response);
         return;
@@ -125,7 +136,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         return;
       }
       writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
-      } catch (error) { if (!foodError(response, error, requestId) && !diaryError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } }); }
+      } catch (error) { if (!foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } }); }
     });
 
     await new Promise<void>((resolve, reject) => {

@@ -35,6 +35,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@nutrition-tracker/dashboard':
+        specifier: workspace:*
+        version: link:../../packages/dashboard
       '@nutrition-tracker/db':
         specifier: workspace:*
         version: link:../../packages/db
