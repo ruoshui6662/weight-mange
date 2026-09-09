@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, clearFoodSearchResults, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -75,6 +75,35 @@ describe("RecipePanel", () => {
     resolveUpdate({ ...recipe, version: 8 });
     await expect(save).resolves.toMatchObject({ version: 8 });
     expect(settled).toBe(true);
+  });
+
+  it("keeps the draft locked when interleaved searches finish before a deferred save", async () => {
+    let resolveSave!: () => void;
+    const save = new Promise<void>((resolve) => { resolveSave = resolve; });
+    let resolveFirstSearch!: () => void;
+    let resolveSecondSearch!: () => void;
+    let writeBusy: string | null = "save";
+    let pendingSearches = { "row-1": true, "row-2": true };
+    let submitCount = 0;
+    const submit = () => { if (!recipeDraftControlsDisabled(writeBusy)) submitCount += 1; };
+
+    const firstSearch = new Promise<void>((resolve) => { resolveFirstSearch = () => { pendingSearches = clearRecipeSearchPending(pendingSearches, "row-1"); resolve(); }; });
+    const secondSearch = new Promise<void>((resolve) => { resolveSecondSearch = () => { pendingSearches = clearRecipeSearchPending(pendingSearches, "row-2"); resolve(); }; });
+    resolveFirstSearch();
+    await firstSearch;
+    submit();
+    resolveSecondSearch();
+    await secondSearch;
+
+    expect(pendingSearches).toEqual({});
+    expect(recipeDraftControlsDisabled(writeBusy)).toBe(true);
+    expect(submitCount).toBe(0);
+
+    resolveSave();
+    await save;
+    writeBusy = null;
+    submit();
+    expect(submitCount).toBe(1);
   });
 
   it("sends explicit nulls when clearing optional yield fields", async () => {
