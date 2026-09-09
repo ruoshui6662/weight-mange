@@ -25,6 +25,9 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .soft-button { color: #2c7858; background: #e5f4eb; }
 .text-button { color: #397c5c; background: transparent; }
 .error { margin: 0; color: #b34646; font-size: 14px; }
+.offline-banner { position: fixed; z-index: 10; top: 0; right: 0; left: 0; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 40px; padding: 7px 12px; color: #684f25; background: #fff3d6; border-bottom: 1px solid #efd9a1; font-size: 13px; font-weight: 700; }
+.offline-banner button { min-height: 30px; border: 1px solid #c9a65d; border-radius: 9px; padding: 0 10px; color: #684f25; background: transparent; font-weight: 800; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .loading { padding: 22px; color: #628070; }
 .topbar { margin-bottom: 22px; }
 .topbar h1 { margin-bottom: 0; }

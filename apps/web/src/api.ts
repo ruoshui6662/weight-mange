@@ -7,6 +7,7 @@ export type Diary = { meals: Array<{ mealSlot: { key: string; displayName: strin
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(path, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) } });
+  if (response.status === 204) return undefined as T;
   const payload = await response.json() as { data?: T; error?: ApiErrorShape };
   if (!response.ok) throw new ApiError(payload.error?.code ?? "REQUEST_FAILED", response.status, payload.error?.message);
   return payload.data as T;

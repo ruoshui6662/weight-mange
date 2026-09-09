@@ -94,4 +94,3 @@
 - [ ] **Step 2: Run the M1-007 focused tests** and capture test counts, exit codes, and any Docker limitation.
 - [ ] **Step 3: Update API/UI/deployment docs and progress evidence**, including current focus, next step, handoff summary, and the exact commit.
 - [ ] **Step 4: Commit docs and only mark M1-007 `DONE` if every planned acceptance command has evidence; otherwise leave it `IN_PROGRESS` or `BLOCKED` with the specific reason.**
-

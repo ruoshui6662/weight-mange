@@ -28,5 +28,8 @@ it("completes the first profile and goal setup after bootstrap", async () => {
     expect(goal.status).toBe(201);
     expect(await json(goal)).toMatchObject({ data: { goalType: "loss", calorieTargetKcal: 1800 } });
     expect(await json(await fetch(`${base}/api/v1/profile/goals`, { headers }))).toMatchObject({ data: [expect.objectContaining({ effectiveTo: null })] });
+    const invalidDate = await fetch(`${base}/api/v1/profile`, { method: "PATCH", headers, body: JSON.stringify({ birthDate: "9999-99-99" }) });
+    expect(invalidDate.status).toBe(400);
+    expect(await json(invalidDate)).toMatchObject({ error: { code: "PROFILE_INVALID_INPUT" } });
   } finally { await runtime.close(); }
 });

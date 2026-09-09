@@ -44,6 +44,8 @@ describe("profile and nutrition goals", () => {
     const { sqlite, profile } = createService();
     expect(() => profile.updateProfile("user-1", { heightCm: 0 })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
     expect(() => profile.createGoal("user-1", { goalType: "loss", calorieTargetKcal: 0, effectiveFrom: "2026-09-01", source: "manual" })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
+    expect(() => profile.updateProfile("user-1", { birthDate: "9999-99-99" })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
+    expect(() => profile.createGoal("user-1", { goalType: "loss", calorieTargetKcal: 1800, effectiveFrom: "2026-99-99", source: "manual" })).toThrow(new ProfileError("PROFILE_INVALID_INPUT"));
     sqlite.close();
   });
 });

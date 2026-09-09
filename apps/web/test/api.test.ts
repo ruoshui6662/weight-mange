@@ -14,4 +14,9 @@ describe("web API client", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: { code: "AUTH_REQUIRED", message: "AUTH_REQUIRED" } }), { status: 401 }));
     await expect(api.getSession()).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
   });
+
+  it("accepts empty 204 responses for logout", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    await expect(api.logout()).resolves.toBeUndefined();
+  });
 });

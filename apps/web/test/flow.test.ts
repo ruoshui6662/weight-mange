@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextScreen } from "../src/flow";
+import { nextScreen, offlineLabel } from "../src/flow";
 
 describe("onboarding flow", () => {
   it("routes an empty install to bootstrap and then setup", () => {
@@ -12,5 +12,10 @@ describe("onboarding flow", () => {
     expect(nextScreen("login", { type: "session", authenticated: true, profileReady: true, goalReady: true })).toBe("dashboard");
     expect(nextScreen("login", { type: "session", authenticated: true, profileReady: false, goalReady: false })).toBe("setup");
     expect(nextScreen("dashboard", { type: "logout" })).toBe("login");
+  });
+
+  it("has an explicit offline status message", () => {
+    expect(offlineLabel(false)).toContain("当前离线");
+    expect(offlineLabel(true)).toBe("");
   });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, api, type Dashboard, type Diary, type Profile } from "./api";
-import { nextScreen, type Screen } from "./flow";
+import { nextScreen, offlineLabel, type Screen } from "./flow";
 
 const today = new Date().toISOString().slice(0, 10);
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
@@ -19,6 +19,15 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [diary, setDiary] = useState<Diary | null>(null);
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+
+  useEffect(() => {
+    const online = () => setOffline(false);
+    const offlineEvent = () => setOffline(true);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offlineEvent);
+    return () => { window.removeEventListener("online", online); window.removeEventListener("offline", offlineEvent); };
+  }, []);
 
   const loadDashboard = useCallback(async (date = today) => {
     const [nextDashboard, nextDiary] = await Promise.all([api.getDashboard(date), api.getDiary(date)]);
@@ -42,16 +51,20 @@ export function App() {
     return () => { active = false; };
   }, []);
 
-  if (screen === "loading") return <Shell title="正在准备你的空间" subtitle="只需要几秒钟。"><div className="card loading" role="status">正在连接本地服务…</div></Shell>;
-  if (screen === "bootstrap") return <Bootstrap onDone={() => setScreen("setup")} error={error} setError={setError} />;
-  if (screen === "login") return <Login onDone={async () => { const currentProfile = await api.getProfile(); const goals = await api.getGoals(); setProfile(currentProfile); setScreen(currentProfile.body !== null && goals.length > 0 ? "dashboard" : "setup"); }} error={error} setError={setError} />;
-  if (screen === "setup") return <Setup profile={profile} onDone={async () => { setScreen("dashboard"); await loadDashboard(); }} error={error} setError={setError} />;
-  return <DashboardView dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={async () => { await api.logout(); setScreen("login"); setDashboard(null); setDiary(null); }} error={error} setError={setError} />;
+  let content: React.ReactNode;
+  if (screen === "loading") content = <Shell title="正在准备你的空间" subtitle="只需要几秒钟。"><div className="card loading" role="status">正在连接本地服务…</div></Shell>;
+  else if (screen === "bootstrap") content = <Bootstrap onDone={(user) => { setProfile(user); setScreen("setup"); }} error={error} setError={setError} />;
+  else if (screen === "login") content = <Login onDone={async () => { const currentProfile = await api.getProfile(); const goals = await api.getGoals(); setProfile(currentProfile); setScreen(currentProfile.body !== null && goals.length > 0 ? "dashboard" : "setup"); }} error={error} setError={setError} />;
+  else if (screen === "setup") content = <Setup profile={profile} onDone={async () => { setScreen("dashboard"); await loadDashboard(); }} error={error} setError={setError} />;
+  else content = <DashboardView dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={async () => { await api.logout(); setScreen("login"); setDashboard(null); setDiary(null); }} error={error} setError={setError} />;
+  return <><OfflineNotice offline={offline} /><div aria-live="polite" className="sr-only">{offlineLabel(!offline)}</div>{content}</>;
 }
 
-function Bootstrap(props: { onDone: () => void; error: string; setError: (value: string) => void }) {
+function OfflineNotice(props: { offline: boolean }) { return props.offline ? <div className="offline-banner" role="status"><span>{offlineLabel(false)}</span><button onClick={() => window.location.reload()}>重试</button></div> : null; }
+
+function Bootstrap(props: { onDone: (user: Profile) => void; error: string; setError: (value: string) => void }) {
   const [name, setName] = useState(""); const [password, setPassword] = useState(""); const [timezone, setTimezone] = useState("Asia/Shanghai"); const [busy, setBusy] = useState(false);
-  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); setBusy(true); try { await api.bootstrap({ displayName: name, password, timezone }); props.onDone(); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
+  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); setBusy(true); try { const result = await api.bootstrap({ displayName: name, password, timezone }); props.onDone(result.user); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
   return <Shell title="先建立你的空间" subtitle="数据保存在你自己的服务中，首次设置只需完成一次。"><form className="card form" onSubmit={submit}><Field label="称呼" name="displayName" value={name} onChange={setName} /><Field label="密码（至少 12 个字符）" name="password" type="password" value={password} onChange={setPassword} /><Field label="时区" name="timezone" value={timezone} onChange={setTimezone} />{props.error ? <p className="error" role="alert">{props.error}</p> : null}<button className="primary" disabled={busy}>{busy ? "正在创建…" : "创建并继续"}</button></form></Shell>;
 }
 

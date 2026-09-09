@@ -16,3 +16,7 @@ export function nextScreen(current: Screen, event: FlowEvent): Screen {
   if (event.type === "logout") return "login";
   return current;
 }
+
+export function offlineLabel(online: boolean) {
+  return online ? "" : "当前离线：已打开的页面仍可查看，恢复网络后可以继续保存。";
+}

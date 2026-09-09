@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -70,6 +70,9 @@ function serveStatic(response: ServerResponse, pathname: string, webDistDir: str
     shell = true;
   }
   if (!existsSync(candidate) || !statSync(candidate).isFile()) return false;
+  const canonicalRoot = realpathSync(root);
+  const canonicalCandidate = realpathSync(candidate);
+  if (!canonicalCandidate.startsWith(`${canonicalRoot}/`) && !canonicalCandidate.startsWith(`${canonicalRoot}\\`)) return false;
   const contentTypes: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".ico": "image/x-icon" };
   response.writeHead(200, { "content-type": contentTypes[extname(candidate).toLowerCase()] ?? "application/octet-stream", "cache-control": shell ? "no-cache" : "public, max-age=31536000, immutable" });
   response.end(readFileSync(candidate));
