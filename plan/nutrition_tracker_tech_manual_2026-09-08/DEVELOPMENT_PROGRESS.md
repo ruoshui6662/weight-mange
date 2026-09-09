@@ -103,13 +103,13 @@
 
 - 状态：`DONE`
 - 开始时间：2026-09-09 10:05 +08:00
-- 完成时间：2026-09-09 18:10 +08:00
+- 完成时间：2026-09-09 18:20 +08:00
 - 操作者：Codex
 - 依赖：M1-001
 - 计划变更：补 food_dataset、food_item、food_category、food_source_record、food_nutrient_definition、food_nutrient_value、food_alias、food_serving、food_search_stats 和 FTS 基线表/约束
 - 计划验收：raw string 保真；`Tr`、`—` 不变成 0；active dataset、canonical key、source relation、nutrient status、serving 与删除行为有约束测试
-- 当前进展：新增可组合的 `FOOD_MIGRATIONS`，包含 canonical、staging 和 `unicode61` FTS5 基线；7 个迁移约束测试以新 migration 缺失观察 RED 后通过
-- 验收结果：EVD-M1-002-A；聚焦 1 test file/7 tests、全量 8 test files/35 tests、lint/typecheck/integration/build/API smoke 均通过；docker smoke 以 Docker CLI 缺失提示退出 0
+- 当前进展：已为 source-record/food 与 staging-item/dataset 增加复合唯一键和复合外键；错配回归测试先 RED 后 GREEN
+- 验收结果：EVD-M1-002-A/B；聚焦 1 test file/7 tests、全量 8 test files/35 tests，lint/typecheck/integration/build/API smoke 均通过；docker smoke 以 Docker CLI 缺失提示退出 0
 - 下一步：进入 M1-003 Food import staging pipeline
 
 ## 4. DOC 任务板
@@ -254,6 +254,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 10:05 +08:00 | Codex | M1-001 review 修复开始 | P1：estimated 被计入 known coverage；先以 coverage=0.5 失败断言复现，再以最小修复恢复验收 |
 | 2026-09-09 10:15 +08:00 | Codex | 完成 M1-001 review 修复 | estimated 仍计入营养总量和 hasEstimated，但 coverage 分子只计 known；新 RED/GREEN 和相关门禁均通过 |
 | 2026-09-09 18:10 +08:00 | Codex | 完成 M1-002 Food canonical schema | 新增前向 food migration、canonical/staging/FTS5 表与约束；先观察 migration 缺失 RED，再完成 7 个 schema tests 和全量门禁 |
+| 2026-09-09 18:20 +08:00 | Codex | 开始 M1-002 审查修复 | 计划以跨 food/source 和跨 staging dataset/item 的错配回归测试验证复合外键，再运行完整门禁 |
+| 2026-09-09 18:20 +08:00 | Codex | 完成 M1-002 审查修复 | 两个错配回归断言先失败，复合唯一键/外键后聚焦 7 tests 与全量 35 tests 通过 |
 
 ## 11. 交接摘要
 

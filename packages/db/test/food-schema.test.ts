@@ -121,6 +121,11 @@ describe("food canonical schema", () => {
     expect(() => insert.run("bad-basis", "food_1", "source_1", "iron_mg", null, null, "known", 0, "g", null, 1000)).toThrow();
     expect(() => insert.run("bad-unit", "food_1", "source_1", "iron_mg", null, null, "known", 100, "oz", null, 1000)).toThrow();
     expect(() => insert.run("duplicate", "food_1", "source_1", "iron_mg", 1, "1", "known", 100, "g", null, 1000)).toThrow();
+    sqlite.prepare("INSERT INTO food_item (id, canonical_key, primary_name, food_type, default_basis, source_quality, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run("food_2", "custom:other-food", "另一食物", "custom", "serving", "C", 1, 1000, 1000);
+    sqlite.prepare("INSERT INTO food_source_record (id, food_id, source_type, raw_json, imported_at, is_primary) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("source_2", "food_2", "custom", "{}", 1000, 1);
+    expect(() => insert.run("cross-food", "food_1", "source_2", "iron_mg", 1, "1", "known", 100, "g", null, 1000)).toThrow();
   });
 
   it("enforces serving, alias, and search-stat validation while retaining search metadata", () => {
@@ -149,5 +154,10 @@ describe("food canonical schema", () => {
     expect(sqlite.prepare("SELECT raw_json FROM food_staging_item WHERE id = ?").get("item_1")).toEqual({ raw_json: "{\"foodName\":\"鸡\"}" });
     expect(sqlite.prepare("SELECT amount_raw FROM food_staging_nutrient WHERE id = ?").get("staging-nutrient_1")).toEqual({ amount_raw: "Tr" });
     expect(() => sqlite.prepare("INSERT INTO food_staging_item (id, staging_dataset_id, source_record_id, raw_json, created_at) VALUES (?, ?, ?, ?, ?)").run("orphan-item", "missing", "x", "{}", 1000)).toThrow();
+    sqlite.prepare("INSERT INTO food_staging_dataset (id, dataset_key, version, source_name, checksum, imported_at, raw_manifest_json) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run("staging_2", "cfcd6-sanotsu", "v3", "CFCD", "checksum-staging-2", 1000, "{}");
+    sqlite.prepare("INSERT INTO food_staging_item (id, staging_dataset_id, source_record_id, raw_json, created_at) VALUES (?, ?, ?, ?, ?)")
+      .run("item_2", "staging_2", "other", "{}", 1000);
+    expect(() => sqlite.prepare("INSERT INTO food_staging_nutrient (id, staging_dataset_id, staging_item_id, nutrient_key, amount_raw, created_at) VALUES (?, ?, ?, ?, ?, ?)").run("cross-dataset", "staging_1", "item_2", "iron", "Tr", 1000)).toThrow();
   });
 });

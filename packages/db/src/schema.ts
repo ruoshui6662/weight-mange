@@ -166,7 +166,8 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
         source_url TEXT,
         imported_at INTEGER NOT NULL,
         is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
-        CHECK (NOT (source_type = 'ai_ocr_candidate' AND is_primary = 1))
+        CHECK (NOT (source_type = 'ai_ocr_candidate' AND is_primary = 1)),
+        UNIQUE(id, food_id)
       );
 
       CREATE INDEX food_source_record_food_idx ON food_source_record(food_id);
@@ -183,7 +184,7 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
       CREATE TABLE food_nutrient_value (
         id TEXT PRIMARY KEY,
         food_id TEXT NOT NULL REFERENCES food_item(id) ON DELETE RESTRICT,
-        source_record_id TEXT NOT NULL REFERENCES food_source_record(id) ON DELETE RESTRICT,
+        source_record_id TEXT NOT NULL,
         nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
         amount_numeric REAL,
         amount_raw TEXT,
@@ -192,7 +193,9 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
         basis_unit TEXT NOT NULL CHECK (basis_unit IN ('g', 'ml', 'serving')),
         confidence REAL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
         created_at INTEGER NOT NULL,
-        UNIQUE(food_id, source_record_id, nutrient_id)
+        UNIQUE(food_id, source_record_id, nutrient_id),
+        FOREIGN KEY (source_record_id, food_id)
+          REFERENCES food_source_record(id, food_id) ON DELETE RESTRICT
       );
 
       CREATE INDEX food_nutrient_value_food_idx ON food_nutrient_value(food_id, nutrient_id);
@@ -244,7 +247,8 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
         staging_dataset_id TEXT NOT NULL REFERENCES food_staging_dataset(id) ON DELETE RESTRICT,
         source_record_id TEXT,
         raw_json TEXT NOT NULL,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        UNIQUE(id, staging_dataset_id)
       );
 
       CREATE INDEX food_staging_item_dataset_idx ON food_staging_item(staging_dataset_id);
@@ -252,10 +256,12 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
       CREATE TABLE food_staging_nutrient (
         id TEXT PRIMARY KEY,
         staging_dataset_id TEXT NOT NULL REFERENCES food_staging_dataset(id) ON DELETE RESTRICT,
-        staging_item_id TEXT NOT NULL REFERENCES food_staging_item(id) ON DELETE RESTRICT,
+        staging_item_id TEXT NOT NULL,
         nutrient_key TEXT NOT NULL CHECK (length(trim(nutrient_key)) > 0),
         amount_raw TEXT,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (staging_item_id, staging_dataset_id)
+          REFERENCES food_staging_item(id, staging_dataset_id) ON DELETE RESTRICT
       );
 
       CREATE INDEX food_staging_nutrient_item_idx ON food_staging_nutrient(staging_item_id);

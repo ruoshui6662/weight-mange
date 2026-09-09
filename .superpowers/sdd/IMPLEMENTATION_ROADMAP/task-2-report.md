@@ -2,13 +2,14 @@
 
 ## Status
 
-`DONE` — 2026-09-09 18:10 +08:00.
+`DONE` — 2026-09-09 18:20 +08:00 (including review fixes).
 
 ## Changed files
 
 - `packages/db/src/schema.ts`
   - Added forward-only `0002_food_canonical_schema` in separately exported `FOOD_MIGRATIONS` for later composition with `CORE_MIGRATIONS`.
   - Added canonical food catalog tables, raw source/nutrient preservation, partial active-dataset uniqueness, staging tables, indexes, checks, foreign keys, and `food_search_fts` FTS5 baseline using `unicode61`.
+  - Review fix: added `(id, food_id)` and `(id, staging_dataset_id)` parent keys plus composite foreign keys, so nutrient/source and staging-nutrient/item references cannot cross their owning food or staging dataset.
 - `packages/db/test/food-schema.test.ts`
   - Added seven real SQLite migration/constraint tests.
 - `plan/nutrition_tracker_tech_manual_2026-09-08/DEVELOPMENT_PROGRESS.md`
@@ -40,6 +41,10 @@ Exit code: `0`.
 
 Result: 1 test file, 7/7 tests passed. The tests cover empty-db migration/object creation; active dataset partial uniqueness and deletion protection; canonical key and food field checks; foreign-key, AI candidate, and deactivation semantics; raw `Tr`/`—` preservation and nutrient constraints; serving/alias/search-stat checks; and staging raw payload linkage.
 
+### Review-fix RED/GREEN
+
+The focused schema command was rerun after adding two regression assertions. It first exited `1`: both `food_id=food_1` plus `source_record_id=source_2` (owned by `food_2`) and `staging_dataset_id=staging_1` plus `staging_item_id=item_2` (owned by `staging_2`) were incorrectly accepted. The migration now has the corresponding composite parent unique keys and composite foreign keys; the same focused command exited `0` with 7/7 tests passed.
+
 ## Full verification
 
 All commands ran from `D:\AI编程\体重管理\.worktrees\m0-foundation`.
@@ -48,7 +53,7 @@ All commands ran from `D:\AI编程\体重管理\.worktrees\m0-foundation`.
 |---|---:|---|
 | `pnpm lint` | 0 | ESLint completed without findings. |
 | `pnpm typecheck` | 0 | TypeScript project build completed. |
-| `pnpm test` | 0 | 8 test files, 35 tests passed. |
+| `pnpm test` | 0 | 8 test files, 35 tests passed (rerun after review fix). |
 | `pnpm test:integration` | 0 | No integration test files found; configured command exits successfully. |
 | `pnpm build` | 0 | TypeScript build completed. |
 | `pnpm api:smoke` | 0 | `home=200`, `health=200`, `ready=200`. |
@@ -62,3 +67,4 @@ All commands ran from `D:\AI编程\体重管理\.worktrees\m0-foundation`.
 ## Commit hashes
 
 - Implementation commit: `5419010a95d148e859b74ed5097e843f1d99a0e2` (`feat(db): add food canonical schema`).
+- Review-fix commit: pending local commit.
