@@ -84,3 +84,21 @@ it("persists a serving id and copyDay re-resolves active servings or falls back 
   expect(fallback[0]).toMatchObject({ entrySource: "copy_snapshot", servingId });
   expect(fallback[0]?.nutrients.find((value) => value.nutrientId === "energy_kcal")?.amountNumeric).toBe(75);
 });
+
+it("weights coverage by stored gram equivalents rather than entry count", () => {
+  const { sqlite, foodId, diary } = setup();
+  diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "breakfast", foodId, amount: 1, unit: "g", source: "manual" });
+  sqlite.prepare("UPDATE food_nutrient_value SET amount_numeric=NULL,amount_raw='—',value_status='unknown' WHERE food_id=? AND nutrient_id='energy_kcal'").run(foodId);
+  diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "lunch", foodId, amount: 100, unit: "g", source: "manual" });
+  expect(diary.getDay({ userId: "user-1", date: "2026-09-09" }).dailyTotal.nutrients.energy_kcal.coverage).toBeCloseTo(1 / 101);
+});
+
+it("rolls back an entire copied meal if a later serving cannot be resolved", () => {
+  const { sqlite, foodId, foods, diary } = setup();
+  const servingId = foods.addServing(foodId, { label: "一杯", amount: 250, unit: "g", equivalentG: 250 });
+  diary.createEntry({ userId: "user-1", date: "2026-09-08", mealSlotId: "breakfast", foodId, amount: 10, unit: "g", source: "manual" });
+  diary.createEntry({ userId: "user-1", date: "2026-09-08", mealSlotId: "breakfast", foodId, amount: 1, unit: "serving", servingId, source: "manual" });
+  sqlite.prepare("DELETE FROM food_serving WHERE id=?").run(servingId);
+  expect(() => diary.copyMeal({ userId: "user-1", date: "2026-09-09", fromDate: "2026-09-08", fromMealSlotId: "breakfast", toMealSlotId: "lunch" })).toThrow("DIARY_SERVING_NOT_FOUND");
+  expect(sqlite.prepare("SELECT count(*) count FROM diary_entry e JOIN diary_day d ON d.id=e.diary_day_id WHERE d.local_date='2026-09-09'").get()).toMatchObject({ count: 0 });
+});

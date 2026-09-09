@@ -54,3 +54,9 @@ Four Important findings were fixed after a new RED suite (missing `mealTotals`/`
 - `copyDay` and `POST /api/v1/diary/:date/copy-day` copy all source-day meal slots.
 
 Focused remediation verification: `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts` — exit 0, 2 files / 7 tests. Full gates rerun: 51 files / 254 tests, all listed commands exit 0; Docker CLI remains unavailable locally.
+
+## Follow-up review remediation
+
+- Coverage now uses each stored entry `gramEquivalent`: known grams are covered, while estimated/trace/unknown grams remain relevant but uncovered.
+- Meal/day copying uses a single outer transaction. A failure while resolving a later source entry rolls back every copied entry from that request.
+- Focused verification: `pnpm vitest run packages/diary/test/diary.test.ts` — exit 0, 1 file / 8 tests; `pnpm lint` and `pnpm typecheck` — exit 0.

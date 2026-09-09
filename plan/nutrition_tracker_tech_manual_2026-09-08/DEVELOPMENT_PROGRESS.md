@@ -318,6 +318,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 21:15 +08:00 | Codex | 开始 M1-005 Diary domain 与 snapshot | 读取 API/DB/roadmap；先固定快照、幂等、复制 fallback 与 optimistic concurrency contract |
 | 2026-09-09 21:20 +08:00 | Codex + delegated implementer | 完成 M1-005 Diary domain 与 snapshot | 先观察 diary domain 缺失/API 404 RED；`0007`、已存营养快照、幂等、版本冲突、复制 fallback 和核心 REST API 完成；聚焦 5 tests、全量 250 tests 与全部本地门禁通过，Docker CLI 缺失如实记录 |
 | 2026-09-09 21:30 +08:00 | Codex + delegated implementer | 修复 M1-005 独立复审问题 | 新增 `0008` serving 身份迁移；day 返回存储快照 meal/daily totals 与 coverage；copy-day API/domain、active serving 重新解析和 snapshot fallback 回归通过；聚焦 7 tests、全量 254 tests 与全部本地门禁通过 |
+| 2026-09-09 21:35 +08:00 | Codex + delegated implementer | 修复 M1-005 follow-up 复审问题 | coverage 按 `gram_equivalent` 加权，known 才计 covered；copy-meal/day 改为请求级单一事务，后续 serving 失败可回滚先前复制；聚焦 8 tests、lint/typecheck 均 exit 0 |
 | 2026-09-09 20:42 +08:00 | Codex + delegated implementer | M1-004 实现完成，等待复审 | 本地 search/detail/custom/alias/serving/favorite 路由和 domain 已完成；聚焦 4 tests、全量 131 tests 与门禁通过；100k 性能未测量并已记录限制 |
 | 2026-09-09 20:52 +08:00 | Codex + delegated implementer | M1-004 复审修复完成，等待确认 | nested custom transaction、source revision、FTS/keyset、error envelope、reference user additions 和 strict cursor 回归均通过；全量 135 tests |
 | 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |
