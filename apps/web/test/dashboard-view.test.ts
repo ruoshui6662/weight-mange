@@ -8,6 +8,7 @@ const noopAsync = async () => undefined;
 describe("dashboard interaction feedback", () => {
   it("renders all navigation actions with an observable current state", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardView, {
+      today: "2026-09-10",
       dashboard: null,
       diary: null,
       profile: { id: "u1", displayName: "ruoshui", timezone: "Asia/Shanghai", body: null },
@@ -69,6 +70,7 @@ describe("dashboard interaction feedback", () => {
 
   it("renders record edit, delete, and copy actions for an existing diary entry", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardView, {
+      today: "2026-09-10",
       dashboard: { date: "2026-09-10", goal: { kcal: 1800, proteinG: null, fatG: null, carbG: null }, intake: { kcal: 223, proteinG: 7, fatG: 1, carbG: 47 }, remainingKcal: 1577, meals: [{ key: "breakfast", displayName: "早餐", totals: { kcal: 223 } }] },
       diary: { mealSlots: [{ id: "u:breakfast", key: "breakfast", displayName: "早餐" }], entries: [{ id: "entry-1", mealSlotId: "u:breakfast", displayNameSnapshot: "馒头", amount: 100, unit: "g", version: 0 }] },
       profile: { id: "u1", displayName: "ruoshui", timezone: "Asia/Shanghai", body: null },

@@ -2,7 +2,7 @@
 
 > 文档集版本：v1.1  
 > 基线日期：2026-09-08  
-> 当前状态：M1/M2 已完成，M3-001 菜谱数据决策审阅中
+> 当前状态：M1/M2 已完成，M3-001 与 M3-002 菜谱计算/API 已完成，下一步进入 M3-003 菜谱 UI/E2E
 > 项目定位：个人自用、自托管、Docker 化的饮食/体重/运动/减脂管理应用
 
 ## 1. 建议阅读顺序
@@ -19,6 +19,7 @@
 10. [UI_DESIGN_SYSTEM.md](./UI_DESIGN_SYSTEM.md)：视觉、交互、响应式和无障碍规范。
 11. [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)：部署、升级、备份、恢复和运维。
 12. [ADR-0001-sqlite-driver.md](./ADR-0001-sqlite-driver.md) 与 [ADR-0002-recipe-snapshot.md](./ADR-0002-recipe-snapshot.md)：已接受的技术与菜谱历史边界决策。
+13. [M3-002 recipe calculation/API implementation plan](../../docs/superpowers/plans/2026-09-09-recipe-calculation-api.md)：任务拆分、接口和验收命令。
 
 ## 2. 文档职责与优先级
 

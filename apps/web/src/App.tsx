@@ -3,9 +3,8 @@ import { ApiError, api, type AnalyticsOverview, type Dashboard, type Diary, type
 import { bootstrapError, validateBootstrapInput, BOOTSTRAP_PASSWORD_MIN_LENGTH } from "./bootstrap-validation";
 import { DASHBOARD_TABS, nextScreen, offlineLabel, type DashboardTab, type Screen } from "./flow";
 import { searchStatusForResults, type FoodSearchStatus } from "./search-state";
+import { daysAgo, localDateNow } from "./date";
 
-const today = new Date().toISOString().slice(0, 10);
-const daysAgo = (date: string, days: number) => { const value = new Date(`${date}T00:00:00Z`); value.setUTCDate(value.getUTCDate() - days); return value.toISOString().slice(0, 10); };
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
 function Field(props: { label: string; name: string; value: string; type?: string; onChange: (value: string) => void; min?: string; minLength?: number; step?: string }) {
@@ -23,6 +22,7 @@ export function App() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [diary, setDiary] = useState<Diary | null>(null);
   const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  const today = localDateNow(profile?.timezone ?? "UTC");
 
   useEffect(() => {
     const online = () => setOffline(false);
@@ -35,7 +35,7 @@ export function App() {
   const loadDashboard = useCallback(async (date = today) => {
     const [nextDashboard, nextDiary] = await Promise.all([api.getDashboard(date), api.getDiary(date)]);
     setDashboard(nextDashboard); setDiary(nextDiary);
-  }, []);
+  }, [today]);
 
   useEffect(() => {
     let active = true;
@@ -58,8 +58,8 @@ export function App() {
   if (screen === "loading") content = <Shell title="正在准备你的空间" subtitle="只需要几秒钟。"><div className="card loading" role="status">正在连接本地服务…</div></Shell>;
   else if (screen === "bootstrap") content = <Bootstrap onDone={(user) => { setProfile(user); setScreen("setup"); }} error={error} setError={setError} />;
   else if (screen === "login") content = <Login onDone={async () => { const currentProfile = await api.getProfile(); const goals = await api.getGoals(); setProfile(currentProfile); if (currentProfile.body !== null && goals.length > 0) { await loadDashboard(); setScreen("dashboard"); } else setScreen("setup"); }} error={error} setError={setError} />;
-  else if (screen === "setup") content = <Setup profile={profile} onDone={async () => { setScreen("dashboard"); await loadDashboard(); }} error={error} setError={setError} />;
-  else content = <DashboardView dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={async () => { await api.logout(); setScreen("login"); setDashboard(null); setDiary(null); }} error={error} setError={setError} />;
+  else if (screen === "setup") content = <Setup today={today} profile={profile} onDone={async () => { setScreen("dashboard"); await loadDashboard(); }} error={error} setError={setError} />;
+  else content = <DashboardView today={today} dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={async () => { await api.logout(); setScreen("login"); setDashboard(null); setDiary(null); }} error={error} setError={setError} />;
   return <><OfflineNotice offline={offline} /><div aria-live="polite" className="sr-only">{offlineLabel(!offline)}</div>{content}</>;
 }
 
@@ -77,13 +77,13 @@ function Login(props: { onDone: () => Promise<void>; error: string; setError: (v
   return <Shell title="欢迎回来" subtitle="输入密码继续记录今天的饮食。"><form className="card form" onSubmit={submit}><Field label="密码" name="password" type="password" value={password} onChange={setPassword} />{props.error ? <p className="error" role="alert">{props.error}</p> : null}<button className="primary" disabled={busy}>{busy ? "正在登录…" : "登录"}</button></form></Shell>;
 }
 
-function Setup(props: { profile: Profile | null; onDone: () => Promise<void>; error: string; setError: (value: string) => void }) {
+function Setup(props: { today: string; profile: Profile | null; onDone: () => Promise<void>; error: string; setError: (value: string) => void }) {
   const [height, setHeight] = useState(""); const [sex, setSex] = useState("none"); const [activity, setActivity] = useState("light"); const [goalType, setGoalType] = useState("loss"); const [calories, setCalories] = useState("1800"); const [busy, setBusy] = useState(false);
-  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); setBusy(true); try { await api.updateProfile({ heightCm: Number(height), sexForFormula: sex, activityLevel: activity }); await api.createGoal({ goalType, calorieTargetKcal: Number(calories), effectiveFrom: today, source: "manual" }); await props.onDone(); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
+  async function submit(event: React.FormEvent) { event.preventDefault(); props.setError(""); setBusy(true); try { await api.updateProfile({ heightCm: Number(height), sexForFormula: sex, activityLevel: activity }); await api.createGoal({ goalType, calorieTargetKcal: Number(calories), effectiveFrom: props.today, source: "manual" }); await props.onDone(); } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); } }
   return <Shell title={`完善 ${props.profile?.displayName ?? "你的"} 的目标`} subtitle="这些信息只用于计算每日预算，你可以随时调整。"><form className="card form" onSubmit={submit}><Field label="身高（cm）" name="heightCm" type="number" min="1" step="0.1" value={height} onChange={setHeight} /><label className="field"><span>公式性别</span><select value={sex} onChange={(event) => setSex(event.target.value)}><option value="none">不指定</option><option value="female">女性</option><option value="male">男性</option></select></label><label className="field"><span>活动水平</span><select value={activity} onChange={(event) => setActivity(event.target.value)}><option value="sedentary">久坐</option><option value="light">轻度活动</option><option value="moderate">中度活动</option><option value="high">高活动</option><option value="very_high">极高活动</option></select></label><label className="field"><span>当前目标</span><select value={goalType} onChange={(event) => setGoalType(event.target.value)}><option value="loss">减脂</option><option value="maintain">维持</option><option value="gain">增重</option></select></label><Field label="每日热量目标（kcal）" name="calorieTargetKcal" type="number" min="1" step="1" value={calories} onChange={setCalories} />{props.error ? <p className="error" role="alert">{props.error}</p> : null}<button className="primary" disabled={busy}>{busy ? "正在保存…" : "完成设置"}</button></form></Shell>;
 }
 
-export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary | null; profile: Profile | null; loadDashboard: (date?: string) => Promise<void>; onLogout: () => Promise<void>; error: string; setError: (value: string) => void }) {
+export function DashboardView(props: { today: string; dashboard: Dashboard | null; diary: Diary | null; profile: Profile | null; loadDashboard: (date?: string) => Promise<void>; onLogout: () => Promise<void>; error: string; setError: (value: string) => void }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("today");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>([]);
@@ -101,6 +101,7 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   const [m2Error, setM2Error] = useState("");
   const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState<string | null>(null);
+  const today = props.today;
   const kcalGoal = props.dashboard?.goal?.kcal ?? 0;
   const intake = props.dashboard?.intake.kcal ?? 0;
   const progress = kcalGoal > 0 ? Math.min(100, Math.round((intake / kcalGoal) * 100)) : 0;
@@ -171,12 +172,12 @@ export function DashboardView(props: { dashboard: Dashboard | null; diary: Diary
   const loadWeightPanel = useCallback(async () => {
     setM2Loading(true); setM2Error("");
     try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
-  }, []);
+  }, [today]);
 
   const loadAnalyticsPanel = useCallback(async () => {
     setM2Loading(true); setM2Error("");
     try { const from = daysAgo(today, 29); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
-  }, []);
+  }, [today]);
 
   useEffect(() => { if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadWeightPanel]);
 

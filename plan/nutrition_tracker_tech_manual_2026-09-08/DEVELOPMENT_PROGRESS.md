@@ -3,19 +3,19 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 07:20 +08:00
+> 最后更新：2026-09-10 04:50 +08:00
 
 ## 1. 当前快照
 
 | 项目 | 当前值 |
 |---|---|
-| 项目阶段 | M1 饮食记录纵向切片实施；M2 目标与能量估算已开始 |
+| 项目阶段 | M3 菜谱、运动与预算策略实施 |
 | 总体状态 | `IN_PROGRESS` |
-| 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M3-001 菜谱数据决策：ingredient nutrition snapshot 与刷新边界 |
-| 下一步 | 审阅并确认 ADR-0002 后进入 M3-002 菜谱计算与 API |
+| 当前里程碑 | M3 — 菜谱、运动与预算策略 |
+| 当前焦点 | M3-003 菜谱 UI/E2E：原料搜索、成品重量、份数、warnings 与历史快照 |
+| 下一步 | 按路线为 M3-003 编写 UI/E2E 实施计划，先固定原料搜索、计算展示和加入日记的验收场景 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006 已完成；M3-001 为下一项规划任务 |
+| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006 已完成；M3-001 决策已完成，M3-002 进入实施 |
 | Git | 本地 `main` 已包含本轮 M1-007 记录操作提交，工作区干净；远程发布未在本轮执行 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 0/6 | 菜谱/运动快照和预算策略通过 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 2/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -298,16 +298,30 @@
 
 ### M3-001 — 菜谱数据决策
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-10 07:20 +08:00
 - 操作者：Codex
 - 依赖：M1-005、M1-004、NUTRITION_ENGINE_SPEC 第 9–10 节
 - 计划变更：落实 ingredient nutrition snapshot、recipe cache 失效、food projection 单向关系和 recipe-to-diary 历史边界。
-- 当前进展：已形成并写入 `ADR-0002-recipe-snapshot.md`；同步 `DATABASE_SCHEMA.md` 的 ingredient nutrient snapshot/cache 语义和 `API_SPEC.md` 的显式 refresh/warning contract；暂不修改数据库或业务代码。
-- 活动日志：2026-09-10 07:20 +08:00，操作者 Codex；计划验收：ADR 自洽检查、规范互链/术语检查、决策记录从 PROPOSED 转为 ACCEPTED，并等待用户审阅后进入 M3-002。
-- 验收结果：待文档验收与用户审阅。
-- 阻塞/风险：M3-002 依赖本 ADR 的 schema/API contract；在确认前不得写 recipe migration/domain。
-- 下一步：审阅 ADR-0002；确认后开始 M3-002 的 TDD schema/domain/API 实现。
+- 当前进展：已形成并写入 `ADR-0002-recipe-snapshot.md`；同步 `DATABASE_SCHEMA.md` 的 ingredient nutrient snapshot/cache 语义和 `API_SPEC.md` 的显式 refresh/warning contract；DEC-006 已为 `ACCEPTED`。
+- 活动日志：2026-09-10 07:20 +08:00，操作者 Codex；完成 ADR 自洽检查、规范互链/术语检查和文档 diff 验证。
+- 验收结果：EVD-M3-001-A、EVD-M3-001-B；5 个文档存在且非空，snapshot/cache/food projection/refresh/warning/recipe-to-diary/`recipe_yield_v1` 术语检查通过，`git diff --check` exit 0。
+- 阻塞/风险：无；用户已确认继续后续开发，ADR contract 进入实现阶段。
+- 下一步：进入 M3-002 的 TDD schema/domain/API 实现。
+
+### M3-002 — 菜谱计算与 API
+
+- 状态：`DONE`
+- 开始时间：2026-09-09 22:39 +08:00
+- 完成时间：2026-09-10 04:50 +08:00
+- 操作者：Codex
+- 依赖：M3-001、M1-001、M1-004、M1-005、`ADR-0002-recipe-snapshot.md`
+- 计划变更：按 `docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 增加 recipe migration、纯计算器、ingredient snapshot/cache 服务、copy/edit/delete/refresh、recipe-to-diary snapshot writer、鉴权 API 和 typed web client。
+- 当前进展：Task 1–5 已完成：迁移/纯计算器/快照持久化/cache/刷新/复制/版本与软删除、recipe-to-diary snapshot writer、认证 API 和 typed web client 已落地；Task 6 文档同步与完整验收已完成。另修复 Web 按 UTC 日期查询导致用户时区跨日后记录列表缺失的问题，并补充日期依赖闭包回归。
+- 活动日志：2026-09-09 22:39 +08:00 开始 M3-002；2026-09-10 04:21 +08:00 完成 Task 1；2026-09-10 04:24 +08:00 完成 Task 2；2026-09-10 04:32 +08:00 完成 Task 3；2026-09-10 04:36 +08:00 完成 Task 4；2026-09-10 04:40 +08:00 完成 Task 5；2026-09-10 04:45 +08:00 E2E 首次失败并完成根因定位；2026-09-10 04:48 +08:00 时区日期与闭包修复后 E2E 通过；2026-09-10 04:50 +08:00 完成完整门禁，操作者 Codex。
+- 验收结果：EVD-M3-002-A 至 EVD-M3-002-F；完整 lint/typecheck/test/integration/build/API smoke/E2E/diff gate 通过。
+- 阻塞/风险：本机 Docker CLI 缺失，仅影响本地容器实测，不影响非 Docker 验收和 CI buildx；若遇到新的实现阻塞，必须立即改为 `BLOCKED` 并记录解除条件。
+- 下一步：进入 M3-003 菜谱 UI/E2E。
 
 ## 4. DOC 任务板
 
@@ -431,6 +445,13 @@ result: 42 passed, 0 failed
 | EVD-M2-006-B | M2-006 | 2026-09-10 06:30 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 本地 Chromium Playwright 截图 | 全量 138 files/732 tests；integration 无测试文件正常 exit 0；lint/typecheck/build/API smoke/diff check exit 0；Playwright 1 passed，覆盖 bootstrap/login/logout、食物搜索成功/空状态、记账、体重写入、分析不足、44px 导航命中区和 360/390/430 无横向溢出，三档截图写入 test-results 并被 gitignore；BLK-007 解除 |
 | EVD-M1-007-F | M1-007 | 2026-09-10 07:05 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全量 138 files/733 tests；integration 无测试文件正常 exit 0；Playwright 1 passed，真实 Chromium 覆盖编辑 100→120g、复制昨日整天入口、删除确认、搜索成功/空状态、体重写入、分析不足、登录/退出、44px 命中区和 360/390/430 无横向溢出；M1-007 退出门槛通过 |
 | EVD-M3-001-A | M3-001 | 2026-09-10 07:20 +08:00 | PowerShell：5 个文档存在/非空、ADR 5 项 contract 术语、DEC-006=ACCEPTED、`git -c safe.directory='D:/AI编程/体重管理' diff --check` | exit 0；snapshot 字段、cache 失效、单向 food projection、显式 refresh/warning、recipe-to-diary 边界和 `recipe_yield_v1` 术语检查通过；ADR 仍待用户审阅，任务保持 IN_PROGRESS |
+| EVD-M3-001-B | M3-001 | 2026-09-09 22:39 +08:00 | 计划自检：检查 `docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 的 spec coverage、placeholder scan、type consistency；`git diff --check` | exit 0；M3-002 计划覆盖计算、持久化、刷新、cache、复制、编辑、删除、日记快照、API 和交接证据；无 TBD/TODO/未定义接口；进入 M3-002 |
+| EVD-M3-002-A | M3-002 | 2026-09-10 04:21 +08:00 | `pnpm exec vitest run packages/db/test/schema.test.ts packages/recipe/test/recipe.test.ts`; `pnpm typecheck`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 聚焦 2 files/5 tests passed；迁移重复执行、四张 recipe 表、version/deleted_at、cache invalidated_at、状态约束通过；typecheck 和 diff check exit 0；提交 `8466d8b` |
+| EVD-M3-002-B | M3-002 | 2026-09-10 04:24 +08:00 | `pnpm exec vitest run packages/recipe/test/recipe.test.ts packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm typecheck`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 2 files/14 tests passed；total/per100g/perServing、coverage、trace/estimated/unknown warnings、缺少 yield 语义和非正分母校验通过；typecheck/diff check exit 0；提交 `245b702` |
+| EVD-M3-002-C | M3-002 | 2026-09-10 04:32 +08:00 | `pnpm exec vitest run packages/recipe/test/recipe.test.ts`; `pnpm typecheck`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | recipe tests 8 passed；create/source snapshot、food revision isolation、explicit refresh/unavailable warning、cache rebuild、copy/delete/version conflict passed；typecheck/diff check exit 0；提交 `1480a3c` |
+| EVD-M3-002-D | M3-002 | 2026-09-10 04:36 +08:00 | `pnpm exec vitest run packages/diary/test/diary.test.ts packages/recipe/test/recipe.test.ts`; `pnpm typecheck`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 2 files/22 tests passed；recipe diary writer、recipe_id/source snapshot、food update 后历史不漂移、非法餐次事务回滚和 add-to-diary per100g scaling 通过；typecheck/diff check exit 0；提交 `8403c90` |
+| EVD-M3-002-E | M3-002 | 2026-09-10 04:40 +08:00 | `pnpm exec vitest run apps/api/test/recipe-routes.test.ts apps/web/test/api.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | API/Web 2 files/5 tests passed；recipe routes、version conflict、copy/refresh/add/delete、client credentials/encoding 通过；lint/typecheck/build/diff check exit 0；提交 `1d5f701` |
+| EVD-M3-002-F | M3-002 | 2026-09-10 04:50 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | lint/typecheck/build/API smoke/diff check exit 0；integration 无测试文件并正常 exit 0；全量 174 files/993 tests passed；Playwright 1 passed，覆盖首次设置、登录、搜索、添加/编辑/复制/删除、体重写入、分析不足及 360/390/430 无横向溢出；时区日期回归与日期依赖闭包修复通过 |
 
 ## 9. 问题队列
 
@@ -452,6 +473,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 `ISSUE-115 | 2026-09-10 00:20 +08:00 | M1-007 | P2 | 首次设置密码少于 12 个字符时只显示通用请求失败 | 前端预校验并映射明确错误文案 | RESOLVED，见 EVD-M1-007-D`
 
 `ISSUE-116 | 2026-09-10 00:45 +08:00 | M1-007 | P1 | Dashboard 底部导航按钮没有动作；本地食物目录为空时搜索只返回空数组且没有空状态/导入入口 | 接入导航状态与页面、增加食物目录导入或明确空状态引导，并补 UI/E2E 验收 | RESOLVED，见 EVD-M1-009-A`
+
+`ISSUE-117 | 2026-09-10 04:45 +08:00 | M3-002 | P1 | 浏览器 UTC 日期与用户时区 localDate 不一致，且日期加载回调捕获初始日期，导致体重/饮食新增后列表为空但趋势可见 | 使用 profile timezone 计算本地日期，补依赖与回归测试，并重建 E2E dist | RESOLVED，见 EVD-M3-002-F`
 
 ## 10. 活动日志
 
@@ -547,13 +570,21 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 06:55 +08:00 | Codex | 开始 M1-007 记录操作补齐 | 用户确认按后续规划继续；先写 Dashboard 现有记录的编辑/删除/复制动作回归测试，复用现有 PATCH/DELETE/copy API，不新增迁移 |
 | 2026-09-10 07:05 +08:00 | Codex | 完成 M1-007，M1 9/9 DONE | 新增 inline 编辑、删除确认、复制昨日整天/单餐和 API client；RED/GREEN、全量 733 tests、Playwright 编辑/删除/复制与三档 viewport 门禁通过；下一步进入 M3-001 |
 | 2026-09-10 07:20 +08:00 | Codex | 开始 M3-001 | 读取菜谱 API/数据库/营养规范；形成 ADR-0002，决定 ingredient nutrient snapshot、显式刷新、cache 失效、单向 food projection 和 recipe-to-diary snapshot 边界；等待审阅后进入 M3-002 |
+| 2026-09-09 22:39 +08:00 | Codex | 完成 M3-001 并开始 M3-002 | 用户确认继续后续开发；ADR-0002/DEC-006 contract 已接受，M3-002 实施计划已保存，任务进入 IN_PROGRESS；下一步执行 schema/calculation RED 测试 |
+| 2026-09-10 04:21 +08:00 | Codex | 完成 M3-002 Task 1 | 先观察 migration/package RED，再实现并通过 2 files/5 tests、typecheck、diff check；提交 `8466d8b`；下一步执行 Task 2 recipe calculation RED |
+| 2026-09-10 04:24 +08:00 | Codex | 完成 M3-002 Task 2 | 先观察 calculator RED，再实现 `recipe_yield_v1` 并通过 2 files/14 tests、typecheck、diff check；提交 `245b702`；下一步执行 Task 3 persistence/cache/refresh RED |
+| 2026-09-10 04:32 +08:00 | Codex | 完成 M3-002 Task 3 | 先观察 service RED，再实现 snapshot persistence、cache rebuild、explicit refresh、copy/delete/version conflict 并通过 8 tests、typecheck、diff check；提交 `1480a3c`；下一步执行 Task 4 diary snapshot writer RED |
+| 2026-09-10 04:36 +08:00 | Codex | 完成 M3-002 Task 4 | 先观察 diary writer/addToDiary RED，再实现 recipe-backed diary snapshot 与 per100g scaling 并通过 2 files/22 tests、typecheck、diff check；提交 `8403c90`；下一步执行 Task 5 recipe HTTP API/client RED |
+| 2026-09-10 04:40 +08:00 | Codex | 完成 M3-002 Task 5并开始 Task 6 | 先观察 API/Web RED，再实现认证 recipe routes、error envelope、typed client 与规范同步；聚焦 5 tests、lint/typecheck/build/diff check 通过，提交 `1d5f701`；下一步完整验收 |
+| 2026-09-10 04:45 +08:00 | Codex | M3-002 完整验收首次发现 E2E 回归 | 体重记录写入后趋势可见但列表为空；确认前端 UTC 日期、用户时区 localDate 和空依赖回调共同造成边界不一致；登记 ISSUE-117，先写时区日期 RED 测试 |
+| 2026-09-10 04:48 +08:00 | Codex | 完成 ISSUE-117 修复与 M3-002 最终验收 | 新增 `localDateNow`/时区日期回归，Dashboard/Setup 使用 profile timezone，修正日期依赖闭包；`pnpm build` 后 `pnpm test:e2e` 1 passed；全量 174 files/993 tests、lint/typecheck/integration/build/API smoke/diff check 均 exit 0 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁。后续接手者应：
+M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策与 M3-002 菜谱计算/API 已完成。后续接手者应：
 
-1. 先审阅 `ADR-0002-recipe-snapshot.md`，确认 ingredient snapshot、显式刷新、cache 失效和 recipe-to-diary 边界；
-2. ADR 确认后进入 M3-002，保持现有 diary snapshot、幂等和版本冲突语义，不让菜谱或食物更新漂移历史日记；
+1. 先审阅 `ADR-0002-recipe-snapshot.md` 和 `docs/superpowers/plans/2026-09-09-recipe-calculation-api.md`，保持 ingredient snapshot、显式刷新、cache 失效和 recipe-to-diary 边界；
+2. 开始 M3-003 菜谱 UI/E2E，覆盖原料搜索、重量/成品重量/份数、warnings、刷新和加入日记后的历史快照；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 

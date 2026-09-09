@@ -529,6 +529,8 @@ PRIMARY KEY(entry_id, nutrient_id)
 
 ## 10.1 recipe
 
+迁移版本：`0011_recipe_snapshots`；显式 refresh 的 serving 身份由后续迁移 `0012_recipe_serving_identity` 保存。
+
 | 字段 | 类型 |
 |---|---|
 | id | TEXT PK |
@@ -537,6 +539,8 @@ PRIMARY KEY(entry_id, nutrient_id)
 | cooked_weight_g | REAL nullable |
 | serving_count | REAL nullable |
 | note | TEXT nullable |
+| version | INTEGER |
+| deleted_at | INTEGER nullable |
 | created_at | INTEGER |
 | updated_at | INTEGER |
 
@@ -547,6 +551,7 @@ PRIMARY KEY(entry_id, nutrient_id)
 | id | TEXT PK |
 | recipe_id | TEXT FK |
 | food_id | TEXT nullable FK |
+| serving_id | TEXT nullable FK |
 | name_snapshot | TEXT |
 | input_amount | REAL |
 | input_unit | TEXT |
