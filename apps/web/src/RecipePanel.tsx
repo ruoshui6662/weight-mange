@@ -38,6 +38,12 @@ export function RecipeFoodSearchStatus(props: { searched: boolean; resultCount: 
   return <p className="muted" role="status">没有找到匹配原料</p>;
 }
 
+export function clearFoodSearchResults(current: Record<string, FoodResult[]>, rowKey: string): Record<string, FoodResult[]> {
+  const next = { ...current };
+  delete next[rowKey];
+  return next;
+}
+
 function draftInput(draft: RecipeDraft): RecipeCreateInput {
   return { name: draft.name.trim(), cookedWeightG: draft.cookedWeightG.trim() ? Number(draft.cookedWeightG) : null, servingCount: draft.servingCount.trim() ? Number(draft.servingCount) : null, ingredients: draft.ingredients.map((row) => ({ foodId: row.foodId, amount: Number(row.amount), unit: "g" })) };
 }
@@ -139,7 +145,7 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
     finally { setBusy(null); }
   }
 
-  function chooseFood(row: RecipeDraftIngredient, food: FoodResult) { updateRow(row.key, { foodId: food.id, name: food.name }); setFoodResults((current) => ({ ...current, [row.key]: [] })); }
+  function chooseFood(row: RecipeDraftIngredient, food: FoodResult) { updateRow(row.key, { foodId: food.id, name: food.name }); setFoodResults((current) => clearFoodSearchResults(current, row.key)); }
 
   async function save(event: FormEvent) {
     event.preventDefault();

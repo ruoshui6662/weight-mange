@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, clearFoodSearchResults, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -37,6 +37,12 @@ describe("RecipePanel", () => {
   it("shows completion feedback when a food search returns no matches", () => {
     const html = renderToStaticMarkup(React.createElement(RecipeFoodSearchStatus, { searched: true, resultCount: 0 }));
     expect(html).toContain("没有找到匹配原料");
+  });
+
+  it("clears completion feedback after a successful food selection", () => {
+    const rows = clearFoodSearchResults({ "row-1": [] }, "row-1");
+    const html = renderToStaticMarkup(React.createElement(RecipeFoodSearchStatus, { searched: rows["row-1"] !== undefined, resultCount: 0 }));
+    expect(html).not.toContain("没有找到匹配原料");
   });
 
   it("sends the current version and preserves the draft when an update conflicts", async () => {
