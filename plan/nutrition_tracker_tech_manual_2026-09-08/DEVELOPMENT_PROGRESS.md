@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 07:01 +08:00
+> 最后更新：2026-09-10 07:16 +08:00
 
 ## 1. 当前快照
 
@@ -12,10 +12,10 @@
 | 项目阶段 | M3 菜谱、运动与预算策略实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M3 — 菜谱、运动与预算策略 |
-| 当前焦点 | M3-004 MET/运动计算 |
-| 下一步 | 读取运动产品/技术规范，先固定 MET 计算、运动快照与日记写入边界，再建立 TDD 实施计划 |
+| 当前焦点 | M3-003 终审修复：HTTP 兼容、快照边界、详情刷新与 E2E 证据补齐 |
+| 下一步 | 先完成终审发现的独立修复任务，再重新执行完整门禁与复核 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003 已完成；下一步进入 M3-004 |
+| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-002 已完成；M3-003 终审修复进行中，完成后再进入 M3-004 |
 | Git | 本地 `main` 已包含本轮 M1-007 记录操作提交，工作区干净；远程发布未在本轮执行 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 3/6 | 菜谱 UI/E2E 已通过；运动与预算策略待实施 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 3/6 | 菜谱 UI/E2E 终审修复中；运动与预算策略待实施 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -325,19 +325,19 @@
 
 ### M3-003 — 菜谱 UI/E2E
 
-- 状态：`DONE`
+- 状态：`IN_PROGRESS`
 - 开始时间：2026-09-10 05:48 +08:00
-- 完成时间：2026-09-10 07:01 +08:00
+- 初次验收时间：2026-09-10 07:01 +08:00（该验收结论已被终审发现标记为过时，不作为当前完成证据）；终审修复开始：2026-09-10 07:16 +08:00
 - 操作者：Codex
 - 依赖：M3-002、M1-004、M1-005、M1-007
 - 计划变更：在现有 React/Vite Dashboard 中提供菜谱列表、创建/编辑、原料搜索、营养结果、warnings、显式刷新、复制/删除和加入日记闭环；不新增数据库迁移，复用已完成 Recipe API 与 diary snapshot 边界。
 - 计划验收：先完成设计规格与实施计划；再按 TDD 补 Web 交互测试和 Playwright E2E，覆盖创建→计算→warnings→刷新/复制/删除→加入日记→历史快照不漂移；运行全量 lint/typecheck/test/integration/build/API smoke/E2E/diff gate。
-- 当前进展：设计规格、实施计划及 Task 1–5 均已完成；RecipePanel 列表/编辑器/计算结果、Dashboard 操作、复制/刷新/删除、加入日记和历史 snapshot 稳定性已通过 Web 与 Playwright 验收。实现提交为 `b52b976`、`895594a`、`7958351`、`fdc3b2c`、`9523abe`、`85d3865`、`7efb600`、`2d0c343`、`d5dad06`；各任务独立审查记录在 `.superpowers/sdd/2026-09-10-recipe-ui-e2e/`。
+- 当前进展：设计规格、实施计划及首轮 Task 1–5 已完成；终审发现 HTTP NAS 兼容、快照编辑边界、详情刷新、空搜索反馈和 E2E 证据缺口，当前处于独立修复与复验中，尚未重新通过完整门禁。
 - 活动日志：2026-09-10 05:48 +08:00 开始 M3-003；06:14 开始 Task 1，06:17 完成 Task 1，06:24 完成窄屏导航审查修复；06:30 开始 Task 2，06:32 完成 Task 2；06:35 开始 Task 3，06:42 完成 Task 3 及复审修复；06:45 开始 Task 4，06:52 完成 Task 4 及复审修复；06:55 开始 Task 5，06:58 完成 Task 5；07:01 开始 Task 6 并完成完整门禁，操作者 Codex。
 - 验收命令：`pnpm lint`（exit 0）；`pnpm typecheck`（exit 0）；`pnpm test`（exit 0，176 files/1017 tests passed）；`pnpm test:integration`（exit 0，无匹配测试文件）；`pnpm build`（exit 0）；`pnpm api:smoke`（exit 0，home/health/ready 均 200）；`pnpm test:e2e`（exit 0，Playwright 1 passed）；`git -c safe.directory='D:/AI编程/体重管理' diff --check`（exit 0，仅提示工作副本换行符转换）。
-- 验收结果：M3-003 全部退出门槛通过；浏览器验收覆盖菜谱生命周期、营养结果/warnings、复制/编辑/刷新/删除、加入日记后的 snapshot 不漂移，以及 360/390/430px 无横向溢出和 44px 命中区。
-- 阻塞/风险：本机无 Docker CLI，未执行本地容器构建/启动验证；该限制已如实记录，不影响本次非 Docker 门禁和 CI buildx。未发现密钥、临时数据库、截图或生成 dist 被纳入版本控制。
-- 下一步：进入 M3-004 MET/运动计算。
+- 验收结果：07:01 的首轮验收曾覆盖菜谱生命周期、营养结果/warnings、复制/编辑/刷新/删除、加入日记后的 snapshot 不漂移，以及 360/390/430px 无横向溢出和 44px 命中区；该结果已被终审发现 supersede，待终审修复后重新执行完整门禁。
+- 阻塞/风险：终审发现 HTTP NAS 首次打开菜谱会因 `crypto.randomUUID` 崩溃、元数据编辑可能刷新原料快照、详情使用列表缓存、空搜索无反馈及 E2E 证据缺口；本机无 Docker CLI，未执行本地容器构建/启动验证。
+- 下一步：完成终审修复任务、重新通过全量门禁并完成复核后，才进入 M3-004 MET/运动计算。
 
 ## 4. DOC 任务板
 
@@ -468,7 +468,7 @@ result: 42 passed, 0 failed
 | EVD-M3-002-D | M3-002 | 2026-09-10 04:36 +08:00 | `pnpm exec vitest run packages/diary/test/diary.test.ts packages/recipe/test/recipe.test.ts`; `pnpm typecheck`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 2 files/22 tests passed；recipe diary writer、recipe_id/source snapshot、food update 后历史不漂移、非法餐次事务回滚和 add-to-diary per100g scaling 通过；typecheck/diff check exit 0；提交 `8403c90` |
 | EVD-M3-002-E | M3-002 | 2026-09-10 04:40 +08:00 | `pnpm exec vitest run apps/api/test/recipe-routes.test.ts apps/web/test/api.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | API/Web 2 files/5 tests passed；recipe routes、version conflict、copy/refresh/add/delete、client credentials/encoding 通过；lint/typecheck/build/diff check exit 0；提交 `1d5f701` |
 | EVD-M3-002-F | M3-002 | 2026-09-10 04:50 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | lint/typecheck/build/API smoke/diff check exit 0；integration 无测试文件并正常 exit 0；全量 174 files/993 tests passed；Playwright 1 passed，覆盖首次设置、登录、搜索、添加/编辑/复制/删除、体重写入、分析不足及 360/390/430 无横向溢出；时区日期回归与日期依赖闭包修复通过 |
-| EVD-M3-003-A | M3-003 | 2026-09-10 07:01 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全部 exit 0；全量 176 files/1017 tests passed；integration 无匹配测试文件并正常 exit 0；build 产物生成成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed，覆盖菜谱生命周期、snapshot 稳定性及 360/390/430 viewport；本机 Docker CLI 缺失，未宣称容器验证；实现提交 `b52b976`、`895594a`、`7958351`、`fdc3b2c`、`9523abe`、`85d3865`、`7efb600`、`2d0c343`、`d5dad06` |
+| EVD-M3-003-A | M3-003 | 2026-09-10 07:01 +08:00（历史基线，已被终审修复 supersede） | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 首轮全部 exit 0；全量 176 files/1017 tests passed；integration 无匹配测试文件并正常 exit 0；build 产物生成成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed，覆盖菜谱生命周期、snapshot 稳定性及 360/390/430 viewport；本机 Docker CLI 缺失，未宣称容器验证；实现提交 `b52b976`、`895594a`、`7958351`、`fdc3b2c`、`9523abe`、`85d3865`、`7efb600`、`2d0c343`、`d5dad06`；终审发现后不再作为当前 DONE 证据 |
 
 ## 9. 问题队列
 
@@ -596,14 +596,15 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 04:45 +08:00 | Codex | M3-002 完整验收首次发现 E2E 回归 | 体重记录写入后趋势可见但列表为空；确认前端 UTC 日期、用户时区 localDate 和空依赖回调共同造成边界不一致；登记 ISSUE-117，先写时区日期 RED 测试 |
 | 2026-09-10 04:48 +08:00 | Codex | 完成 ISSUE-117 修复与 M3-002 最终验收 | 新增 `localDateNow`/时区日期回归，Dashboard/Setup 使用 profile timezone，修正日期依赖闭包；`pnpm build` 后 `pnpm test:e2e` 1 passed；全量 174 files/993 tests、lint/typecheck/integration/build/API smoke/diff check 均 exit 0 |
 | 2026-09-10 06:07 +08:00 | Codex | 完成 M3-003 设计规格与实施计划 | 用户确认从第一性原理继续；提交 `e4f1b0a` 写入 UI/E2E 设计规格，新增 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，完成 spec coverage、placeholder scan、type consistency 自检；下一步执行 Task 1 |
-| 2026-09-10 07:01 +08:00 | Codex | 完成 M3-003 菜谱 UI/E2E | Task 1–5 独立实现与复审完成；`pnpm lint`、`pnpm typecheck`、全量 176 files/1017 tests、integration（无匹配文件）、build、API smoke、Playwright 1 passed、diff check 全部 exit 0；本机 Docker CLI 缺失，未执行本地容器验证；M3 更新为 3/6，下一步进入 M3-004 MET/运动计算 |
+| 2026-09-10 07:01 +08:00 | Codex | 完成 M3-003 菜谱 UI/E2E（历史基线，已被终审发现 supersede） | Task 1–5 独立实现与复审完成；首轮 `pnpm lint`、`pnpm typecheck`、全量 176 files/1017 tests、integration（无匹配文件）、build、API smoke、Playwright 1 passed、diff check 全部 exit 0；本机 Docker CLI 缺失，未执行本地容器验证；随后终审发现 HTTP NAS 兼容、快照编辑边界、详情刷新、空搜索反馈和 E2E 证据缺口，不能据此标记当前 DONE |
+| 2026-09-10 07:45 +08:00 | Codex | 继续 M3-003 终审修复 | 已记录并纳入修复提交 `85aa305`、`65e1029`、`450cc46`、`1bd4267`、`0514e52`、`8cf3d48`、`1916a57`、`26ab2d0`；当前仍为 `IN_PROGRESS`，待重新执行完整门禁与复核后再决定是否完成 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策、M3-002 菜谱计算/API 与 M3-003 菜谱 UI/E2E 已完成。后续接手者应：
+M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策与 M3-002 菜谱计算/API 已完成，M3-003 菜谱 UI/E2E 正在终审修复，尚未重新通过完整门禁。后续接手者应：
 
 1. 先审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；
-2. 开始 M3-004 MET/运动计算，先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
+2. 先完成 M3-003 终审修复后的完整门禁与复核；确认 `DONE` 后再开始 M3-004 MET/运动计算，读取运动产品/技术规范并定义运动记录、MET 计算和历史 snapshot 边界；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 
