@@ -44,3 +44,29 @@ Exit code: 0. Result: 1 test file passed; 6 tests passed. Coverage includes `223
 ## Commit hashes
 
 - `d0e0ef1cbf4c45f7a18d9489808172d200570e73` — `feat: add nutrition engine foundation`
+
+## Review fix: estimated values and known coverage
+
+Review found that `sumNutrients` incorrectly treated `estimated` entries as known coverage. Per `NUTRITION_ENGINE_SPEC.md` section 8, coverage is `knownEntryWeight / relevantEntryWeight`; estimates still sum and set `hasEstimated`, but do not increase the coverage numerator.
+
+### Test-first evidence (RED)
+
+Changed the status-aware aggregation test to require this exact set of entries: known 100g, unknown 50g, trace 25g, estimated 25g. It asserts amount `10.42`, coverage `0.5`, `hasTrace: true`, and `hasEstimated: true`.
+
+Command: `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`
+
+Exit code: 1. Expected failure observed: the assertion expected coverage `0.5` but received `0.625`.
+
+### Green and relevant verification
+
+| Command | Exit | Result |
+|---|---:|---|
+| `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts` | 0 | 1 test file, 6 tests passed. |
+| `pnpm lint` | 0 | ESLint passed. |
+| `pnpm typecheck` | 0 | TypeScript check passed. |
+| `pnpm test` | 0 | 7 test files, 28 tests passed. |
+| `pnpm build` | 0 | TypeScript composite build passed. |
+
+### Review-fix commit
+
+- `c413fd9d41ec4700cd7e1c9e23b058534652a004` — `fix: exclude estimates from known coverage`

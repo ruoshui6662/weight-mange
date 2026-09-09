@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 10:00 +08:00
+> 最后更新：2026-09-09 10:15 +08:00
 
 ## 1. 当前快照
 
@@ -95,8 +95,8 @@
 - 依赖：M0
 - 计划变更：实现 nutrient scaling、g/ml/serving 换算、edible portion、unknown/trace/estimated、coverage、rounding policy 和版本常量
 - 计划验收：`NUTRITION_ENGINE_SPEC` 全部 golden calculation tests 固定化；引擎不依赖 DB、网络、环境变量和系统时间
-- 当前进展：新增纯函数包，固定 food scaling、portion conversion、status-aware aggregation、gram-equivalent coverage 与 display rounding；无 DB、网络、环境或时间依赖
-- 验收结果：EVD-M1-001-A；聚焦 6 tests、全量 7 test files/28 tests 通过；lint/typecheck/build/API smoke 通过；Docker CLI 环境缺失按 smoke 脚本报告 blocked 但退出码为 0
+- 当前进展：review P1 已修复；estimated 继续数值求和且设置 metadata，但仅 known 计入 coverage 分子
+- 验收结果：EVD-M1-001-B；修复用例先以 0.625 失败，再以 0.5 通过；聚焦 6 tests、全量 7 test files/28 tests、lint/typecheck/build 均通过
 - 下一步：进入 M1-002 Food canonical schema
 
 ## 4. DOC 任务板
@@ -173,6 +173,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-I | M0-007 | 2026-09-09 09:46 +08:00 | 飞牛截图访问 `/` 返回 `{"error":"NOT_FOUND"}`；先运行 `pnpm api:smoke` 得到 `API_SMOKE_FAILED:404/200/200`，实现根路径状态页后重新运行 | 根路径现在返回 200 HTML 状态页，`/healthz` 与 `/readyz` 仍为 200；lint、build、22 tests 全部通过；等待远程镜像构建 |
 | EVD-M0-007-J | M0-007 | 2026-09-09 09:55 +08:00 | GitHub Actions run `34296265518`（main）；GHCR package manifest | verify 与 multi-arch docker 均 `success`；镜像 `latest`/`cc60f7c62750202ef36d8601b67ee1e6b41dfaec` 已发布，manifest digest `sha256:4de30a0d390e1ce2a5f80399d6bed56f746fcdf7db0096bbe36be8b7e15f3557` |
 | EVD-M1-001-A | M1-001 | 2026-09-09 10:00 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 全部命令 exit 0；聚焦 1 file/6 tests、全量 7 files/28 tests；API smoke home/health/ready 均 200；Docker CLI 不存在但 smoke 正确报告环境阻塞 |
+| EVD-M1-001-B | M1-001 | 2026-09-09 10:15 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build` | coverage=0.5 的新断言先失败（received 0.625），最小修复后聚焦 1 file/6 tests、全量 7 files/28 tests 通过；所有列出命令 exit 0 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -237,6 +238,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 09:46 +08:00 | Codex | 处理访问根路径显示 `NOT_FOUND` | 确认当前版本为 API 基础版，新增根路径中文运行状态页；新增 smoke 断言 `home=200`，本地验证通过，准备发布新镜像 |
 | 2026-09-09 09:55 +08:00 | Codex | 根路径首页镜像发布完成 | main run `34296265518` 成功；GHCR `latest` 已更新，飞牛重新拉取后访问 `/` 将显示服务状态页 |
 | 2026-09-09 10:00 +08:00 | Codex | 完成 M1-001 Nutrition Engine 基础 | 先观察模块缺失的失败测试；新增纯计算、状态/coverage 和展示取整 golden tests；所有本地门禁通过，Docker CLI 缺失由 smoke 脚本记录 |
+| 2026-09-09 10:05 +08:00 | Codex | M1-001 review 修复开始 | P1：estimated 被计入 known coverage；先以 coverage=0.5 失败断言复现，再以最小修复恢复验收 |
+| 2026-09-09 10:15 +08:00 | Codex | 完成 M1-001 review 修复 | estimated 仍计入营养总量和 hasEstimated，但 coverage 分子只计 known；新 RED/GREEN 和相关门禁均通过 |
 
 ## 11. 交接摘要
 
