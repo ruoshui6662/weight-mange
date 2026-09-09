@@ -14,7 +14,7 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-006 Dashboard read model |
 | 下一步 | 从 diary 的已存快照构建可重建的日汇总；不得重算历史 food 数据 |
-| 当前阻塞 | 无；M1-005 四项 Important 复审问题已修复，待复审确认 |
+| 当前阻塞 | 无；M1-005 独立复审已通过 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
@@ -143,15 +143,15 @@
 
 - 状态：`DONE`
 - 开始时间：2026-09-09 21:15 +08:00
-- 完成时间：2026-09-09 21:20 +08:00
+- 完成时间：2026-09-09 21:40 +08:00
 - 操作者：Codex + delegated implementer
 - 依赖：M1-001、M1-004
 - 计划变更：增加 `0007_diary_snapshots` 前向迁移、日记 domain 和核心 REST 读写路径；以存储快照保持历史不随 food 更新或停用而漂移。
 - 计划验收：TDD RED/GREEN；快照缩放、food edit/deactivation 后历史稳定、幂等、乐观锁、copy fallback、事务回滚与 API error envelope；全量门禁。
 - 当前进展：`diary_day`、默认餐次、entry/version 与每营养快照已在同一事务落库；`0008` 记录 `serving_id`；day read 返回基于存储快照的 meal/daily totals 与 coverage；copy-day/copy-meal 均优先当前 active food，缺失/停用时使用 `copy_snapshot`。
-- 验收结果：EVD-M1-005-A/B；聚焦 2 files/7 tests、全量 51 files/254 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0。
+- 验收结果：EVD-M1-005-A/B/C；最终聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0；独立复审无 Critical/Important/Minor。
 - 阻塞/风险：菜谱、照片、goal snapshot、Dashboard/UI 与外部调用均未扩展到本任务；API 当前以基础单用户 `local-user` 承载，后续鉴权路由应接入 session user。
-- 下一步：独立复审后进入 M1-006 Dashboard read model。
+- 下一步：进入 M1-006 Dashboard read model。
 
 ## 4. DOC 任务板
 
@@ -240,6 +240,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-004-C | M1-004 | 2026-09-09 21:02 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search_key migration/index、PATCH runtime validation、optional nutrient upsert 回归后全量 28 files/137 tests；所有本地门禁 exit 0，Docker CLI 缺失如实记录 |
 | EVD-M1-004-D | M1-004 | 2026-09-09 21:06 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused DB/domain/route 3 files/15 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | `0006` NOCASE prefix index 的 EXPLAIN 回归、empty nutrients PATCH 400 envelope 均通过；全量 28 files/137 tests，本地门禁 exit 0 |
 | EVD-M1-004-E | M1-004 | 2026-09-09 21:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search 统一返回 `{data,meta:{nextCursor}}`；空/非空 route 与 domain 回归通过，全量 28 files/137 tests，本地门禁 exit 0 |
+| EVD-M1-005-C | M1-005 | 2026-09-09 21:40 +08:00 | `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; independent scoped review | 聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；所有本地命令 exit 0；coverage 按 gramEquivalent 加权，copy 请求级事务回滚通过；独立复审无 Critical/Important/Minor；Docker CLI 缺失由 smoke 如实记录 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -323,6 +324,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 20:52 +08:00 | Codex + delegated implementer | M1-004 复审修复完成，等待确认 | nested custom transaction、source revision、FTS/keyset、error envelope、reference user additions 和 strict cursor 回归均通过；全量 135 tests |
 | 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |
 | 2026-09-09 21:06 +08:00 | Codex + delegated implementer | M1-004 NOCASE prefix 与 empty-array 修复完成 | 新增 `0006` 前向索引，prefix EXPLAIN 使用 NOCASE index；`nutrients: []` 返回 validation envelope；全量 137 tests |
+| 2026-09-09 21:40 +08:00 | Codex + independent reviewer | 完成 M1-005 最终 scoped re-review | 聚焦 diary/API 2 files/9 tests、typecheck 通过；coverage 与复制事务问题均确认修复，无 Critical/Important/Minor；M1-005 标记 DONE，下一步进入 M1-006 |
 
 ## 11. 交接摘要
 

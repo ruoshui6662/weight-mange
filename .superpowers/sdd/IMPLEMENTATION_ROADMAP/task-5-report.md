@@ -34,7 +34,7 @@ All exit 0:
 
 - `pnpm lint`
 - `pnpm typecheck`
-- `pnpm test` — 51 files, 250 tests passed
+- `pnpm test` — 51 files, 258 tests passed
 - `pnpm test:integration` — no integration files, exit 0
 - `pnpm build`
 - `pnpm api:smoke` — home/health/ready = 200
@@ -53,7 +53,7 @@ Four Important findings were fixed after a new RED suite (missing `mealTotals`/`
 - Active copy re-resolves its persisted serving; inactive/missing food preserves the stored entry and nutrient snapshot as `copy_snapshot`.
 - `copyDay` and `POST /api/v1/diary/:date/copy-day` copy all source-day meal slots.
 
-Focused remediation verification: `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts` — exit 0, 2 files / 7 tests. Full gates rerun: 51 files / 254 tests, all listed commands exit 0; Docker CLI remains unavailable locally.
+Focused remediation verification: `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts` — exit 0, 2 files / 9 tests. Full gates rerun: 51 files / 258 tests, all listed commands exit 0; Docker CLI remains unavailable locally.
 
 ## Follow-up review remediation
 
