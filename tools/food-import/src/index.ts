@@ -220,8 +220,20 @@ export function importFoodDataset(sqlite: DatabaseSync, raw: string, options: Im
   if (!parsed.ok) {
     const validation = { errors: parsed.errors, warnings: [] };
     const rawMetadata = extractMetadata(raw);
-    const stagedId = rawMetadata ? stageParseFailure(sqlite, raw, rawMetadata, validation, options) : undefined;
-    return { status: "failed", ...(stagedId ? { stagingDatasetId: stagedId } : {}), validation, diff: emptyDiff(), metadata };
+    if (!rawMetadata) return { status: "failed", validation, diff: emptyDiff(), metadata };
+    const stagedId = `staging:${rawMetadata.datasetKey}:${rawMetadata.version}:${rawMetadata.checksum}`;
+    const existing = sqlite.prepare("SELECT status FROM food_staging_dataset WHERE id = ?").get(stagedId) as { status: string } | undefined;
+    if (existing) {
+      return {
+        status: existing.status === "promoted" ? "already_promoted" : "already_staged",
+        stagingDatasetId: stagedId,
+        validation,
+        diff: emptyDiff(),
+        metadata,
+      };
+    }
+    stageParseFailure(sqlite, raw, rawMetadata, validation, options);
+    return { status: "failed", stagingDatasetId: stagedId, validation, diff: emptyDiff(), metadata };
   }
   const id = stagingId(parsed.document);
   const existing = sqlite.prepare("SELECT status FROM food_staging_dataset WHERE dataset_key = ? AND version = ? AND checksum = ?").get(parsed.document.datasetKey, parsed.document.version, parsed.document.checksum) as { status: string } | undefined;

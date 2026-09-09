@@ -113,6 +113,19 @@ describe("food import staging pipeline", () => {
     expect(sqlite.prepare("SELECT version FROM food_dataset WHERE status = 'active'").get()).toEqual({ version: "v1" });
   });
 
+  it("does not downgrade a promoted staging identity when a malformed document reuses its identity", () => {
+    const sqlite = openFoodDatabase();
+    importFoodDataset(sqlite, JSON.stringify(document("collision")), importerOptions);
+    const malformed = document("collision");
+    malformed.foods = [{ ...food(1), foodName: "" }];
+
+    const result = importFoodDataset(sqlite, JSON.stringify(malformed), importerOptions);
+
+    expect(result.status).toBe("already_promoted");
+    expect(sqlite.prepare("SELECT status FROM food_staging_dataset WHERE id = ?").get(result.stagingDatasetId!)).toEqual({ status: "promoted" });
+    expect(importFoodDataset(sqlite, JSON.stringify(document("collision")), importerOptions).status).toBe("already_promoted");
+  });
+
   it("rejects non-finite and non-marker numeric strings instead of treating them as unknown", () => {
     const sqlite = openFoodDatabase();
     const invalid = document("nonfinite");
