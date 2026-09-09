@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 04:50 +08:00
+> 最后更新：2026-09-10 05:48 +08:00
 
 ## 1. 当前快照
 
@@ -322,6 +322,20 @@
 - 验收结果：EVD-M3-002-A 至 EVD-M3-002-F；完整 lint/typecheck/test/integration/build/API smoke/E2E/diff gate 通过。
 - 阻塞/风险：本机 Docker CLI 缺失，仅影响本地容器实测，不影响非 Docker 验收和 CI buildx；若遇到新的实现阻塞，必须立即改为 `BLOCKED` 并记录解除条件。
 - 下一步：进入 M3-003 菜谱 UI/E2E。
+
+### M3-003 — 菜谱 UI/E2E
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-10 05:48 +08:00
+- 操作者：Codex
+- 依赖：M3-002、M1-004、M1-005、M1-007
+- 计划变更：在现有 React/Vite Dashboard 中提供菜谱列表、创建/编辑、原料搜索、营养结果、warnings、显式刷新、复制/删除和加入日记闭环；不新增数据库迁移，复用已完成 Recipe API 与 diary snapshot 边界。
+- 计划验收：先完成设计规格与实施计划；再按 TDD 补 Web 交互测试和 Playwright E2E，覆盖创建→计算→warnings→刷新/复制/删除→加入日记→历史快照不漂移；运行全量 lint/typecheck/test/integration/build/API smoke/E2E/diff gate。
+- 当前进展：已获得用户对推荐 UI 方案的确认，正在编写设计规格；尚未修改业务代码。
+- 活动日志：2026-09-10 05:48 +08:00 开始 M3-003，操作者 Codex；计划验收命令为 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm test:integration`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git -c safe.directory='D:/AI编程/体重管理' diff --check`。
+- 验收结果：待设计规格、实施与完整验收。
+- 阻塞/风险：本机 Docker CLI 缺失，仅影响容器实测，不影响本任务的 Web/API 验收和 CI buildx。
+- 下一步：完成 `docs/superpowers/specs/2026-09-10-recipe-ui-e2e-design.md`，自检后请求用户确认规格，再编写实施计划。
 
 ## 4. DOC 任务板
 

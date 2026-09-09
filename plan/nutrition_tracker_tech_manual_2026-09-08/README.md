@@ -20,6 +20,7 @@
 11. [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)：部署、升级、备份、恢复和运维。
 12. [ADR-0001-sqlite-driver.md](./ADR-0001-sqlite-driver.md) 与 [ADR-0002-recipe-snapshot.md](./ADR-0002-recipe-snapshot.md)：已接受的技术与菜谱历史边界决策。
 13. [M3-002 recipe calculation/API implementation plan](../../docs/superpowers/plans/2026-09-09-recipe-calculation-api.md)：任务拆分、接口和验收命令。
+14. [M3-003 recipe UI/E2E design](../../docs/superpowers/specs/2026-09-10-recipe-ui-e2e-design.md)：菜谱前端流程、状态、事实边界和浏览器验收设计。
 
 ## 2. 文档职责与优先级
 
