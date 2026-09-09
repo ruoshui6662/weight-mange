@@ -13,7 +13,12 @@ type CopyInput = { userId: string; date: string; fromDate: string; fromMealSlotI
 
 export class DiaryError extends Error { constructor(readonly code: string, readonly details?: Record<string, unknown>) { super(code); } }
 const meals: Array<[string, string, number]> = [["breakfast", "早餐", 0], ["lunch", "午餐", 1], ["dinner", "晚餐", 2], ["snack", "加餐", 3]];
-const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+const validDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value); if (!match) return false;
+  const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
+  const parsed = new Date(0); parsed.setUTCFullYear(year, month - 1, day); parsed.setUTCHours(0, 0, 0, 0);
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+};
 const validUnit = (value: unknown): value is Unit => value === "g" || value === "ml" || value === "serving";
 const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0;
 
