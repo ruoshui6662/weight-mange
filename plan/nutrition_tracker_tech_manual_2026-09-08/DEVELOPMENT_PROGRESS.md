@@ -135,7 +135,7 @@
 - 依赖：M1-003
 - 计划变更：实现本地搜索、detail、custom food、alias、serving、favorite contracts，并接入 API；无本地结果不得触发 AI/外部网络
 - 计划验收：TDD RED/GREEN；精确名/别名/前缀/FTS、inactive 过滤、cursor、raw/status detail、custom/reference 编辑边界、alias/serving 校验、favorite 幂等与无网络空结果；全量门禁
-- 当前进展：已完成最终复审修复：新增 `0005/0006` search key/NOCASE 前向索引、PATCH runtime validation、optional nutrient revision upsert；聚焦 2 files/7 tests、全量 28 files/137 tests 和本地门禁均通过，等待复审确认。
+- 当前进展：已完成最终复审修复：新增 `0005/0006` search key/NOCASE 前向索引、PATCH runtime validation、optional nutrient revision upsert，并将 search cursor 固定为 `meta.nextCursor`；聚焦 2 files/7 tests、全量 28 files/137 tests 和本地门禁均通过，等待复审确认。
 - 阻塞/风险：未测量 1,677/100k 的 p50/p95，不宣称 <100ms；当前搜索使用 indexed name/alias SQL，FTS/pinyin 的性能策略需在基准任务中量化。
 - 下一步：独立复审后处理发现项，才可标记 DONE
 
@@ -223,6 +223,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-004-B | M1-004 | 2026-09-09 20:52 +08:00 | `pnpm build`; focused 2 files/6 tests; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 复审 6 项 Important 修复后全量 28 files/135 tests；lint/typecheck/build/API smoke exit 0；Docker CLI 缺失如实记录；等待复审确认 |
 | EVD-M1-004-C | M1-004 | 2026-09-09 21:02 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search_key migration/index、PATCH runtime validation、optional nutrient upsert 回归后全量 28 files/137 tests；所有本地门禁 exit 0，Docker CLI 缺失如实记录 |
 | EVD-M1-004-D | M1-004 | 2026-09-09 21:06 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused DB/domain/route 3 files/15 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | `0006` NOCASE prefix index 的 EXPLAIN 回归、empty nutrients PATCH 400 envelope 均通过；全量 28 files/137 tests，本地门禁 exit 0 |
+| EVD-M1-004-E | M1-004 | 2026-09-09 21:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search 统一返回 `{data,meta:{nextCursor}}`；空/非空 route 与 domain 回归通过，全量 28 files/137 tests，本地门禁 exit 0 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 

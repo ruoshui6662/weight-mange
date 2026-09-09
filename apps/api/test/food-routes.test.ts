@@ -13,7 +13,7 @@ it("exposes local-only food routes and stable error envelopes", async () => {
   try {
     const base = `http://127.0.0.1:${runtime.port}`;
     expect((await fetch(`${base}/api/v1/foods/search?q=not-found`)).status).toBe(200);
-    expect(await (await fetch(`${base}/api/v1/foods/search?q=not-found`)).json()).toMatchObject({ data: [] });
+    expect(await (await fetch(`${base}/api/v1/foods/search?q=not-found`)).json()).toMatchObject({ data: [], meta: { nextCursor: null } });
     const create = await fetch(`${base}/api/v1/foods/custom`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "我的豆浆", nutrients: { energyKcal: 30, proteinG: 2 } }) });
     expect(create.status).toBe(201); const created = await create.json() as { data: { id: string } };
     expect((await fetch(`${base}/api/v1/foods/search?q=豆浆&scope=custom`)).status).toBe(200);
