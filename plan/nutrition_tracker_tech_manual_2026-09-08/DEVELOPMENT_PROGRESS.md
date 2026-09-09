@@ -167,6 +167,18 @@
 - 阻塞/风险：运动与体重仍为明确 no-data 字段，目标写入 API 留给 M2-001；M1-007 仍需实现前端。
 - 下一步：进入 M1-007 Mobile-first 核心 UI。
 
+### M1-007 — Mobile-first 核心 UI
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 22:20 +08:00
+- 操作者：Codex
+- 依赖：M1-004、M1-006
+- 计划变更：在 `apps/web` 建立 React/Vite 前端，接入 food search、diary 和 Dashboard API，完成移动端核心记录流程与可访问状态。
+- 计划验收：360/390/430px 无横向溢出；键盘/focus trap/44px hit area/reduced motion/非颜色状态表达；Dashboard 视觉基线、空/加载/错误/offline 状态。
+- 当前进展：已读取 UI_DESIGN_SYSTEM、API_SPEC 和 M1-007 路线要求；前端技术与页面边界待设计确认。
+- 阻塞/风险：`apps/web` 当前只有 README；需要先确定本任务是实现 Dashboard+日记核心闭环，还是同时覆盖首次设置与登录完整流程。
+- 下一步：确认前端设计范围后写入实施计划，再以组件测试和视觉基线测试先行实现。
+
 ## 4. DOC 任务板
 
 | ID | 任务 | 状态 | 负责人 | 证据/备注 |
