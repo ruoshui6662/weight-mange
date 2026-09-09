@@ -8,6 +8,7 @@
     "@nutrition-tracker/dashboard": "workspace:*",
     "@nutrition-tracker/db": "workspace:*",
     "@nutrition-tracker/food": "workspace:*",
+    "@nutrition-tracker/body": "workspace:*",
     "@nutrition-tracker/diary": "workspace:*",
     "@nutrition-tracker/profile": "workspace:*"
   },

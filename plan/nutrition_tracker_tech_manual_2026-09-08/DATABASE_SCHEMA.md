@@ -582,9 +582,11 @@ PRIMARY KEY(entry_id, nutrient_id)
 | measured_at | INTEGER |
 | local_date | TEXT |
 | weight_kg | REAL |
-| source | TEXT |
+| source | TEXT（manual/import） |
 | note | TEXT nullable |
+| version | INTEGER |
 | created_at | INTEGER |
+| updated_at | INTEGER |
 
 索引：
 ```sql

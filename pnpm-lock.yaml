@@ -38,6 +38,9 @@ importers:
       '@nutrition-tracker/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@nutrition-tracker/body':
+        specifier: workspace:*
+        version: link:../../packages/body
       '@nutrition-tracker/dashboard':
         specifier: workspace:*
         version: link:../../packages/dashboard
@@ -77,6 +80,15 @@ importers:
         version: 8.2.2(@types/node@26.5.0)(jiti@2.7.0)
 
   packages/auth: {}
+
+  packages/body:
+    dependencies:
+      '@nutrition-tracker/core':
+        specifier: workspace:*
+        version: link:../core
+      '@nutrition-tracker/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/core: {}
 

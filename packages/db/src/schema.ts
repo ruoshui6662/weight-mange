@@ -98,6 +98,29 @@ export const CORE_MIGRATIONS: readonly SqliteMigration[] = [
   },
 ];
 
+export const BODY_MIGRATIONS: readonly SqliteMigration[] = [
+  {
+    version: "0010_body_weight",
+    sql: `
+      CREATE TABLE body_weight_entry (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES profile_user(id) ON DELETE CASCADE,
+        measured_at INTEGER NOT NULL,
+        local_date TEXT NOT NULL,
+        weight_kg REAL NOT NULL CHECK (weight_kg > 0),
+        source TEXT NOT NULL CHECK (source IN ('manual', 'import')),
+        note TEXT,
+        version INTEGER NOT NULL DEFAULT 0 CHECK (version >= 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX body_weight_user_measured_idx ON body_weight_entry(user_id, measured_at);
+      CREATE INDEX body_weight_user_local_date_idx ON body_weight_entry(user_id, local_date, measured_at);
+    `,
+  },
+];
+
 export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
   {
     version: "0002_food_canonical_schema",

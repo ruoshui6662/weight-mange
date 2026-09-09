@@ -516,9 +516,16 @@ limit
 }
 ```
 
+创建成功返回 `201` 和记录对象，记录包含服务端规范化的 UTC `measuredAt`、按当前 profile timezone 计算的 `localDate`、`source` 和 `version`。
+同一 `localDate` 允许多条记录。
+
 ## PATCH /api/v1/body/weights/:id
 
+请求体可包含 `measuredAt`、`weightKg`、`note` 和必填的 `version`；版本不匹配返回 `409 BODY_VERSION_CONFLICT`。
+
 ## DELETE /api/v1/body/weights/:id
+
+请求体必须包含当前 `version`；版本不匹配返回 `409 BODY_VERSION_CONFLICT`，成功返回 `204`。
 
 ## GET /api/v1/body/weight-trend
 

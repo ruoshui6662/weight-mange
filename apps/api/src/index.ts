@@ -5,12 +5,13 @@ import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
-import { ANALYTICS_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { ANALYTICS_MIGRATIONS, BODY_MIGRATIONS, CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
 import { AuthError, createAuthService, createSqliteAuthStore, sessionCookieOptions } from "@nutrition-tracker/auth";
 import { createDashboardService, DashboardError } from "@nutrition-tracker/dashboard";
 import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
 import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 import { createProfileService, ProfileError } from "@nutrition-tracker/profile";
+import { BodyError, createBodyService } from "@nutrition-tracker/body";
 
 const SESSION_COOKIE = "nutrition_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -111,6 +112,13 @@ function profileError(response: ServerResponse, error: unknown, requestId: strin
   return true;
 }
 
+function bodyError(response: ServerResponse, error: unknown, requestId: string) {
+  if (!(error instanceof BodyError)) return false;
+  const status = error.code === "BODY_NOT_FOUND" ? 404 : error.code === "BODY_VERSION_CONFLICT" ? 409 : 400;
+  writeJson(response, status, { error: { code: error.code, message: error.code, requestId } });
+  return true;
+}
+
 function authError(response: ServerResponse, error: unknown, requestId: string) {
   if (error instanceof ApiAuthError) {
     writeJson(response, 401, { error: { code: error.code, message: error.code, requestId } });
@@ -129,12 +137,13 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   const secureCookies = options.secureCookies ?? process.env.AUTH_COOKIE_SECURE === "true";
 
   try {
-    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS]);
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS, ...ANALYTICS_MIGRATIONS, ...BODY_MIGRATIONS]);
     const auth = createAuthService(createSqliteAuthStore(sqlite));
     const profile = createProfileService(sqlite);
     const foods = createFoodCatalog(sqlite);
     const diary = createDiaryService(sqlite);
     const dashboard = createDashboardService(sqlite);
+    const body = createBodyService(sqlite);
     const webDistDir = options.webDistDir ?? process.env.WEB_DIST_DIR ?? "/app/web";
     const server = createServer(async (request, response) => {
       const requestId = randomUUID();
@@ -185,6 +194,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         const copyMealMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-meal$/.exec(url.pathname);
         const copyDayMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-day$/.exec(url.pathname);
         const dashboardMatch = /^\/api\/v1\/dashboard\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
+        const bodyWeightMatch = /^\/api\/v1\/body\/weights(?:\/([^/]+))?$/.exec(url.pathname);
         if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
         if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) throw new FoodError("FOOD_NOT_FOUND"); writeJson(response, 200, { data: detail }); return; }
@@ -200,6 +210,10 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (request.method === "GET" && url.pathname === "/api/v1/profile/goals") { writeJson(response, 200, { data: profile.listGoals(userId!) }); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/profile/goals/estimate") { writeJson(response, 200, { data: profile.estimateGoal(userId!, await readJson(request)) }); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/profile/goals") { const body = await readJson(request); writeJson(response, 201, { data: profile.createGoal(userId!, body as Parameters<typeof profile.createGoal>[1]) }); return; }
+        if (bodyWeightMatch && request.method === "GET" && bodyWeightMatch[1] === undefined) { const limitParam = url.searchParams.get("limit"); writeJson(response, 200, { data: body.listWeights({ userId: userId!, ...(url.searchParams.get("from") ? { from: url.searchParams.get("from")! } : {}), ...(url.searchParams.get("to") ? { to: url.searchParams.get("to")! } : {}), ...(limitParam ? { limit: Number(limitParam) } : {}) }) }); return; }
+        if (bodyWeightMatch && request.method === "POST" && bodyWeightMatch[1] === undefined) { const input = await readJson(request); writeJson(response, 201, { data: body.createWeight({ userId: userId!, measuredAt: String(input.measuredAt ?? ""), weightKg: input.weightKg as number, ...(typeof input.source === "string" ? { source: input.source as "manual" | "import" } : {}), ...(input.note === null || typeof input.note === "string" ? { note: input.note } : {}) }) }); return; }
+        if (bodyWeightMatch && request.method === "PATCH" && bodyWeightMatch[1] !== undefined) { const input = await readJson(request); writeJson(response, 200, { data: body.updateWeight({ userId: userId!, id: decodeURIComponent(bodyWeightMatch[1]), version: input.version as number, ...(typeof input.measuredAt === "string" ? { measuredAt: input.measuredAt } : {}), ...(typeof input.weightKg === "number" ? { weightKg: input.weightKg } : {}), ...(input.note === null || typeof input.note === "string" ? { note: input.note } : {}) }) }); return; }
+        if (bodyWeightMatch && request.method === "DELETE" && bodyWeightMatch[1] !== undefined) { const input = await readJson(request); body.deleteWeight({ userId: userId!, id: decodeURIComponent(bodyWeightMatch[1]), version: input.version as number }); writeNoContent(response); return; }
         if (diaryMatch && request.method === "GET") { writeJson(response, 200, { data: diary.getDay({ userId: userId!, date: diaryMatch[1]! }) }); return; }
         if (diaryEntryMatch && request.method === "POST" && !diaryEntryMatch[2]) { const body = await readJson(request); const entry = diary.createEntry({ userId: userId!, date: diaryEntryMatch[1]!, mealSlotId: String(body.mealSlotId ?? ""), foodId: String(body.foodId ?? ""), amount: body.amount as number, unit: body.unit as "g" | "ml" | "serving", ...(typeof body.servingId === "string" ? { servingId: body.servingId } : {}), ...(typeof body.note === "string" ? { note: body.note } : {}), source: body.source as "manual" | "ai_confirmed" | "import", ...(typeof request.headers["idempotency-key"] === "string" ? { idempotencyKey: request.headers["idempotency-key"] } : {}) }); writeJson(response, 201, { data: entry }); return; }
         if (diaryEntryMatch && request.method === "PATCH" && diaryEntryMatch[2]) { const body = await readJson(request); const entry = diary.updateEntry({ userId: userId!, date: diaryEntryMatch[1]!, entryId: decodeURIComponent(diaryEntryMatch[2]), ...(typeof body.amount === "number" ? { amount: body.amount } : {}), ...(typeof body.unit === "string" ? { unit: body.unit as "g" | "ml" | "serving" } : {}), ...(typeof body.mealSlotId === "string" ? { mealSlotId: body.mealSlotId } : {}), ...(typeof body.servingId === "string" ? { servingId: body.servingId } : {}), ...(typeof body.note === "string" ? { note: body.note } : {}), version: body.version as number }); writeJson(response, 200, { data: entry }); return; }
@@ -210,7 +224,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (request.method === "GET" && !url.pathname.startsWith("/api/")) { if (existsSync(webDistDir) && serveStatic(response, url.pathname, webDistDir)) return; if (url.pathname === "/") { writeFallbackHome(response); return; } }
         writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
       } catch (error) {
-        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
+        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId) && !bodyError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
       }
     });
     await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(options.port ?? Number(process.env.PORT ?? 3000), "0.0.0.0", () => resolve()); });
