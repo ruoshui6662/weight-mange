@@ -49,6 +49,19 @@ importers:
 
   packages/core: {}
 
+  packages/dashboard:
+    dependencies:
+      '@nutrition-tracker/db':
+        specifier: workspace:*
+        version: link:../db
+      '@nutrition-tracker/diary':
+        specifier: workspace:*
+        version: link:../diary
+    devDependencies:
+      '@nutrition-tracker/food':
+        specifier: workspace:*
+        version: link:../food
+
   packages/db:
     dependencies:
       drizzle-orm:
