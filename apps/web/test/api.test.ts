@@ -19,4 +19,10 @@ describe("web API client", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
     await expect(api.logout()).resolves.toBeUndefined();
   });
+
+  it("encodes recipe ids and keeps credentials for recipe mutations", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ data: { id: "r/1" } }), { status: 200 }));
+    await api.addRecipeToDiary("r/1", { date: "2026-09-09", mealSlotId: "dinner", amount: 165, unit: "g" });
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/recipes/r%2F1/add-to-diary", expect.objectContaining({ method: "POST", credentials: "include" }));
+  });
 });

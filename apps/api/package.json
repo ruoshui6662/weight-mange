@@ -11,6 +11,7 @@
     "@nutrition-tracker/body": "workspace:*",
     "@nutrition-tracker/analytics": "workspace:*",
     "@nutrition-tracker/diary": "workspace:*",
+    "@nutrition-tracker/recipe": "workspace:*",
     "@nutrition-tracker/profile": "workspace:*"
   },
   "scripts": {

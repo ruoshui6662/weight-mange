@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import type { Entry, RecipeDiarySnapshotInput } from "@nutrition-tracker/diary";
 import { convertPortionToGrams, NUTRITION_ENGINE_VERSION, type NutrientStatus, type NutrientSummary } from "@nutrition-tracker/nutrition-engine";
 
 export const RECIPE_CALC_VERSION = "recipe_yield_v1" as const;
@@ -39,7 +40,7 @@ export type Recipe = {
 };
 
 type Options = { now?: () => number; id?: () => string; diary?: DiarySnapshotWriter };
-type DiarySnapshotWriter = { createRecipeSnapshotEntry(input: { userId: string; date: string; mealSlotId: string; recipeId: string; recipeName: string; amount: number; unit: "g"; gramEquivalent: number; sourceSnapshot: string; nutrients: Array<{ nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: string; sourceBasisJson: string }>; note?: string | null }): { id: string; recipeId: string | null; [key: string]: unknown } };
+type DiarySnapshotWriter = { createRecipeSnapshotEntry(input: RecipeDiarySnapshotInput): Entry };
 type RecipeRow = { id: string; userId: string; name: string; cookedWeightG: number | null; servingCount: number | null; note: string | null; version: number; deletedAt: number | null; createdAt: number; updatedAt: number };
 type IngredientRow = { id: string; recipeId: string; foodId: string | null; servingId: string | null; nameSnapshot: string; inputAmount: number; inputUnit: RecipeUnit; gramEquivalent: number | null; sortOrder: number };
 type FoodResolution = { foodId: string; servingId: string | null; name: string; sourceSnapshot: Record<string, unknown>; gramEquivalent: number; snapshots: Array<{ id: string; nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: NutrientStatus | "not_applicable"; sourceBasisJson: string }> };

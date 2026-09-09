@@ -445,6 +445,8 @@ multipart：
 
 ## GET /api/v1/recipes
 
+需要登录。只返回当前用户未软删除的菜谱，按 `updated_at DESC,id DESC` 排序；响应为 `{data: Recipe[]}`。
+
 ## POST /api/v1/recipes
 
 ```json
@@ -477,18 +479,26 @@ Response：
 - per100g；
 - per serving；
 - warnings；
-- `recipe_calc_version`；
+- `calcVersion`（固定值 `recipe_yield_v1`）；
 - ingredient source/snapshot metadata。
+
+每个 ingredient 返回 `foodId`、`servingId`、`nameSnapshot`、`inputAmount`、`inputUnit`、`gramEquivalent` 和 nutrient snapshot。`total`、`per100g`、`perServing` 中每个 nutrient 同时返回 `amount`、`coverage`、`hasTrace`、`hasEstimated`。
 
 ## PATCH /api/v1/recipes/:id
 
-编辑原料、成品重量或份数时，服务端在同一事务内重建受影响 ingredient snapshot 并使 nutrient cache 失效。不会自动读取 food 的最新值覆盖已有 recipe snapshot；需要显式刷新动作。
+请求体必须带当前 `version`；编辑原料、成品重量或份数时，服务端在同一事务内重建受影响 ingredient snapshot 并使 nutrient cache 失效，成功后 `version` 加一。版本不匹配返回 `409 RECIPE_VERSION_CONFLICT`。不会自动读取 food 的最新值覆盖已有 recipe snapshot；需要显式刷新动作。
+
+## POST /api/v1/recipes/:id/copy
+
+复制当前用户菜谱及其 ingredient/snapshot facts；可选请求体 `{ "name": "副本名称" }`，响应 `201` 返回新菜谱。复制不重新解析当前 food。
 
 ## POST /api/v1/recipes/:id/refresh-ingredients
 
 显式按当前 active food 重新解析指定或全部 ingredients。无法解析的原料保留已有 snapshot 并返回 warning；没有可用 snapshot 的新原料拒绝保存。响应必须包含新的 `recipe_calc_version`、warnings 和每个 ingredient 的 source/snapshot 信息。
 
 ## DELETE /api/v1/recipes/:id
+
+软删除当前用户菜谱，响应 `{data:{ok:true}}`；历史 diary snapshot 不受影响。菜谱或 ingredient 不存在返回 `404`。
 
 ## POST /api/v1/recipes/:id/add-to-diary
 
@@ -523,6 +533,10 @@ limit
   "note": ""
 }
 ```
+
+`unit` v1 仅允许 `g`，服务端使用当前 recipe 的 `per100g` 结果写入 diary nutrition snapshot；没有 `cookedWeightG` 返回 `400 RECIPE_COOKED_WEIGHT_REQUIRED`。加入成功返回 `201` 的 diary entry，后续 recipe/food 修改不得改变该 entry。
+
+统一错误码：`RECIPE_NOT_FOUND`、`RECIPE_FOOD_NOT_FOUND`、`RECIPE_INGREDIENT_NOT_FOUND` 为 404；`RECIPE_VERSION_CONFLICT` 为 409；其他 `RECIPE_*` 输入、份量、营养 basis 或 diary 边界错误为 400。
 
 加入日记只通过 application service 写入 diary nutrition snapshot；后续 recipe 或 food 更新不得改变该日记历史值。
 

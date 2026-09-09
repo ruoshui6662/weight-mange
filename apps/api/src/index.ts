@@ -13,6 +13,7 @@ import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 import { createProfileService, ProfileError } from "@nutrition-tracker/profile";
 import { BodyError, calculateWeightTrend, createBodyService, sampleDailyWeights } from "@nutrition-tracker/body";
 import { AnalyticsError, createAnalyticsService } from "@nutrition-tracker/analytics";
+import { createRecipeService, RecipeError } from "@nutrition-tracker/recipe";
 
 const SESSION_COOKIE = "nutrition_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -126,6 +127,13 @@ function analyticsError(response: ServerResponse, error: unknown, requestId: str
   return true;
 }
 
+function recipeError(response: ServerResponse, error: unknown, requestId: string) {
+  if (!(error instanceof RecipeError)) return false;
+  const status = error.code === "RECIPE_NOT_FOUND" || error.code === "RECIPE_FOOD_NOT_FOUND" || error.code === "RECIPE_INGREDIENT_NOT_FOUND" ? 404 : error.code === "RECIPE_VERSION_CONFLICT" ? 409 : 400;
+  writeJson(response, status, { error: { code: error.code, message: error.code, ...(error.details ? { details: error.details } : {}), requestId } });
+  return true;
+}
+
 function authError(response: ServerResponse, error: unknown, requestId: string) {
   if (error instanceof ApiAuthError) {
     writeJson(response, 401, { error: { code: error.code, message: error.code, requestId } });
@@ -152,6 +160,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
     const dashboard = createDashboardService(sqlite);
     const body = createBodyService(sqlite);
     const analytics = createAnalyticsService(sqlite);
+    const recipe = createRecipeService(sqlite, { diary });
     const webDistDir = options.webDistDir ?? process.env.WEB_DIST_DIR ?? "/app/web";
     const server = createServer(async (request, response) => {
       const requestId = randomUUID();
@@ -203,8 +212,20 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         const copyDayMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-day$/.exec(url.pathname);
         const dashboardMatch = /^\/api\/v1\/dashboard\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
         const bodyWeightMatch = /^\/api\/v1\/body\/weights(?:\/([^/]+))?$/.exec(url.pathname);
+        const recipeMatch = /^\/api\/v1\/recipes\/([^/]+)$/.exec(url.pathname);
+        const recipeCopyMatch = /^\/api\/v1\/recipes\/([^/]+)\/copy$/.exec(url.pathname);
+        const recipeRefreshMatch = /^\/api\/v1\/recipes\/([^/]+)\/refresh-ingredients$/.exec(url.pathname);
+        const recipeDiaryMatch = /^\/api\/v1\/recipes\/([^/]+)\/add-to-diary$/.exec(url.pathname);
         if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
+        if (request.method === "GET" && url.pathname === "/api/v1/recipes") { writeJson(response, 200, { data: recipe.list({ userId: userId! }) }); return; }
+        if (request.method === "POST" && url.pathname === "/api/v1/recipes") { const body = await readJson(request); writeJson(response, 201, { data: recipe.create({ userId: userId!, name: String(body.name ?? ""), ...(body.cookedWeightG === null || typeof body.cookedWeightG === "number" ? { cookedWeightG: body.cookedWeightG } : {}), ...(body.servingCount === null || typeof body.servingCount === "number" ? { servingCount: body.servingCount } : {}), ...(body.note === null || typeof body.note === "string" ? { note: body.note } : {}), ingredients: body.ingredients as Parameters<typeof recipe.create>[0]["ingredients"] }) }); return; }
+        if (recipeCopyMatch && request.method === "POST") { const body = await readJson(request); writeJson(response, 201, { data: recipe.copy({ userId: userId!, recipeId: decodeURIComponent(recipeCopyMatch[1]!), ...(typeof body.name === "string" ? { name: body.name } : {}) }) }); return; }
+        if (recipeRefreshMatch && request.method === "POST") { const body = await readJson(request); writeJson(response, 200, { data: recipe.refreshIngredients({ userId: userId!, recipeId: decodeURIComponent(recipeRefreshMatch[1]!), ...(Array.isArray(body.ingredientIds) ? { ingredientIds: body.ingredientIds.filter((value): value is string => typeof value === "string") } : {}) }) }); return; }
+        if (recipeDiaryMatch && request.method === "POST") { const body = await readJson(request); writeJson(response, 201, { data: recipe.addToDiary({ userId: userId!, recipeId: decodeURIComponent(recipeDiaryMatch[1]!), date: String(body.date ?? ""), mealSlotId: String(body.mealSlotId ?? ""), amount: body.amount as number, unit: body.unit as "g", ...(body.note === null || typeof body.note === "string" ? { note: body.note } : {}) }) }); return; }
+        if (recipeMatch && request.method === "GET") { const value = recipe.get({ userId: userId!, recipeId: decodeURIComponent(recipeMatch[1]!) }); if (!value) throw new RecipeError("RECIPE_NOT_FOUND"); writeJson(response, 200, { data: value }); return; }
+        if (recipeMatch && request.method === "PATCH") { const body = await readJson(request); writeJson(response, 200, { data: recipe.update({ userId: userId!, recipeId: decodeURIComponent(recipeMatch[1]!), version: body.version as number, ...(typeof body.name === "string" ? { name: body.name } : {}), ...(body.cookedWeightG === null || typeof body.cookedWeightG === "number" ? { cookedWeightG: body.cookedWeightG } : {}), ...(body.servingCount === null || typeof body.servingCount === "number" ? { servingCount: body.servingCount } : {}), ...(body.note === null || typeof body.note === "string" ? { note: body.note } : {}), ...(Array.isArray(body.ingredients) ? { ingredients: body.ingredients as NonNullable<Parameters<typeof recipe.update>[0]["ingredients"]> } : {}) }) }); return; }
+        if (recipeMatch && request.method === "DELETE") { recipe.delete({ userId: userId!, recipeId: decodeURIComponent(recipeMatch[1]!) }); writeJson(response, 200, { data: { ok: true } }); return; }
         if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) throw new FoodError("FOOD_NOT_FOUND"); writeJson(response, 200, { data: detail }); return; }
         if (foodMatch && request.method === "PATCH") { const body = await readJson(request); writeJson(response, 200, { data: foods.update(decodeURIComponent(foodMatch[1]!), body as Parameters<typeof foods.update>[1]) }); return; }
         if (favoriteMatch && (request.method === "POST" || request.method === "DELETE")) { foods.setFavorite(decodeURIComponent(favoriteMatch[1]!), request.method === "POST"); writeJson(response, 200, { data: { favorite: request.method === "POST" } }); return; }
@@ -235,7 +256,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (request.method === "GET" && !url.pathname.startsWith("/api/")) { if (existsSync(webDistDir) && serveStatic(response, url.pathname, webDistDir)) return; if (url.pathname === "/") { writeFallbackHome(response); return; } }
         writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
       } catch (error) {
-        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId) && !bodyError(response, error, requestId) && !analyticsError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
+        if (!authError(response, error, requestId) && !foodError(response, error, requestId) && !diaryError(response, error, requestId) && !dashboardError(response, error, requestId) && !profileError(response, error, requestId) && !bodyError(response, error, requestId) && !analyticsError(response, error, requestId) && !recipeError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } });
       }
     });
     await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(options.port ?? Number(process.env.PORT ?? 3000), "0.0.0.0", () => resolve()); });

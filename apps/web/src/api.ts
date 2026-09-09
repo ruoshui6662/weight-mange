@@ -11,6 +11,8 @@ export type WeightRecord = { id: string; measuredAt: string; localDate: string; 
 export type WeightTrend = { methodVersion: string; windowDays: number; method: string; alpha: number; observedDays: number; points: Array<{ localDate: string; weightKg: number; trendWeightKg: number }> };
 export type AnalyticsOverview = { period: { from: string; to: string; days: number }; recordCoverage: { recordedDays: number; totalDays: number; ratio: number }; averages: { intakeKcal: number | null; proteinG: number | null; fatG: number | null; carbG: number | null }; goal: { days: number; averageKcal: number | null; averageDifferenceKcal: number | null }; weight: { observedDays: number; startKg: number | null; endKg: number | null; deltaKg: number | null } };
 export type TdeeEstimate = { methodVersion: string; status: "estimated" | "insufficient_data" | "throttled"; reason: string | null; rawTdeeKcal: number | null; estimatedTdeeKcal: number | null; confidence: number; recommendedCalorieTargetKcal: null; period: { from: string; to: string } };
+export type Recipe = { id: string; userId: string; name: string; cookedWeightG: number | null; servingCount: number | null; note: string | null; version: number; ingredients: Array<Record<string, unknown>>; total: Record<string, Record<string, unknown>>; per100g: Record<string, Record<string, unknown>> | null; perServing: Record<string, Record<string, unknown>> | null; warnings: Array<Record<string, unknown>>; calcVersion: string };
+export type RecipeIngredientInput = { foodId: string; amount: number; unit: "g" | "ml" | "serving"; servingId?: string | null };
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(path, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) } });
@@ -32,6 +34,14 @@ export const api = {
   createGoal: (input: Record<string, unknown>) => request<Record<string, unknown>>("/api/v1/profile/goals", { method: "POST", body: JSON.stringify(input) }),
   getDashboard: (date: string) => request<Dashboard>(`/api/v1/dashboard/${encodeURIComponent(date)}`),
   getDiary: (date: string) => request<Diary>(`/api/v1/diary/${encodeURIComponent(date)}`),
+  getRecipes: () => request<Recipe[]>("/api/v1/recipes"),
+  getRecipe: (recipeId: string) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`),
+  createRecipe: (input: { name: string; cookedWeightG?: number | null; servingCount?: number | null; note?: string | null; ingredients: RecipeIngredientInput[] }) => request<Recipe>("/api/v1/recipes", { method: "POST", body: JSON.stringify(input) }),
+  updateRecipe: (recipeId: string, input: Record<string, unknown>) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`, { method: "PATCH", body: JSON.stringify(input) }),
+  copyRecipe: (recipeId: string, name?: string) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/copy`, { method: "POST", body: JSON.stringify(name === undefined ? {} : { name }) }),
+  deleteRecipe: (recipeId: string) => request<{ ok: boolean }>(`/api/v1/recipes/${encodeURIComponent(recipeId)}`, { method: "DELETE" }),
+  refreshRecipeIngredients: (recipeId: string, ingredientIds?: string[]) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/refresh-ingredients`, { method: "POST", body: JSON.stringify(ingredientIds === undefined ? {} : { ingredientIds }) }),
+  addRecipeToDiary: (recipeId: string, input: { date: string; mealSlotId: string; amount: number; unit: "g"; note?: string | null }) => request<Record<string, unknown>>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/add-to-diary`, { method: "POST", body: JSON.stringify(input) }),
   searchFoods: (query: string) => request<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>(`/api/v1/foods/search?q=${encodeURIComponent(query)}&limit=10`),
   createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(input) }),
   updateDiaryEntry: (date: string, entryId: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: JSON.stringify(input) }),

@@ -62,6 +62,9 @@ importers:
       '@nutrition-tracker/profile':
         specifier: workspace:*
         version: link:../../packages/profile
+      '@nutrition-tracker/recipe':
+        specifier: workspace:*
+        version: link:../../packages/recipe
 
   apps/web:
     dependencies:
@@ -158,6 +161,9 @@ importers:
       '@nutrition-tracker/db':
         specifier: workspace:*
         version: link:../db
+      '@nutrition-tracker/diary':
+        specifier: workspace:*
+        version: link:../diary
       '@nutrition-tracker/nutrition-engine':
         specifier: workspace:*
         version: link:../nutrition-engine
