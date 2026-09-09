@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
 import { CORE_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
@@ -56,10 +57,10 @@ async function readJson(request: IncomingMessage): Promise<Record<string, unknow
   throw new FoodError("FOOD_INVALID_BODY");
 }
 
-function foodError(response: ServerResponse, error: unknown) {
+function foodError(response: ServerResponse, error: unknown, requestId: string) {
   if (error instanceof FoodError) {
     const status = error.code === "FOOD_NOT_FOUND" ? 404 : error.code === "FOOD_REFERENCE_READ_ONLY" || error.code.endsWith("_READ_ONLY") || error.code === "FOOD_VERSION_CONFLICT" ? 409 : 400;
-    writeJson(response, status, { error: error.code }); return true;
+    writeJson(response, status, { error: { code: error.code, message: error.code, ...(error.details ? { details: error.details } : {}), requestId } }); return true;
   }
   return false;
 }
@@ -73,6 +74,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
     applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS]);
     const foods = createFoodCatalog(sqlite);
     const server = createServer(async (request, response) => {
+      const requestId = randomUUID();
       try {
         const url = new URL(request.url ?? "/", "http://localhost");
         const foodMatch = /^\/api\/v1\/foods\/([^/]+)$/.exec(url.pathname);
@@ -81,7 +83,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         const favoriteMatch = /^\/api\/v1\/foods\/([^/]+)\/favorite$/.exec(url.pathname);
         if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
-        if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) { writeJson(response, 404, { error: "FOOD_NOT_FOUND" }); return; } writeJson(response, 200, { data: detail }); return; }
+        if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) throw new FoodError("FOOD_NOT_FOUND"); writeJson(response, 200, { data: detail }); return; }
         if (foodMatch && request.method === "PATCH") { const body = await readJson(request); writeJson(response, 200, { data: foods.update(decodeURIComponent(foodMatch[1]!), body as Parameters<typeof foods.update>[1]) }); return; }
         if (favoriteMatch && (request.method === "POST" || request.method === "DELETE")) { foods.setFavorite(decodeURIComponent(favoriteMatch[1]!), request.method === "POST"); writeJson(response, 200, { data: { favorite: request.method === "POST" } }); return; }
         if (servingMatch && request.method === "POST" && !servingMatch[2]) { const body = await readJson(request); writeJson(response, 201, { data: { id: foods.addServing(decodeURIComponent(servingMatch[1]!), body as Parameters<typeof foods.addServing>[1]) } }); return; }
@@ -101,8 +103,8 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         writeJson(response, ready ? 200 : 503, { status: ready ? "ready" : "starting" });
         return;
       }
-      writeJson(response, 404, { error: "NOT_FOUND" });
-      } catch (error) { if (!foodError(response, error)) writeJson(response, 500, { error: "INTERNAL_ERROR" }); }
+      writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
+      } catch (error) { if (!foodError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } }); }
     });
 
     await new Promise<void>((resolve, reject) => {

@@ -20,5 +20,8 @@ it("exposes local-only food routes and stable error envelopes", async () => {
     expect((await fetch(`${base}/api/v1/foods/${created.data.id}/favorite`, { method: "POST" })).status).toBe(200);
     expect((await fetch(`${base}/api/v1/foods/missing`)).status).toBe(404);
     expect((await fetch(`${base}/api/v1/foods/search?q=x&limit=500`)).status).toBe(400);
+    const malformed = await fetch(`${base}/api/v1/foods/custom`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toMatchObject({ error: { code: "FOOD_INVALID_CUSTOM", requestId: expect.any(String) } });
   } finally { await runtime.close(); }
 });
