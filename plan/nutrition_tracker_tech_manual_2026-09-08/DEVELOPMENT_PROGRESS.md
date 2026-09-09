@@ -367,6 +367,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 23:35 +08:00 | Codex | 修复独立复审发现的问题 | 修复 204 logout JSON 解析、非法日期 500、离线 banner/重试、首次设置用户状态和静态 symlink 路径校验；focused 10 tests、build/lint/typecheck 通过；等待复审复核 |
 | 2026-09-09 23:45 +08:00 | Codex | 完成复审修复后的全量验证 | full 104 files/535 tests；integration、lint、typecheck、build、API smoke、diff check 均 exit 0；Docker smoke 如实记录 Docker CLI 不可用；M1-007 仍等待目标 viewport 视觉基线后关闭 |
 | 2026-09-09 23:55 +08:00 | Codex | 合并后远程 CI 首次验证失败 | run `34341237744` 的 verify 中 lint/typecheck/test/build/API smoke 全部成功，仅重复 `pnpm docker:smoke` 失败，导致 docker 发布 job 被跳过；登记 `BLK-006`，将验证与镜像构建职责拆开后重跑 |
+| 2026-09-10 00:05 +08:00 | Codex | 定位 Docker build 根因并完成 RED 复现 | run `34341890201` 的 Docker job 失败于 Dockerfile `pnpm build`；干净 context 移除 `tools/` 后本地复现 `TS5083`，确认根因是 build stage 未复制 `tools/food-import`；补充 `COPY tools ./tools`，等待远程复验 |
 | 2026-09-09 07:10 +08:00 | Codex | 开始 DOC-004 | 用户指定公开 GitHub 仓库作为后续 Docker 内容承载位置；先建立发布白名单、排除项与上传前验收，当前不上传 |
 | 2026-09-09 07:12 +08:00 | Codex | 完成 DOC-004 验证 | README 与 Docker 部署规范已同步发布边界、排除项、发布闸门和镜像标签方法；文档检查通过；未执行远程绑定、push、Actions 或 GHCR 操作 |
 

@@ -4,6 +4,7 @@ WORKDIR /workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json vitest.config.ts vitest.integration.config.ts eslint.config.mjs ./
 COPY apps ./apps
 COPY packages ./packages
+COPY tools ./tools
 COPY scripts ./scripts
 
 RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
