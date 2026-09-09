@@ -52,6 +52,11 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .food-result small { color: #718278; }
 .food-result.selected { border: 2px solid #56ae83; }
 .add-form { display: grid; gap: 12px; margin-top: 14px; }
+.empty-state, .import-guide, .tab-placeholder, .profile-card { display: grid; gap: 10px; }
+.empty-state { margin-top: 12px; padding: 16px; border-radius: 16px; color: #496256; background: #f6faf7; }
+.empty-state p, .import-guide p, .tab-placeholder p, .profile-card p { margin-bottom: 0; }
+.import-guide { margin-top: 12px; padding: 14px; border-left: 4px solid #56ae83; color: #496256; background: #f1f8f3; }
+.tab-placeholder, .profile-card { padding: 22px; }
 .page-error { margin-top: 14px; }
 .bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin: 0 auto; padding: 8px max(12px, calc((100% - 560px) / 2)); border-top: 1px solid #e0ebe4; background: rgb(255 255 255 / 94%); backdrop-filter: blur(12px); }
 .bottom-nav button { color: #718278; background: transparent; }

@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 00:45 +08:00
+> 最后更新：2026-09-10 01:10 +08:00
 
 ## 1. 当前快照
 
@@ -12,9 +12,9 @@
 | 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-007 Mobile-first 核心 UI：交互缺口与目标 viewport 验收 |
-| 下一步 | 处理 ISSUE-116：接入导航动作、食物目录导入/空状态，再补齐 360/390/430 视觉证据 |
-| 当前阻塞 | ISSUE-116：底部导航为占位按钮，空食物目录时搜索无可见结果；解除条件是完成交互与空状态验收 |
+| 当前焦点 | M1-007 Mobile-first 核心 UI：360/390/430 视觉证据 |
+| 下一步 | 补齐目标 viewport 截图与浏览器级交互验收，然后关闭 M1-007 |
+| 当前阻塞 | 功能无阻塞；本机 Docker CLI 缺失，容器实测仍需 CI/飞牛环境完成 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model、M1-008 核心集成 golden flow 已完成；M1-007 核心实现已完成，待视觉/复审验收 |
 | Git | 远程 `main` 当前为 `165917c`（包含 `3a47945` 代码发布）；GHCR `latest` 已发布，多架构 manifest digest 为 `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d` |
 
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 7/8 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 8/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -191,7 +191,21 @@
 - 当前进展：已新增真实 HTTP + SQLite golden flow，覆盖一次初始化、受控馒头数据导入/搜索、早餐记录、数量修改、复制、删除、服务重启、food v2 更新后的历史快照稳定，以及 backup manifest/restore 后数据可读。
 - 验收结果：EVD-M1-008-A；聚焦 1 file/1 test、全量 106 files/539 tests；lint/typecheck/build/API smoke/git diff check exit 0；docker smoke exit 0 但本机无 Docker CLI。
 - 阻塞/风险：当前仓库未引入 Playwright 浏览器运行时；集成测试已覆盖同一 golden flow，浏览器级 E2E 与容器真实重启演练仍需后续环境补齐。
-- 下一步：回到 M1-007，补齐 360/390/430 目标 viewport 视觉基线后关闭 M1。
+- 下一步：进入 M1-009，先消除导航和搜索空状态的不可观察交互。
+
+### M1-009 — 导航交互与食物搜索空状态
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 00:55 +08:00
+- 完成时间：2026-09-10 01:05 +08:00
+- 操作者：Codex
+- 依赖：M1-007、M1-008
+- 计划变更：增加类型化 Dashboard 导航状态；实现今日/饮食/我的页面壳；为体重/分析提供明确 M2 占位；补充食物搜索 loading/empty/error 可见状态和本地目录导入说明。
+- 计划验收：先测试后实现；Web 聚焦测试、全量 `pnpm test`、`pnpm lint`、`pnpm build`、`pnpm api:smoke`、`git diff --check` 全部通过；不引入外部网络或数据库迁移。
+- 当前进展：导航状态模型、Dashboard 五项导航、M2 占位页、搜索 loading/empty/error 状态和本地目录导入说明均已完成；登录后完整用户会话现在会先加载 Dashboard 数据再进入首页。
+- 验收结果：EVD-M1-009-A；聚焦 Web dashboard/flow/search-state 3 files/8 tests；全量 108 files/544 tests；lint/build/typecheck/API smoke/diff check exit 0；docker smoke exit 0 但本机 Docker CLI 不可用。
+- 阻塞/风险：无功能阻塞；360/390/430 视觉基线与浏览器级 E2E 仍归 M1-007 后续验收。
+- 下一步：回到 M1-007，完成目标 viewport 视觉证据。
 
 ## 4. DOC 任务板
 
@@ -303,6 +317,8 @@ result: 42 passed, 0 failed
 
 “已检查”“看起来正常”或只给文件路径不能作为通过证据。
 
+| EVD-M1-009-A | M1-009 | 2026-09-10 01:10 +08:00 | `pnpm exec vitest run apps/web/test/dashboard-view.test.ts apps/web/test/flow.test.ts apps/web/test/search-state.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 聚焦 3 files/8 tests；全量 108 files/544 tests；所有代码门禁与 API smoke exit 0；docker smoke exit 0 但本机 Docker CLI 不可用；导航五项均有可见状态，空目录搜索有导入说明 |
+
 ## 9. 问题队列
 
 完整缺口见 `PLAN_REVIEW.md`。当前优先处理顺序：
@@ -322,7 +338,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 
 `ISSUE-115 | 2026-09-10 00:20 +08:00 | M1-007 | P2 | 首次设置密码少于 12 个字符时只显示通用请求失败 | 前端预校验并映射明确错误文案 | RESOLVED，见 EVD-M1-007-D`
 
-`ISSUE-116 | 2026-09-10 00:45 +08:00 | M1-007 | P1 | Dashboard 底部导航按钮没有动作；本地食物目录为空时搜索只返回空数组且没有空状态/导入入口 | 接入导航状态与页面、增加食物目录导入或明确空状态引导，并补 UI/E2E 验收 | OPEN`
+`ISSUE-116 | 2026-09-10 00:45 +08:00 | M1-007 | P1 | Dashboard 底部导航按钮没有动作；本地食物目录为空时搜索只返回空数组且没有空状态/导入入口 | 接入导航状态与页面、增加食物目录导入或明确空状态引导，并补 UI/E2E 验收 | RESOLVED，见 EVD-M1-009-A`
 
 ## 10. 活动日志
 
@@ -397,6 +413,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 00:26 +08:00 | Codex | 完成 ISSUE-115 修复与 M1-007 局部验收 | 聚焦 3 tests、全量 105 files/538 tests、lint/typecheck 通过；浏览器实测短密码在提交前得到明确提示；目标 360/390/430 截图仍待适配器支持 |
 | 2026-09-10 00:28 +08:00 | Codex | 完成 M1-008 集成验收 | 聚焦 1 test、全量 106 files/539 tests；lint/typecheck/build/API smoke/diff check exit 0；重启、历史 snapshot 不漂移和 backup restore 通过；本机 Docker CLI 缺失如实记录 |
 | 2026-09-10 00:45 +08:00 | Codex | 登记 ISSUE-116 | 用户反馈更新后除退出外按钮无效；代码核查确认底部导航尚未绑定动作，搜索仅查询本地 active catalog，空目录时无结果提示；待后续实现，不在本次诊断中扩大范围 |
+| 2026-09-10 00:55 +08:00 | Codex | 开始 M1-009 | 用户确认从第一性原理继续开发；已写入导航/空状态 spec 与实施计划，任务进入 IN_PROGRESS，先执行导航状态模型的 RED 测试 |
+| 2026-09-10 01:10 +08:00 | Codex | 完成 M1-009 | 补充 Dashboard 导航与空状态 HTML 渲染回归；聚焦 3 files/8 tests、全量 108 files/544 tests，lint/typecheck/build/API smoke/diff check 通过；docker smoke 仅记录本机 Docker CLI 缺失；ISSUE-116 已关闭，下一步补 M1-007 目标 viewport 视觉证据 |
 
 ## 11. 交接摘要
 
