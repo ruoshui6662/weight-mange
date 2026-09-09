@@ -533,7 +533,10 @@ Query：
 ```text
 days=30
 method=ewma
+sampling=last|average
 ```
+
+支持 `days=7|14|30|90`；默认 `method=ewma`、`sampling=last`。缺失日期不插值，响应包含 `methodVersion=weight_trend_v1`、`alpha=0.25` 和实际观测点。
 
 ---
 

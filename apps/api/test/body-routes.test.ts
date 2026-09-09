@@ -28,6 +28,9 @@ it("records, lists, updates and deletes authenticated body weights", async () =>
     const listed = await fetch(`${base}/api/v1/body/weights?from=2026-09-08&to=2026-09-08`, { headers });
     expect(listed.status).toBe(200);
     expect((await json(listed)).data).toHaveLength(2);
+    const trend = await fetch(`${base}/api/v1/body/weight-trend?days=7&method=ewma`, { headers });
+    expect(trend.status).toBe(200);
+    expect(await json(trend)).toMatchObject({ data: { methodVersion: "weight_trend_v1", observedDays: 1, points: [{ localDate: "2026-09-08", weightKg: 55.4, trendWeightKg: 55.4 }] } });
     const id = (firstBody.data as { id: string }).id;
     const updated = await fetch(`${base}/api/v1/body/weights/${id}`, { method: "PATCH", headers, body: JSON.stringify({ weightKg: 54.8, version: 0 }) });
     expect(updated.status).toBe(200);

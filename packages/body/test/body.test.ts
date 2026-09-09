@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { applyMigrations, openDatabase } from "../../db/src/index.js";
 import { BODY_MIGRATIONS, CORE_MIGRATIONS } from "../../db/src/schema.js";
-import { BodyError, createBodyService } from "../src/index.js";
+import { BodyError, calculateWeightTrend, createBodyService, sampleDailyWeights } from "../src/index.js";
 
 const directories: string[] = [];
 
@@ -53,5 +53,49 @@ describe("body weight records", () => {
     const created = body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 });
     expect(() => body.updateWeight({ userId: "other-user", id: created.id, weightKg: 54, version: 0 })).toThrow(new BodyError("BODY_NOT_FOUND"));
     sqlite.close();
+  });
+
+  it("samples same-day observations without inventing missing dates", () => {
+    const observations = [
+      { localDate: "2026-01-01", measuredAt: 100, weightKg: 70 },
+      { localDate: "2026-01-01", measuredAt: 200, weightKg: 69.8 },
+      { localDate: "2026-01-03", measuredAt: 300, weightKg: 69 },
+    ];
+    expect(sampleDailyWeights(observations, "last")).toEqual([
+      { localDate: "2026-01-01", weightKg: 69.8, observedCount: 2 },
+      { localDate: "2026-01-03", weightKg: 69, observedCount: 1 },
+    ]);
+    expect(sampleDailyWeights(observations, "average")[0]).toMatchObject({ localDate: "2026-01-01", weightKg: 69.9, observedCount: 2 });
+  });
+
+  it("calculates versioned rolling and EWMA trends over calendar windows", () => {
+    const points = [
+      { localDate: "2026-01-01", weightKg: 70 },
+      { localDate: "2026-01-03", weightKg: 69 },
+      { localDate: "2026-01-08", weightKg: 68 },
+    ];
+    expect(calculateWeightTrend({ points, windowDays: 7, method: "rolling" })).toMatchObject({
+      methodVersion: "weight_trend_v1",
+      points: [
+        { localDate: "2026-01-03", weightKg: 69, trendWeightKg: 69.5 },
+        { localDate: "2026-01-08", weightKg: 68, trendWeightKg: 68.5 },
+      ],
+    });
+    expect(calculateWeightTrend({ points, windowDays: 14, method: "ewma" })).toMatchObject({
+      methodVersion: "weight_trend_v1",
+      alpha: 0.25,
+      points: [
+        { localDate: "2026-01-01", trendWeightKg: 70 },
+        { localDate: "2026-01-03", trendWeightKg: 69.75 },
+        { localDate: "2026-01-08", trendWeightKg: 69.3125 },
+      ],
+    });
+  });
+
+  it("rejects unsupported trend windows and unstable EWMA parameters", () => {
+    const points = [{ localDate: "2026-01-01", weightKg: 70 }];
+    expect(() => calculateWeightTrend({ points, windowDays: 10 as never, method: "rolling" })).toThrow(/windowDays/i);
+    expect(() => calculateWeightTrend({ points, windowDays: 7, method: "ewma", alpha: 0 })).toThrow(/alpha/i);
+    expect(calculateWeightTrend({ points: [], windowDays: 7, method: "rolling" })).toMatchObject({ points: [], observedDays: 0 });
   });
 });
