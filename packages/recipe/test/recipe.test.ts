@@ -131,6 +131,31 @@ describe("recipe package baseline", () => {
     sqlite.close();
   });
 
+  it("clears optional yield fields when update explicitly sends null", () => {
+    const { sqlite, foodId, recipes } = setup();
+    const created = recipes.create({ userId: "user-1", name: "可清除", cookedWeightG: 200, servingCount: 2, ingredients: [{ foodId, amount: 100, unit: "g" }] });
+
+    const cleared = recipes.update({ userId: "user-1", recipeId: created.id, version: created.version, cookedWeightG: null, servingCount: null });
+
+    expect(cleared).toMatchObject({ cookedWeightG: null, servingCount: null, version: 2 });
+    expect(cleared.per100g).toBeNull();
+    expect(cleared.perServing).toBeNull();
+    expect(cleared.warnings).toEqual(expect.arrayContaining([{ code: "COOKED_WEIGHT_MISSING" }, { code: "SERVING_COUNT_MISSING" }]));
+    sqlite.close();
+  });
+
+  it("leaves optional yield fields unchanged when update omits them", () => {
+    const { sqlite, foodId, recipes } = setup();
+    const created = recipes.create({ userId: "user-1", name: "可保留", cookedWeightG: 200, servingCount: 2, ingredients: [{ foodId, amount: 100, unit: "g" }] });
+
+    const updated = recipes.update({ userId: "user-1", recipeId: created.id, version: created.version, name: "名称更新" });
+
+    expect(updated).toMatchObject({ name: "名称更新", cookedWeightG: 200, servingCount: 2, version: 2 });
+    expect(updated.per100g).not.toBeNull();
+    expect(updated.perServing).not.toBeNull();
+    sqlite.close();
+  });
+
   it("adds a recipe portion to diary using a fresh nutrition snapshot", () => {
     const { sqlite, foodId, recipes, diary } = setup();
     const created = recipes.create({ userId: "user-1", name: "日记菜谱", cookedWeightG: 200, ingredients: [{ foodId, amount: 100, unit: "g" }] });

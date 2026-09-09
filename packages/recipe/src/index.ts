@@ -154,7 +154,17 @@ export function createRecipeService(sqlite: DatabaseSync, options: Options = {})
     if (!input || !input.userId || !input.recipeId || !Number.isInteger(input.version) || input.version < 0 || (input.name !== undefined && (typeof input.name !== "string" || !input.name.trim())) || (input.cookedWeightG !== undefined && input.cookedWeightG !== null && !finitePositive(input.cookedWeightG)) || (input.servingCount !== undefined && input.servingCount !== null && !finitePositive(input.servingCount)) || (input.ingredients !== undefined && (!Array.isArray(input.ingredients) || input.ingredients.length === 0))) throw new RecipeError("RECIPE_INVALID_INPUT");
     const current = readRecipe(input.userId, input.recipeId); if (!current) throw new RecipeError("RECIPE_NOT_FOUND"); if (current.version !== input.version) throw new RecipeError("RECIPE_VERSION_CONFLICT");
     const timestamp = now(); sqlite.exec("BEGIN IMMEDIATE");
-    try { sqlite.prepare("UPDATE recipe SET name=COALESCE(?,name),cooked_weight_g=COALESCE(?,cooked_weight_g),serving_count=COALESCE(?,serving_count),note=COALESCE(?,note),version=version+1,updated_at=? WHERE id=? AND user_id=? AND version=?").run(input.name?.trim() ?? null, input.cookedWeightG ?? null, input.servingCount ?? null, input.note ?? null, timestamp, input.recipeId, input.userId, input.version); if (input.ingredients !== undefined) { sqlite.prepare("DELETE FROM recipe_ingredient WHERE recipe_id=?").run(input.recipeId); writeIngredients(input.recipeId, input.ingredients); } invalidate(input.recipeId, timestamp); sqlite.exec("COMMIT"); return hydrate(input.userId, input.recipeId); } catch (error) { sqlite.exec("ROLLBACK"); throw error; }
+    try {
+      const assignments: string[] = [];
+      const params: Array<string | number | null> = [];
+      if (input.name !== undefined) { assignments.push("name=?"); params.push(input.name.trim()); }
+      if (input.cookedWeightG !== undefined) { assignments.push("cooked_weight_g=?"); params.push(input.cookedWeightG); }
+      if (input.servingCount !== undefined) { assignments.push("serving_count=?"); params.push(input.servingCount); }
+      if (input.note !== undefined) { assignments.push("note=?"); params.push(input.note); }
+      assignments.push("version=version+1", "updated_at=?"); params.push(timestamp, input.recipeId, input.userId, input.version);
+      sqlite.prepare(`UPDATE recipe SET ${assignments.join(",")} WHERE id=? AND user_id=? AND version=?`).run(...params);
+      if (input.ingredients !== undefined) { sqlite.prepare("DELETE FROM recipe_ingredient WHERE recipe_id=?").run(input.recipeId); writeIngredients(input.recipeId, input.ingredients); } invalidate(input.recipeId, timestamp); sqlite.exec("COMMIT"); return hydrate(input.userId, input.recipeId);
+    } catch (error) { sqlite.exec("ROLLBACK"); throw error; }
   };
 
   const copy = (input: RecipeCopyInput): Recipe => {

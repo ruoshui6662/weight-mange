@@ -42,6 +42,9 @@ it("creates, reads, copies, refreshes, adds, updates, and deletes an authenticat
     const diary = await fetch(`${base}/api/v1/recipes/${recipeId}/add-to-diary`, { method: "POST", headers, body: JSON.stringify({ date: "2026-09-09", mealSlotId: "dinner", amount: 165, unit: "g" }) });
     expect(diary.status).toBe(201);
     expect(((await json(diary)).data as JsonRecord).recipeId).toBe(recipeId);
+    const cleared = await fetch(`${base}/api/v1/recipes/${recipeId}`, { method: "PATCH", headers, body: JSON.stringify({ cookedWeightG: null, servingCount: null, version: 3 }) });
+    expect(cleared.status).toBe(200);
+    expect((await json(cleared)).data).toMatchObject({ cookedWeightG: null, servingCount: null, version: 4, per100g: null, perServing: null });
     const removed = await fetch(`${base}/api/v1/recipes/${recipeId}`, { method: "DELETE", headers });
     expect(removed.status).toBe(200);
     expect(((await json(removed)).data as JsonRecord).ok).toBe(true);

@@ -49,6 +49,12 @@ describe("RecipePanel", () => {
     expect(recipeErrorText(new ApiError("RECIPE_VERSION_CONFLICT", 409))).toContain("重新加载");
   });
 
+  it("sends explicit nulls when clearing optional yield fields", async () => {
+    const update = vi.fn(async () => ({ ...recipe, cookedWeightG: null, servingCount: null, version: 8 }));
+    await updateRecipeAction({ ...client, updateRecipe: update }, recipe, { name: recipe.name, cookedWeightG: "", servingCount: "", ingredients: [{ key: "ingredient-1", foodId: "food-1", name: "馒头", amount: "100" }] });
+    expect(update).toHaveBeenCalledWith("recipe-1", expect.objectContaining({ version: 7, cookedWeightG: null, servingCount: null }));
+  });
+
   it("omits ingredients for metadata-only edits and preserves non-g input snapshots", async () => {
     const draft = recipeDraftFromRecipe({ ...recipe, ingredients: [{ ...recipe.ingredients[0], inputAmount: 2, inputUnit: "ml", gramEquivalent: 200 }] });
     const update = vi.fn(async () => recipe);
