@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { RecipePanel } from "../src/RecipePanel";
+import { RecipeListStatus, RecipePanel } from "../src/RecipePanel";
 import type { RecipeClient } from "../src/api";
 
 const client = {
@@ -38,5 +38,18 @@ describe("RecipePanel", () => {
     }));
 
     expect(html).toContain("新建菜谱");
+  });
+
+  it("keeps existing recipes visible when a reload fails", () => {
+    const html = renderToStaticMarkup(React.createElement(RecipeListStatus, {
+      loading: false,
+      error: "服务暂时不可用",
+      hasRecipes: true,
+      onRetry: vi.fn(),
+    }));
+
+    expect(html).toContain("服务暂时不可用");
+    expect(html).toContain("重试");
+    expect(html).not.toContain("还没有菜谱");
   });
 });
