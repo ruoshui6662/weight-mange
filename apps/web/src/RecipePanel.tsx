@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
-import { ApiError, type Recipe, type RecipeClient, type RecipeCreateInput, type RecipeIngredientInput, type RecipeNutrientSummary } from "./api";
+import { ApiError, type Recipe, type RecipeClient, type RecipeCreateInput, type RecipeNutrientSummary } from "./api";
 import { nutrientValue, validateRecipeDraft, warningText, type RecipeDraft, type RecipeDraftIngredient } from "./recipe-ui";
 
 export type RecipePanelProps = {
@@ -20,6 +20,36 @@ const displayError = (error: unknown) => {
   if (["RECIPE_NOT_FOUND", "RECIPE_FOOD_NOT_FOUND", "RECIPE_INGREDIENT_NOT_FOUND"].includes(error.code)) return "菜谱或原料已不可用，请返回菜谱列表。";
   return error.message || error.code;
 };
+
+export const recipeErrorText = displayError;
+
+function draftInput(draft: RecipeDraft): RecipeCreateInput {
+  return { name: draft.name.trim(), cookedWeightG: draft.cookedWeightG.trim() ? Number(draft.cookedWeightG) : null, servingCount: draft.servingCount.trim() ? Number(draft.servingCount) : null, ingredients: draft.ingredients.map((row) => ({ foodId: row.foodId, amount: Number(row.amount), unit: "g" })) };
+}
+
+export async function updateRecipeAction(client: RecipeClient, recipe: Recipe, draft: RecipeDraft): Promise<Recipe> {
+  return client.updateRecipe(recipe.id, { ...draftInput(draft), version: recipe.version });
+}
+
+export async function copyRecipeAction(client: RecipeClient, recipeId: string): Promise<Recipe> {
+  return client.copyRecipe(recipeId);
+}
+
+export async function refreshRecipeAction(client: RecipeClient, recipe: Recipe): Promise<Recipe> {
+  return client.refreshRecipeIngredients(recipe.id, recipe.ingredients.map((item) => item.id));
+}
+
+export async function deleteRecipeAction(client: RecipeClient, recipe: Recipe, confirm: () => boolean): Promise<boolean> {
+  if (!confirm()) return false;
+  await client.deleteRecipe(recipe.id);
+  return true;
+}
+
+export async function addRecipeToDiaryAction(client: RecipeClient, recipeId: string, input: { date: string; mealSlotId: string; amount: number; unit: "g" }, onDiaryReload: () => Promise<void>, onOpenDiary: () => void): Promise<void> {
+  await client.addRecipeToDiary(recipeId, input);
+  await onDiaryReload();
+  onOpenDiary();
+}
 
 export function RecipePanel(props: RecipePanelProps): ReactElement {
   const [mode, setMode] = useState<RecipeMode>("list");
@@ -71,20 +101,19 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
     event.preventDefault();
     const validation = validateRecipeDraft(draft);
     if (validation) { setError(({ NAME_REQUIRED: "请输入菜谱名称。", INGREDIENT_REQUIRED: "至少添加一项原料。", INGREDIENT_FOOD_REQUIRED: "请选择原料。", INGREDIENT_AMOUNT_INVALID: "原料用量必须为正数。", COOKED_WEIGHT_INVALID: "成品重量必须为正数。", SERVING_COUNT_INVALID: "份数必须为正数。" })[validation]); return; }
-    const ingredients: RecipeIngredientInput[] = draft.ingredients.map((row) => ({ foodId: row.foodId, amount: Number(row.amount), unit: "g" }));
-    const input: RecipeCreateInput = { name: draft.name.trim(), cookedWeightG: draft.cookedWeightG.trim() ? Number(draft.cookedWeightG) : null, servingCount: draft.servingCount.trim() ? Number(draft.servingCount) : null, ingredients };
+    const input = draftInput(draft);
     setBusy("save"); setError("");
     try {
-      const next = recipe ? await props.client.updateRecipe(recipe.id, { ...input, version: recipe.version }) : await props.client.createRecipe(input);
+      const next = recipe ? await updateRecipeAction(props.client, recipe, draft) : await props.client.createRecipe(input);
       setRecipe(next); setRecipes((current) => recipe ? current.map((item) => item.id === next.id ? next : item) : [next, ...current]); setMode("detail");
     } catch (caught) { setError(displayError(caught)); }
     finally { setBusy(null); }
   }
 
-  async function copyRecipe() { if (!recipe) return; setBusy("copy"); setError(""); try { const copied = await props.client.copyRecipe(recipe.id); setRecipe(copied); setRecipes((current) => [copied, ...current]); setMode("detail"); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
-  async function refreshRecipe() { if (!recipe) return; setBusy("refresh"); setError(""); try { const next = await props.client.refreshRecipeIngredients(recipe.id, recipe.ingredients.map((item) => item.id)); setRecipe(next); setRecipes((current) => current.map((item) => item.id === next.id ? next : item)); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
-  async function deleteRecipe() { if (!recipe || (typeof window !== "undefined" && !window.confirm(`删除“${recipe.name}”？`))) return; setBusy("delete"); setError(""); try { await props.client.deleteRecipe(recipe.id); setRecipes((current) => current.filter((item) => item.id !== recipe.id)); setRecipe(null); setMode("list"); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
-  async function addToDiary(event: FormEvent) { event.preventDefault(); if (!recipe) return; setBusy("diary"); setError(""); try { await props.client.addRecipeToDiary(recipe.id, { date: props.today, mealSlotId: diaryMeal, amount: Number(diaryAmount), unit: "g" }); await props.onDiaryReload(); props.onOpenDiary(); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
+  async function copyRecipe() { if (!recipe) return; setBusy("copy"); setError(""); try { const copied = await copyRecipeAction(props.client, recipe.id); setRecipe(copied); setRecipes((current) => [copied, ...current]); setMode("detail"); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
+  async function refreshRecipe() { if (!recipe) return; setBusy("refresh"); setError(""); try { const next = await refreshRecipeAction(props.client, recipe); setRecipe(next); setRecipes((current) => current.map((item) => item.id === next.id ? next : item)); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
+  async function deleteRecipe() { if (!recipe) return; setBusy("delete"); setError(""); try { const deleted = await deleteRecipeAction(props.client, recipe, () => typeof window === "undefined" || window.confirm(`删除“${recipe.name}”？`)); if (deleted) { setRecipes((current) => current.filter((item) => item.id !== recipe.id)); setRecipe(null); setMode("list"); } } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
+  async function addToDiary(event: FormEvent) { event.preventDefault(); if (!recipe) return; setBusy("diary"); setError(""); try { await addRecipeToDiaryAction(props.client, recipe.id, { date: props.today, mealSlotId: diaryMeal, amount: Number(diaryAmount), unit: "g" }, props.onDiaryReload, props.onOpenDiary); } catch (caught) { setError(displayError(caught)); } finally { setBusy(null); } }
 
   const header = <div className="section-heading"><div><h2>菜谱</h2><p className="muted">使用本地食物快照组合和复用菜谱。</p></div><button type="button" className="primary" onClick={beginCreate} disabled={loading || busy !== null}>新建菜谱</button></div>;
   if (mode === "editor") return <section className="card add-card">{header}<form className="form" onSubmit={(event) => void save(event)}><label className="field"><span>菜谱名称</span><input aria-label="菜谱名称" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label className="field"><span>成品重量（g，可选）</span><input aria-label="成品重量" type="number" min="0" step="0.1" value={draft.cookedWeightG} onChange={(event) => setDraft({ ...draft, cookedWeightG: event.target.value })} /></label><label className="field"><span>份数（可选）</span><input aria-label="份数" type="number" min="0" step="0.1" value={draft.servingCount} onChange={(event) => setDraft({ ...draft, servingCount: event.target.value })} /></label><h3>原料</h3>{draft.ingredients.map((row) => <div className="card" key={row.key}><label className="field"><span>原料名称</span><input aria-label="原料搜索" value={searches[row.key] ?? row.name} onChange={(event) => setSearches((current) => ({ ...current, [row.key]: event.target.value }))} /></label><div className="entry-actions"><button type="button" className="soft-button" disabled={busy === `search:${row.key}`} onClick={(event) => void searchFood(event, row)}>搜索原料</button>{draft.ingredients.length > 1 ? <button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: current.ingredients.filter((item) => item.key !== row.key) }))}>删除原料</button> : null}</div>{(foodResults[row.key] ?? []).map((food) => <button type="button" className="food-result" key={food.id} aria-label="选择原料" onClick={() => chooseFood(row, food)}><span>{food.name}</span><small>{food.summary.energyKcal ?? "—"} kcal / 100g</small></button>)}{searchError[row.key] ? <p className="error" role="alert">{searchError[row.key]}</p> : null}<label className="field"><span>用量（g）</span><input aria-label="原料用量" type="number" min="0" step="0.1" value={row.amount} onChange={(event) => updateRow(row.key, { amount: event.target.value })} /></label><p className="muted">已选：{row.name || "尚未选择"}</p></div>)}<button type="button" className="soft-button" onClick={() => setDraft((current) => ({ ...current, ingredients: [...current.ingredients, emptyRow()] }))}>添加原料</button>{error ? <p className="error" role="alert">{error}</p> : null}<button type="submit" className="primary" disabled={busy !== null}>{busy === "save" ? "保存中…" : "保存菜谱"}</button><button type="button" className="soft-button" onClick={() => { setMode(recipe ? "detail" : "list"); setError(""); }}>取消</button></form></section>;
