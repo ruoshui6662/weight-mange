@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 08:40 +08:00
+> 最后更新：2026-09-09 09:12 +08:00
 
 ## 1. 当前快照
 
@@ -14,9 +14,9 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-001 Nutrition Engine 基础 |
 | 下一步 | 先固定 nutrient scaling、单位换算、edible portion、coverage 和 rounding 的 golden tests |
-| 当前阻塞 | 无；本地 Docker CLI 缺失已由 GitHub Actions 多架构 buildx 验证解除 |
+| 当前阻塞 | 飞牛旧镜像启动失败的修复正在等待远程重建；本地 Docker CLI 缺失 |
 | 业务代码 | M1-001 即将开始 |
-| Git | 远程 `main` 已更新至 `206adb4`；GHCR 已发布 `ghcr.io/ruoshui6662/weight-mange:latest` 与 commit SHA 标签 |
+| Git | 远程 `main` 已更新至 `215af84`；修复提交待推送；GHCR 旧版已发布 `ghcr.io/ruoshui6662/weight-mange:latest` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -82,9 +82,9 @@
 - 依赖：M0-004/005/006
 - 计划变更：补 non-root 多阶段 Dockerfile、Compose、health/readiness、SIGTERM 和 CI 基线
 - 计划验收：Docker build/run/smoke、数据目录持久化、健康检查和构建门禁
-- 当前进展：已完成 Dockerfile、Compose、healthcheck、SIGTERM 关闭路径和 CI buildx 配置；本地 API smoke 与远程多架构镜像构建均通过
-- 验收结果：EVD-M0-007-D；GitHub Actions run `34291487487` 的 verify 与 Docker buildx 均成功
-- 下一步：进入 M1-001，开始纯函数 Nutrition Engine golden tests
+- 当前进展：已完成 Dockerfile、Compose、healthcheck、SIGTERM 关闭路径和 CI buildx 配置；针对飞牛启动失败补上 API workspace 依赖复制，并在 Compose 启动时修正 bind mount 所有权后降权运行
+- 验收结果：EVD-M0-007-D/E；旧镜像远程 verify、buildx 与 GHCR 发布成功；本次修复等待新的远程构建证据
+- 下一步：推送修复到 `main`，确认新的多架构镜像后让飞牛重新 `pull` 并启动
 
 ### M1-001 — Nutrition Engine 基础
 
@@ -165,6 +165,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-C | M0-007 | 2026-09-09 08:00 +08:00 | GitHub Actions run `34291079576`；本地 `pnpm install --frozen-lockfile`（强制重链）及完整 lint/typecheck/test/build/api smoke | 首次远程 verify 在 install 阶段失败；根因是 `allowBuilds` 占位值；修正为 `esbuild: true` 后本地干净安装 exit 0，完整门禁重新通过，等待远程重跑 |
 | EVD-M0-007-D | M0-007 | 2026-09-09 08:20 +08:00 | GitHub Actions run `34291487487`：verify + `docker/build-push-action@v6`，platforms `linux/amd64,linux/arm64` | verify `success`；Docker buildx `success`；M0-002/M0-007 阻塞解除，M0 关闭 |
 | EVD-M0-007-E | M0-007 | 2026-09-09 08:40 +08:00 | GitHub Actions run `34292835823`；GHCR package 页面与 manifest | 实际 push 成功；`latest` 和 `206adb469a8a34f640705de06abea255f50dca12` 标签可用，包含 linux/amd64、linux/arm64；manifest digest `sha256:28045d2384efeabac7cc02da393d2af3c079421e19c671f08f54655a4564bc85` |
+| EVD-M0-007-F | M0-007 | 2026-09-09 09:12 +08:00 | 飞牛启动失败复盘；检查 `Dockerfile` runtime COPY、workspace symlink 与 Compose bind mount 运行用户；本地 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm docker:smoke` | 发现 runtime 未复制 `apps/api/node_modules`，API workspace 依赖可能在容器内缺失；已补 COPY；Compose 改为 root 启动时 `chown -R 10001:10001 /data` 后以 `appuser` 执行 API；代码门禁全部 exit 0，Docker CLI 仍缺失，等待远程 buildx |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -223,10 +224,11 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 08:00 +08:00 | Codex | 修复首次 GitHub CI 安装失败 | 远程 run `34291079576` 在 `pnpm install --frozen-lockfile` 失败；将 `allowBuilds` 占位值修正为 `esbuild: true`，本地强制重链和完整门禁通过，准备推送修复 |
 | 2026-09-09 08:20 +08:00 | Codex | M0 完成并开始 M1 | 远程 run `34291487487` verify 与 amd64/arm64 Docker buildx 均成功；接受 DEC-004，解除 BLK-001/005，M0 7/7 DONE；开始 M1-001 Nutrition Engine |
 | 2026-09-09 08:40 +08:00 | Codex | 修正镜像发布流程并完成 GHCR 发布 | 发现原 workflow 仅 `push: false`、只做构建校验；改为 main 登录 GHCR 并 push `latest`/SHA 标签，run `34292835823` 成功，镜像已可拉取 |
+| 2026-09-09 09:12 +08:00 | Codex | 处理飞牛拉取后启动失败 | 运行时补复制 `apps/api/node_modules`；Compose 启动前修正 `/data` 权限并降权到 `appuser`；本地门禁通过，准备推送并等待新的 GHCR 镜像 |
 
 ## 11. 交接摘要
 
-M0 基础已完成，M1-001 即将开始；当前没有待接管的未提交改动。后续接手者应：
+M0 基础代码已完成；当前有一个针对飞牛启动失败的容器修复待远程验证。后续接手者应：
 
 1. 先确认 DOC-002 已完成验证；
 2. 与项目所有者确认 DEC-004/005/006 和 session 方案；

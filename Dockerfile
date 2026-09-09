@@ -23,6 +23,7 @@ RUN groupadd --gid 10001 appuser \
   && chown -R appuser:appuser /data
 
 COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /workspace/apps/api/package.json ./apps/api/package.json
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build /workspace/packages/db/package.json ./packages/db/package.json
