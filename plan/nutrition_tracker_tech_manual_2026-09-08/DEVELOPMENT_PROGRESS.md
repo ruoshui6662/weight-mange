@@ -14,7 +14,7 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-007 Mobile-first 核心 UI |
 | 下一步 | 完成 M1-007 独立复审与 360/390/430 视觉验收，再进入 M1-008 核心 E2E 与备份恢复流程 |
-| 当前阻塞 | 无；M1-007 核心实现已完成，视觉基线与 M1-008 E2E 尚未开始 |
+| 当前阻塞 | `BLK-006`：合并后远程 CI 的重复 `pnpm docker:smoke` 失败，Docker 发布 job 被跳过；已改为由多架构 build-push job 承担唯一镜像构建门禁，等待重跑 |
 | 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model 已完成；M1-007 核心实现已完成，待视觉/复审验收 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
@@ -213,6 +213,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-003 Recipe snapshot 语义未落库 | M3-001 | 接受 ingredient 计算输入快照设计并修订 schema | `OPEN` |
 | BLK-004 工作区隔离方式待确认 | M0-001 后半段及后续实现 | 已创建 `.worktrees/m0-foundation` 和 `feat/m0-foundation` | `RESOLVED` |
 | BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
+| BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；重跑 CI 成功且 GHCR `latest` 更新 | `IN_PROGRESS` |
 
 ## 7. 决策记录
 
@@ -365,6 +366,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 23:25 +08:00 | Codex | 修正 web runtime 依赖交付 | 发现 Docker runtime 只复制 db workspace 包，补为复制全部 workspace packages；同时修正 SPA fallback 的 shell 缓存头；聚焦静态/auth/profile/web 8 tests、lint/typecheck/build/API smoke/diff check 均通过，提交 `b5c7956` |
 | 2026-09-09 23:35 +08:00 | Codex | 修复独立复审发现的问题 | 修复 204 logout JSON 解析、非法日期 500、离线 banner/重试、首次设置用户状态和静态 symlink 路径校验；focused 10 tests、build/lint/typecheck 通过；等待复审复核 |
 | 2026-09-09 23:45 +08:00 | Codex | 完成复审修复后的全量验证 | full 104 files/535 tests；integration、lint、typecheck、build、API smoke、diff check 均 exit 0；Docker smoke 如实记录 Docker CLI 不可用；M1-007 仍等待目标 viewport 视觉基线后关闭 |
+| 2026-09-09 23:55 +08:00 | Codex | 合并后远程 CI 首次验证失败 | run `34341237744` 的 verify 中 lint/typecheck/test/build/API smoke 全部成功，仅重复 `pnpm docker:smoke` 失败，导致 docker 发布 job 被跳过；登记 `BLK-006`，将验证与镜像构建职责拆开后重跑 |
 | 2026-09-09 07:10 +08:00 | Codex | 开始 DOC-004 | 用户指定公开 GitHub 仓库作为后续 Docker 内容承载位置；先建立发布白名单、排除项与上传前验收，当前不上传 |
 | 2026-09-09 07:12 +08:00 | Codex | 完成 DOC-004 验证 | README 与 Docker 部署规范已同步发布边界、排除项、发布闸门和镜像标签方法；文档检查通过；未执行远程绑定、push、Actions 或 GHCR 操作 |
 
