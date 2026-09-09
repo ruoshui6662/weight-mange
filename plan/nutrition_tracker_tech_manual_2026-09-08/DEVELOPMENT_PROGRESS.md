@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 23:35 +08:00
+> 最后更新：2026-09-09 23:45 +08:00
 
 ## 1. 当前快照
 
@@ -270,7 +270,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-005-C | M1-005 | 2026-09-09 21:40 +08:00 | `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; independent scoped review | 聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；所有本地命令 exit 0；coverage 按 gramEquivalent 加权，copy 请求级事务回滚通过；独立复审无 Critical/Important/Minor；Docker CLI 缺失由 smoke 如实记录 |
 | EVD-M1-006-A | M1-006 | 2026-09-09 22:15 +08:00 | `pnpm vitest run packages/dashboard/test/dashboard.test.ts apps/api/test/dashboard-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `node scripts/dashboard-benchmark.mjs`; independent scoped review | focused 2 files/4 tests、full 94 files/505 tests；全部命令 exit 0，integration 无测试文件正常 exit 0；benchmark n=1000 p50=0.321ms/p95=0.573ms；独立复审 ACCEPTED，无 Critical/Important/Minor；Docker CLI 缺失已记录 |
 | EVD-M1-007-A | M1-007 | 2026-09-09 23:20 +08:00 | `pnpm exec vitest run apps/api/test/auth-routes.test.ts apps/api/test/profile-routes.test.ts apps/api/test/static-routes.test.ts apps/web/test`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | focused auth/profile/static/web 5 files/8 tests；full 104 files/533 tests；lint/typecheck/build/API smoke/diff check exit 0；API smoke home/health/ready=200 且命中 web app shell；Docker smoke exit 0 with environment message that Docker CLI is unavailable；视觉截图与 M1-008 E2E 未宣称完成 |
-| EVD-M1-007-B | M1-007 | 2026-09-09 23:35 +08:00 | `pnpm build`; `pnpm exec vitest run apps/api/test/profile-routes.test.ts apps/web/test/api.test.ts apps/web/test/flow.test.ts packages/profile/test/profile.test.ts`; `pnpm lint`; `pnpm typecheck` | 复审修复后 build exit 0；focused 4 files/10 tests；新增 204 logout、非法日期 400、离线状态文案、首次设置用户状态和静态 symlink canonical containment 回归；lint/typecheck exit 0 |
+| EVD-M1-007-B | M1-007 | 2026-09-09 23:45 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | 复审修复后 lint/typecheck/build/API smoke/diff check exit 0；full 104 files/535 tests；integration 无测试文件正常 exit 0；新增 204 logout、非法日期 400、离线状态文案、首次设置用户状态和静态 symlink canonical containment 回归；Docker smoke exit 0 但本机无 Docker CLI |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -361,6 +361,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 23:20 +08:00 | Codex | 完成 M1-007 核心实现阶段 | 新增 profile/goal service、HTTP auth/session guard、React/Vite onboarding/dashboard、静态资源服务与 Docker web copy；本地门禁通过；视觉基线、Docker 实测和 M1-008 E2E 留待后续 |
 | 2026-09-09 23:25 +08:00 | Codex | 修正 web runtime 依赖交付 | 发现 Docker runtime 只复制 db workspace 包，补为复制全部 workspace packages；同时修正 SPA fallback 的 shell 缓存头；聚焦静态/auth/profile/web 8 tests、lint/typecheck/build/API smoke/diff check 均通过，提交 `b5c7956` |
 | 2026-09-09 23:35 +08:00 | Codex | 修复独立复审发现的问题 | 修复 204 logout JSON 解析、非法日期 500、离线 banner/重试、首次设置用户状态和静态 symlink 路径校验；focused 10 tests、build/lint/typecheck 通过；等待复审复核 |
+| 2026-09-09 23:45 +08:00 | Codex | 完成复审修复后的全量验证 | full 104 files/535 tests；integration、lint、typecheck、build、API smoke、diff check 均 exit 0；Docker smoke 如实记录 Docker CLI 不可用；M1-007 仍等待目标 viewport 视觉基线后关闭 |
 
 ## 11. 交接摘要
 
