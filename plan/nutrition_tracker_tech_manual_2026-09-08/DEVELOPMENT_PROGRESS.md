@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 19:28 +08:00
+> 最后更新：2026-09-10 00:28 +08:00
 
 ## 1. 当前快照
 
@@ -182,12 +182,12 @@
 ### M1-008 — 核心 E2E 与数据安全
 
 - 状态：`DONE`
-- 开始时间：2026-09-09 19:24 +08:00
+- 开始时间：2026-09-10 00:24 +08:00
 - 操作者：Codex
 - 依赖：M1-007 功能路径已完成；目标 viewport 视觉证据仍待补齐
 - 计划变更：新增无需公网的 API 集成 golden flow，覆盖初始化、受控食物导入、搜索馒头、早餐记录、克数修改、复制、删除、重启、历史快照稳定和备份恢复。
 - 计划验收：TDD RED/GREEN；单个临时 SQLite 完成全流程；重启后 session 可重新登录；food 版本变化不漂移历史 diary snapshot；恢复数据库后流程数据可读。
-- 完成时间：2026-09-09 19:28 +08:00
+- 完成时间：2026-09-10 00:28 +08:00
 - 当前进展：已新增真实 HTTP + SQLite golden flow，覆盖一次初始化、受控馒头数据导入/搜索、早餐记录、数量修改、复制、删除、服务重启、food v2 更新后的历史快照稳定，以及 backup manifest/restore 后数据可读。
 - 验收结果：EVD-M1-008-A；聚焦 1 file/1 test、全量 106 files/539 tests；lint/typecheck/build/API smoke/git diff check exit 0；docker smoke exit 0 但本机无 Docker CLI。
 - 阻塞/风险：当前仓库未引入 Playwright 浏览器运行时；集成测试已覆盖同一 golden flow，浏览器级 E2E 与容器真实重启演练仍需后续环境补齐。
@@ -290,8 +290,8 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-007-A | M1-007 | 2026-09-09 23:20 +08:00 | `pnpm exec vitest run apps/api/test/auth-routes.test.ts apps/api/test/profile-routes.test.ts apps/api/test/static-routes.test.ts apps/web/test`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | focused auth/profile/static/web 5 files/8 tests；full 104 files/533 tests；lint/typecheck/build/API smoke/diff check exit 0；API smoke home/health/ready=200 且命中 web app shell；Docker smoke exit 0 with environment message that Docker CLI is unavailable；视觉截图与 M1-008 E2E 未宣称完成 |
 | EVD-M1-007-B | M1-007 | 2026-09-09 23:45 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | 复审修复后 lint/typecheck/build/API smoke/diff check exit 0；full 104 files/535 tests；integration 无测试文件正常 exit 0；新增 204 logout、非法日期 400、离线状态文案、首次设置用户状态和静态 symlink canonical containment 回归；Docker smoke exit 0 但本机无 Docker CLI |
 | EVD-M1-007-C | M1-007 | 2026-09-10 00:15 +08:00 | GitHub Actions run `34342506965`；GHCR manifest 查询 | verify 与多架构 `docker/build-push-action@v6` 均 `success`；`latest` manifest `sha256:483066f93432d4fd3e15458a933dc032b1cf0611c22a9da7fd95c419f1f22d2d`，包含 linux/amd64 与 linux/arm64；本机 Docker CLI 仍未安装 |
-| EVD-M1-007-D | M1-007 | 2026-09-09 19:26 +08:00 | `pnpm exec vitest run apps/web/test/bootstrap-validation.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; 浏览器首次设置实测 | TDD 聚焦 1 file/3 tests；全量 105 files/538 tests；lint/typecheck exit 0；浏览器输入 11 位密码时提交前显示“密码至少需要 12 个字符”，不会发 bootstrap 请求；当前浏览器适配器实测视口 527px 无横向溢出，目标 360/390/430 截图仍待补齐 |
-| EVD-M1-008-A | M1-008 | 2026-09-09 19:28 +08:00 | `pnpm exec vitest run apps/api/test/m1-e2e.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | 聚焦 1 file/1 test；全量 106 files/539 tests；lint/typecheck/test/build/API smoke/diff check exit 0；golden flow 覆盖导入/搜索/记录/修改/复制/删除/重启/历史快照/backup restore；docker smoke exit 0 但本机 Docker CLI 不可用 |
+| EVD-M1-007-D | M1-007 | 2026-09-10 00:26 +08:00 | `pnpm exec vitest run apps/web/test/bootstrap-validation.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; 浏览器首次设置实测 | TDD 聚焦 1 file/3 tests；全量 105 files/538 tests；lint/typecheck exit 0；浏览器输入 11 位密码时提交前显示“密码至少需要 12 个字符”，不会发 bootstrap 请求；当前浏览器适配器实测视口 527px 无横向溢出，目标 360/390/430 截图仍待补齐 |
+| EVD-M1-008-A | M1-008 | 2026-09-10 00:28 +08:00 | `pnpm exec vitest run apps/api/test/m1-e2e.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `git diff --check` | 聚焦 1 file/1 test；全量 106 files/539 tests；lint/typecheck/test/build/API smoke/diff check exit 0；golden flow 覆盖导入/搜索/记录/修改/复制/删除/重启/历史快照/backup restore；docker smoke exit 0 但本机 Docker CLI 不可用 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -320,7 +320,7 @@ result: 42 passed, 0 failed
 ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议下一步 | 状态
 ```
 
-`ISSUE-115 | 2026-09-09 19:20 +08:00 | M1-007 | P2 | 首次设置密码少于 12 个字符时只显示通用请求失败 | 前端预校验并映射明确错误文案 | RESOLVED，见 EVD-M1-007-D`
+`ISSUE-115 | 2026-09-10 00:20 +08:00 | M1-007 | P2 | 首次设置密码少于 12 个字符时只显示通用请求失败 | 前端预校验并映射明确错误文案 | RESOLVED，见 EVD-M1-007-D`
 
 ## 10. 活动日志
 
@@ -390,10 +390,10 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 00:15 +08:00 | Codex | main 合并与 GHCR latest 发布完成 | `main` 已推送至 `3a47945`；run `34342506965` verify/Docker 均 success；GHCR `latest` 已更新为 amd64/arm64 多架构镜像；飞牛后续直接 pull `latest`，下一步进行 360/390/430 视觉验收与 M1-008 E2E |
 | 2026-09-09 07:10 +08:00 | Codex | 开始 DOC-004 | 用户指定公开 GitHub 仓库作为后续 Docker 内容承载位置；先建立发布白名单、排除项与上传前验收，当前不上传 |
 | 2026-09-09 07:12 +08:00 | Codex | 完成 DOC-004 验证 | README 与 Docker 部署规范已同步发布边界、排除项、发布闸门和镜像标签方法；文档检查通过；未执行远程绑定、push、Actions 或 GHCR 操作 |
-| 2026-09-09 19:20 +08:00 | Codex | 开始处理 ISSUE-115 | 飞牛首次设置反馈显示短密码只得到通用错误；按 TDD 增加前端校验、错误码映射与最小长度属性 |
-| 2026-09-09 19:24 +08:00 | Codex | 开始 M1-008 | 固定无公网 HTTP + SQLite golden flow，覆盖食物导入到备份恢复的完整数据链路 |
-| 2026-09-09 19:26 +08:00 | Codex | 完成 ISSUE-115 修复与 M1-007 局部验收 | 聚焦 3 tests、全量 105 files/538 tests、lint/typecheck 通过；浏览器实测短密码在提交前得到明确提示；目标 360/390/430 截图仍待适配器支持 |
-| 2026-09-09 19:28 +08:00 | Codex | 完成 M1-008 集成验收 | 聚焦 1 test、全量 106 files/539 tests；lint/typecheck/build/API smoke/diff check exit 0；重启、历史 snapshot 不漂移和 backup restore 通过；本机 Docker CLI 缺失如实记录 |
+| 2026-09-10 00:20 +08:00 | Codex | 开始处理 ISSUE-115 | 飞牛首次设置反馈显示短密码只得到通用错误；按 TDD 增加前端校验、错误码映射与最小长度属性 |
+| 2026-09-10 00:24 +08:00 | Codex | 开始 M1-008 | 固定无公网 HTTP + SQLite golden flow，覆盖食物导入到备份恢复的完整数据链路 |
+| 2026-09-10 00:26 +08:00 | Codex | 完成 ISSUE-115 修复与 M1-007 局部验收 | 聚焦 3 tests、全量 105 files/538 tests、lint/typecheck 通过；浏览器实测短密码在提交前得到明确提示；目标 360/390/430 截图仍待适配器支持 |
+| 2026-09-10 00:28 +08:00 | Codex | 完成 M1-008 集成验收 | 聚焦 1 test、全量 106 files/539 tests；lint/typecheck/build/API smoke/diff check exit 0；重启、历史 snapshot 不漂移和 backup restore 通过；本机 Docker CLI 缺失如实记录 |
 
 ## 11. 交接摘要
 
