@@ -12,10 +12,10 @@
 | 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-006 Dashboard read model |
-| 下一步 | 从 diary 的已存快照构建可重建的日汇总；不得重算历史 food 数据 |
-| 当前阻塞 | M1-006 设计待用户确认：goal snapshot 需要与既有 diary_day 绑定 |
-| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot 已完成 |
+| 当前焦点 | M1-007 Mobile-first 核心 UI |
+| 下一步 | 基于 Dashboard API 实现移动端首页、饮食记录和状态流；完成后再构建发布包含前端的镜像 |
+| 当前阻塞 | 无；M1-006 独立复审已通过 |
+| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot、M1-006 Dashboard read model 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 5/8 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 6/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -155,15 +155,17 @@
 
 ### M1-006 — Dashboard read model
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 21:45 +08:00
+- 完成时间：2026-09-09 22:15 +08:00
 - 操作者：Codex
 - 依赖：M1-005
 - 计划变更：从 diary 已存营养快照构建当日 Dashboard 与可重建 `analytics_daily_summary`；按日期固定目标快照，不重算历史 food 数据。
 - 计划验收：TDD RED/GREEN；Dashboard API envelope、meal/intake/macros/coverage/remaining、缓存删除后重建一致、目标变更不覆盖历史；全量门禁与本地查询基准证据。
-- 当前进展：已完成规范核对；发现目标快照需要在 `diary_day.goal_id` 创建时固定，待用户确认最小实现边界。
-- 阻塞/风险：现有 profile goal schema 已存在，但尚无 goal domain/API；需决定本任务是否只消费既有目标记录，还是同时补齐目标写入 API。
-- 下一步：确认设计方案后写入实施计划，再以测试先行实现 dashboard read model。
+- 当前进展：新增 `0009_analytics_daily_summary`、日期创建时的 `goal_id` 绑定、Dashboard domain 与 `GET /api/v1/dashboard/:date`；只消费已存 diary 快照，支持删除缓存后重建；目标 CRUD 留给 M2-001。
+- 验收结果：EVD-M1-006-A；聚焦 domain/route 2 files/4 tests；全量 94 files/505 tests；lint/typecheck/integration/build/API smoke 均 exit 0；本地 1000 次 warm SQLite 查询 p50 0.321ms、p95 0.573ms；独立复审无 Critical/Important/Minor；Docker CLI 缺失由 smoke 如实记录。
+- 阻塞/风险：运动与体重仍为明确 no-data 字段，目标写入 API 留给 M2-001；M1-007 仍需实现前端。
+- 下一步：进入 M1-007 Mobile-first 核心 UI。
 
 ## 4. DOC 任务板
 
@@ -253,6 +255,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-004-D | M1-004 | 2026-09-09 21:06 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused DB/domain/route 3 files/15 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | `0006` NOCASE prefix index 的 EXPLAIN 回归、empty nutrients PATCH 400 envelope 均通过；全量 28 files/137 tests，本地门禁 exit 0 |
 | EVD-M1-004-E | M1-004 | 2026-09-09 21:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm build`; focused 2 files/7 tests; `pnpm test`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm docker:smoke` | search 统一返回 `{data,meta:{nextCursor}}`；空/非空 route 与 domain 回归通过，全量 28 files/137 tests，本地门禁 exit 0 |
 | EVD-M1-005-C | M1-005 | 2026-09-09 21:40 +08:00 | `pnpm vitest run packages/diary/test/diary.test.ts apps/api/test/diary-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; independent scoped review | 聚焦 diary/API 2 files/9 tests、全量 51 files/258 tests；所有本地命令 exit 0；coverage 按 gramEquivalent 加权，copy 请求级事务回滚通过；独立复审无 Critical/Important/Minor；Docker CLI 缺失由 smoke 如实记录 |
+| EVD-M1-006-A | M1-006 | 2026-09-09 22:15 +08:00 | `pnpm vitest run packages/dashboard/test/dashboard.test.ts apps/api/test/dashboard-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; `node scripts/dashboard-benchmark.mjs`; independent scoped review | focused 2 files/4 tests、full 94 files/505 tests；全部命令 exit 0，integration 无测试文件正常 exit 0；benchmark n=1000 p50=0.321ms/p95=0.573ms；独立复审 ACCEPTED，无 Critical/Important/Minor；Docker CLI 缺失已记录 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -338,6 +341,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 21:06 +08:00 | Codex + delegated implementer | M1-004 NOCASE prefix 与 empty-array 修复完成 | 新增 `0006` 前向索引，prefix EXPLAIN 使用 NOCASE index；`nutrients: []` 返回 validation envelope；全量 137 tests |
 | 2026-09-09 21:40 +08:00 | Codex + independent reviewer | 完成 M1-005 最终 scoped re-review | 聚焦 diary/API 2 files/9 tests、typecheck 通过；coverage 与复制事务问题均确认修复，无 Critical/Important/Minor；M1-005 标记 DONE，下一步进入 M1-006 |
 | 2026-09-09 21:45 +08:00 | Codex | 开始 M1-006 Dashboard read model 设计 | 已读 README、PRODUCT_SPEC、API_SPEC、DATABASE_SCHEMA、NUTRITION_ENGINE_SPEC 与路线图；记录 goal snapshot 绑定决策点，计划先获确认再实现 |
+| 2026-09-09 22:15 +08:00 | Codex + independent reviewer | 完成 M1-006 Dashboard read model | `0009`、goal snapshot、snapshot-only Dashboard、cache rebuild、API envelope 与 benchmark 完成；全量 94 files/505 tests、所有本地门禁 exit 0；进入 M1-007 |
 
 ## 11. 交接摘要
 
