@@ -14,9 +14,9 @@
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
 | 当前焦点 | M1-002 Food canonical schema |
 | 下一步 | 定义 dataset、item、source record、nutrient definition/value、alias、serving、search stats 和 staging schema，并先固定 raw string/Tr/— 与约束测试 |
-| 当前阻塞 | 无；根路径首页镜像已发布，等待飞牛端重新拉取验证 |
-| 业务代码 | M1-001 Nutrition Engine 基础已完成 |
-| Git | 远程 `main` 已包含根路径修复；可用镜像 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
+| 当前阻塞 | 无；M1-001 已完成并通过评审 |
+| 业务代码 | M1-001 Nutrition Engine 基础已完成；M1-002 进行中 |
+| Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -98,6 +98,17 @@
 - 当前进展：review P1 已修复；estimated 继续数值求和且设置 metadata，但仅 known 计入 coverage 分子
 - 验收结果：EVD-M1-001-B；修复用例先以 0.625 失败，再以 0.5 通过；聚焦 6 tests、全量 7 test files/28 tests、lint/typecheck/build 均通过
 - 下一步：进入 M1-002 Food canonical schema
+
+### M1-002 — Food canonical schema
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 10:05 +08:00
+- 操作者：Codex
+- 依赖：M1-001
+- 计划变更：补 food_dataset、food_item、food_category、food_source_record、food_nutrient_definition、food_nutrient_value、food_alias、food_serving、food_search_stats 和 FTS 基线表/约束
+- 计划验收：raw string 保真；`Tr`、`—` 不变成 0；active dataset、canonical key、source relation、nutrient status、serving 与删除行为有约束测试
+- 当前进展：已读取 `DATABASE_SCHEMA.md` 与 `FOOD_DATA_SPEC.md`，任务 brief 待派发
+- 下一步：先写空库 migration/schema 失败测试，再实现最小 food canonical schema
 
 ## 4. DOC 任务板
 
