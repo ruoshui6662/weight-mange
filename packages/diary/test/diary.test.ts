@@ -118,3 +118,10 @@ it("rejects impossible calendar dates before creating a diary day", () => {
   expect(() => diary.getDay({ userId: "user-1", date: "2026-99-99" })).toThrow("DIARY_INVALID_DATE");
   expect(sqlite.prepare("SELECT count(*) count FROM diary_day").get()).toEqual({ count: 0 });
 });
+
+it("rejects impossible dates on entry update and delete", () => {
+  const { foodId, diary } = setup();
+  const entry = diary.createEntry({ userId: "user-1", date: "2026-09-09", mealSlotId: "breakfast", foodId, amount: 10, unit: "g", source: "manual" });
+  expect(() => diary.updateEntry({ userId: "user-1", date: "2026-02-30", entryId: entry.id, amount: 20, version: entry.version })).toThrow("DIARY_INVALID_DATE");
+  expect(() => diary.deleteEntry({ userId: "user-1", date: "2026-02-30", entryId: entry.id })).toThrow("DIARY_INVALID_DATE");
+});
