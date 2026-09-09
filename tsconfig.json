@@ -6,6 +6,7 @@
     { "path": "packages/core" },
     { "path": "packages/nutrition-engine" },
     { "path": "packages/auth" },
+    { "path": "packages/food" },
     { "path": "tools/food-import" },
     { "path": "apps/api" }
   ]

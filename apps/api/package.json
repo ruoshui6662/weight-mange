@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@nutrition-tracker/db": "workspace:*"
+    "@nutrition-tracker/db": "workspace:*",
+    "@nutrition-tracker/food": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"

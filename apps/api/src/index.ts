@@ -1,10 +1,11 @@
-import { createServer, type Server, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
-import { CORE_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { CORE_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
 
 export type ApiOptions = {
   dbPath: string;
@@ -47,14 +48,47 @@ function writeHome(response: ServerResponse) {
 </html>`);
 }
 
+async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
+  let body = "";
+  for await (const chunk of request) body += String(chunk);
+  if (!body) return {};
+  try { const value: unknown = JSON.parse(body); if (value !== null && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>; } catch { /* fall through */ }
+  throw new FoodError("FOOD_INVALID_BODY");
+}
+
+function foodError(response: ServerResponse, error: unknown) {
+  if (error instanceof FoodError) {
+    const status = error.code === "FOOD_NOT_FOUND" ? 404 : error.code === "FOOD_REFERENCE_READ_ONLY" || error.code.endsWith("_READ_ONLY") || error.code === "FOOD_VERSION_CONFLICT" ? 409 : 400;
+    writeJson(response, status, { error: error.code }); return true;
+  }
+  return false;
+}
+
 export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   mkdirSync(dirname(options.dbPath), { recursive: true });
   const { sqlite } = openDatabase(options.dbPath);
   let ready = false;
 
   try {
-    applyMigrations(sqlite, CORE_MIGRATIONS);
-    const server = createServer((request, response) => {
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS]);
+    const foods = createFoodCatalog(sqlite);
+    const server = createServer(async (request, response) => {
+      try {
+        const url = new URL(request.url ?? "/", "http://localhost");
+        const foodMatch = /^\/api\/v1\/foods\/([^/]+)$/.exec(url.pathname);
+        const servingMatch = /^\/api\/v1\/foods\/([^/]+)\/servings(?:\/([^/]+))?$/.exec(url.pathname);
+        const aliasMatch = /^\/api\/v1\/foods\/([^/]+)\/aliases(?:\/([^/]+))?$/.exec(url.pathname);
+        const favoriteMatch = /^\/api\/v1\/foods\/([^/]+)\/favorite$/.exec(url.pathname);
+        if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
+        if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
+        if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) { writeJson(response, 404, { error: "FOOD_NOT_FOUND" }); return; } writeJson(response, 200, { data: detail }); return; }
+        if (foodMatch && request.method === "PATCH") { const body = await readJson(request); writeJson(response, 200, { data: foods.update(decodeURIComponent(foodMatch[1]!), body as Parameters<typeof foods.update>[1]) }); return; }
+        if (favoriteMatch && (request.method === "POST" || request.method === "DELETE")) { foods.setFavorite(decodeURIComponent(favoriteMatch[1]!), request.method === "POST"); writeJson(response, 200, { data: { favorite: request.method === "POST" } }); return; }
+        if (servingMatch && request.method === "POST" && !servingMatch[2]) { const body = await readJson(request); writeJson(response, 201, { data: { id: foods.addServing(decodeURIComponent(servingMatch[1]!), body as Parameters<typeof foods.addServing>[1]) } }); return; }
+        if (servingMatch && request.method === "PATCH" && servingMatch[2]) { foods.updateServing(decodeURIComponent(servingMatch[1]!), decodeURIComponent(servingMatch[2]), await readJson(request) as Parameters<typeof foods.updateServing>[2]); writeJson(response, 200, { data: { ok: true } }); return; }
+        if (servingMatch && request.method === "DELETE" && servingMatch[2]) { foods.deleteServing(decodeURIComponent(servingMatch[1]!), decodeURIComponent(servingMatch[2])); writeJson(response, 200, { data: { ok: true } }); return; }
+        if (aliasMatch && request.method === "POST" && !aliasMatch[2]) { const body = await readJson(request); if (typeof body.alias !== "string") throw new FoodError("FOOD_INVALID_ALIAS"); writeJson(response, 201, { data: { id: foods.addAlias(decodeURIComponent(aliasMatch[1]!), body.alias) } }); return; }
+        if (aliasMatch && request.method === "DELETE" && aliasMatch[2]) { foods.deleteAlias(decodeURIComponent(aliasMatch[1]!), decodeURIComponent(aliasMatch[2])); writeJson(response, 200, { data: { ok: true } }); return; }
       if (request.method === "GET" && request.url === "/") {
         writeHome(response);
         return;
@@ -68,6 +102,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         return;
       }
       writeJson(response, 404, { error: "NOT_FOUND" });
+      } catch (error) { if (!foodError(response, error)) writeJson(response, 500, { error: "INTERNAL_ERROR" }); }
     });
 
     await new Promise<void>((resolve, reject) => {

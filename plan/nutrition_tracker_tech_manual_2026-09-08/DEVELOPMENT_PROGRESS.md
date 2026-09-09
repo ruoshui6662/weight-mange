@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 18:37 +08:00
+> 最后更新：2026-09-09 20:35 +08:00
 
 ## 1. 当前快照
 
@@ -12,10 +12,10 @@
 | 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-003 Food import staging pipeline review |
-| 下一步 | 复审离线 importer 的 raw JSON contract、staging failure isolation、promote rollback 与 FTS rebuild；通过后进入 M1-004 Food search/detail API |
-| 当前阻塞 | 无；M1-002 已完成并通过复审 |
-| 业务代码 | M1-001 Nutrition Engine 基础与 M1-002 Food canonical schema 已完成 |
+| 当前焦点 | M1-004 Food search/detail API 独立复审 |
+| 下一步 | 复核本地搜索排序、custom 写边界、route error、迁移组合和性能证据；通过后再进入 M1-005 |
+| 当前阻塞 | 无；M1-003 已完成并通过两轮复审 |
+| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -114,16 +114,30 @@
 
 ### M1-003 — Food import staging pipeline
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 18:25 +08:00
-- 完成时间：未完成
+- 完成时间：2026-09-09 20:30 +08:00
 - 操作者：Codex + delegated implementer
 - 依赖：M1-002
 - 计划变更：实现受控 raw JSON 导入、staging 写入、结构/语义校验、规范化、active diff、事务 promote 与可审计报告；失败不得改变 active catalog
 - 计划验收：TDD RED/GREEN；20–50 个 golden foods 覆盖 code、macro、raw、alias、serving；重复版本幂等；失败隔离；promote 回滚；全量 lint/typecheck/test/integration/build/API smoke/docker smoke
-- 当前进展：已修复独立复审的 4 项 Important 问题：`kJ` unit/source remark、结构失败 staging 审计、无穷/非法数值拒绝；已完成回归与全量门禁，待复审确认
+- 当前进展：已修复两轮独立复审的 5 项 Important 问题：`kJ` unit/source remark、结构失败 staging 审计、无穷/非法数值拒绝、已 promoted identity 不可降级；20 条 synthetic golden fixture 覆盖完整导入闭环
+- 验收结果：EVD-M1-003-A/B；聚焦 2 files/16 tests、全量 13 files/64 tests，lint/typecheck/integration/build/API smoke 全部 exit 0；docker smoke 明确记录本机 Docker CLI 缺失
 - 阻塞/风险：真实外部 CFCD 数据不随仓库引入；使用受控 golden fixtures 验证 importer contract
-- 下一步：先固定 importer 输入/输出 contract 和 staging 事务测试
+- 下一步：进入 M1-004 Food search/detail API
+
+### M1-004 — Food search/detail API
+
+- 状态：`IN_PROGRESS`
+- 开始时间：2026-09-09 20:35 +08:00
+- 完成时间：未完成
+- 操作者：Codex + delegated implementer
+- 依赖：M1-003
+- 计划变更：实现本地搜索、detail、custom food、alias、serving、favorite contracts，并接入 API；无本地结果不得触发 AI/外部网络
+- 计划验收：TDD RED/GREEN；精确名/别名/前缀/FTS、inactive 过滤、cursor、raw/status detail、custom/reference 编辑边界、alias/serving 校验、favorite 幂等与无网络空结果；全量门禁
+- 当前进展：已完成本地 SQLite search/detail/custom/alias/serving/favorite domain 与 HTTP wiring；core+food migrations 已在 API 启动时组合。聚焦 2 files/4 tests、全量 28 files/131 tests 和本地门禁均通过，等待独立复审。
+- 阻塞/风险：未测量 1,677/100k 的 p50/p95，不宣称 <100ms；当前搜索使用 indexed name/alias SQL，FTS/pinyin 的性能策略需在基准任务中量化。
+- 下一步：独立复审后处理发现项，才可标记 DONE
 
 ## 4. DOC 任务板
 
@@ -201,8 +215,11 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M0-007-J | M0-007 | 2026-09-09 09:55 +08:00 | GitHub Actions run `34296265518`（main）；GHCR package manifest | verify 与 multi-arch docker 均 `success`；镜像 `latest`/`cc60f7c62750202ef36d8601b67ee1e6b41dfaec` 已发布，manifest digest `sha256:4de30a0d390e1ce2a5f80399d6bed56f746fcdf7db0096bbe36be8b7e15f3557` |
 | EVD-M1-001-A | M1-001 | 2026-09-09 10:00 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 全部命令 exit 0；聚焦 1 file/6 tests、全量 7 files/28 tests；API smoke home/health/ready 均 200；Docker CLI 不存在但 smoke 正确报告环境阻塞 |
 | EVD-M1-001-B | M1-001 | 2026-09-09 10:15 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build` | coverage=0.5 的新断言先失败（received 0.625），最小修复后聚焦 1 file/6 tests、全量 7 files/28 tests 通过；所有列出命令 exit 0 |
+| EVD-M1-003-A | M1-003 | 2026-09-09 18:37 +08:00 | importer focused/full verification before final identity fix | 4 项独立复审 Important 已修复；聚焦 2 files/15 tests、全量 13 files/63 tests，lint/typecheck/integration/build/API smoke exit 0；Docker CLI 缺失由 smoke 如实记录 |
+| EVD-M1-003-B | M1-003 | 2026-09-09 20:30 +08:00 | `pnpm exec vitest run tools/food-import/test/food-import.test.ts packages/db/test/food-schema.test.ts`; full `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 最终 identity 回归后聚焦 2 files/16 tests、全量 13 files/64 tests；所有命令 exit 0；API home/health/ready=200；Docker CLI 缺失已记录 |
 | EVD-M1-003-A | M1-003 | 2026-09-09 18:28 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 1 file/5 tests、全量 13 files/59 tests，lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；实现待独立复审 |
 | EVD-M1-003-B | M1-003 | 2026-09-09 18:37 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm vitest run packages/db/test/food-schema.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 审查修复聚焦 7 importer tests、8 schema tests；全量 13 files/63 tests；lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；等待复审确认 |
+| EVD-M1-004-A | M1-004 | 2026-09-09 20:42 +08:00 | `pnpm vitest run packages/food/test/food-api.test.ts apps/api/test/food-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 2 files/4 tests、全量 28 files/131 tests，lint/typecheck/integration/build/API smoke 均 exit 0；Docker CLI 缺失由 smoke 如实记录；实现等待独立复审，未测量 1,677/100k p50/p95 |
 
 后续代码证据应记录具体命令、退出码和关键计数，例如：
 
@@ -275,6 +292,9 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 18:25 +08:00 | Codex | 开始 M1-003 Food import staging pipeline | 读取 FOOD_DATA_SPEC 与 M1-003 路线要求；先固定 parse/staging/validate/normalize/diff/promote contract，保持 active catalog 隔离 |
 | 2026-09-09 18:28 +08:00 | Codex + delegated implementer | M1-003 实现完成，等待复审 | 完成离线 parse/stage/validate/normalize/diff/promote/FTS pipeline；20 条合成 fixture 覆盖 raw 状态、幂等、隔离、rollback 与 FTS；全量门禁通过，Docker CLI 缺失已如实记录 |
 | 2026-09-09 18:37 +08:00 | Codex + delegated implementer | 完成 M1-003 审查修复 | 新增 `0004` 前向迁移保留旧营养行并允许 `kJ`、加入 source remark；metadata 完整的结构失败进入 failed staging；非法数值拒绝且不会变为 unknown；复审回归与全量门禁通过 |
+| 2026-09-09 20:30 +08:00 | Codex | 完成 M1-003 最终范围复审与幂等修复 | 修复 malformed same-identity 文档不可降级 promoted staging；聚焦 16 tests、全量 64 tests 和全部本地门禁通过；进入 M1-004 |
+| 2026-09-09 20:35 +08:00 | Codex | 开始 M1-004 Food search/detail API | 固定本地查询、custom/reference 写边界、alias/serving/favorite 与无网络 fallback contract；先写 domain/route RED tests |
+| 2026-09-09 20:42 +08:00 | Codex + delegated implementer | M1-004 实现完成，等待复审 | 本地 search/detail/custom/alias/serving/favorite 路由和 domain 已完成；聚焦 4 tests、全量 131 tests 与门禁通过；100k 性能未测量并已记录限制 |
 
 ## 11. 交接摘要
 
