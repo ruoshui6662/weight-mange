@@ -5,8 +5,9 @@ import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
 import { applyMigrations, openDatabase } from "@nutrition-tracker/db";
-import { CORE_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
+import { CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS } from "@nutrition-tracker/db/schema";
 import { createFoodCatalog, FoodError } from "@nutrition-tracker/food";
+import { createDiaryService, DiaryError } from "@nutrition-tracker/diary";
 
 export type ApiOptions = {
   dbPath: string;
@@ -65,14 +66,24 @@ function foodError(response: ServerResponse, error: unknown, requestId: string) 
   return false;
 }
 
+function diaryError(response: ServerResponse, error: unknown, requestId: string) {
+  if (error instanceof DiaryError) {
+    const status = error.code === "DIARY_ENTRY_NOT_FOUND" || error.code === "DIARY_FOOD_NOT_FOUND" ? 404 : error.code === "DIARY_VERSION_CONFLICT" || error.code === "DIARY_IDEMPOTENCY_CONFLICT" ? 409 : 400;
+    writeJson(response, status, { error: { code: error.code, message: error.code, ...(error.details ? { details: error.details } : {}), requestId } }); return true;
+  }
+  return false;
+}
+
 export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
   mkdirSync(dirname(options.dbPath), { recursive: true });
   const { sqlite } = openDatabase(options.dbPath);
   let ready = false;
 
   try {
-    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS]);
+    applyMigrations(sqlite, [...CORE_MIGRATIONS, ...FOOD_MIGRATIONS, ...DIARY_MIGRATIONS]);
+    sqlite.prepare("INSERT OR IGNORE INTO profile_user (id,display_name,timezone,created_at,updated_at) VALUES ('local-user','Local user','UTC',?,?)").run(Date.now(), Date.now());
     const foods = createFoodCatalog(sqlite);
+    const diary = createDiaryService(sqlite);
     const server = createServer(async (request, response) => {
       const requestId = randomUUID();
       try {
@@ -81,6 +92,9 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         const servingMatch = /^\/api\/v1\/foods\/([^/]+)\/servings(?:\/([^/]+))?$/.exec(url.pathname);
         const aliasMatch = /^\/api\/v1\/foods\/([^/]+)\/aliases(?:\/([^/]+))?$/.exec(url.pathname);
         const favoriteMatch = /^\/api\/v1\/foods\/([^/]+)\/favorite$/.exec(url.pathname);
+        const diaryEntryMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/entries(?:\/([^/]+))?$/.exec(url.pathname);
+        const diaryMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname);
+        const copyMealMatch = /^\/api\/v1\/diary\/(\d{4}-\d{2}-\d{2})\/copy-meal$/.exec(url.pathname);
         if (request.method === "GET" && url.pathname === "/api/v1/foods/search") { const limit = Number(url.searchParams.get("limit") ?? "20"); const scope = url.searchParams.get("scope") ?? "all"; writeJson(response, 200, foods.search({ q: url.searchParams.get("q") ?? "", limit, scope: scope as "all" | "local" | "custom", ...(url.searchParams.get("cursor") ? { cursor: url.searchParams.get("cursor")! } : {}) })); return; }
         if (request.method === "POST" && url.pathname === "/api/v1/foods/custom") { const body = await readJson(request); writeJson(response, 201, { data: foods.createCustom(body as Parameters<typeof foods.createCustom>[0]) }); return; }
         if (foodMatch && request.method === "GET") { const detail = foods.detail(decodeURIComponent(foodMatch[1]!)); if (!detail) throw new FoodError("FOOD_NOT_FOUND"); writeJson(response, 200, { data: detail }); return; }
@@ -91,6 +105,11 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         if (servingMatch && request.method === "DELETE" && servingMatch[2]) { foods.deleteServing(decodeURIComponent(servingMatch[1]!), decodeURIComponent(servingMatch[2])); writeJson(response, 200, { data: { ok: true } }); return; }
         if (aliasMatch && request.method === "POST" && !aliasMatch[2]) { const body = await readJson(request); if (typeof body.alias !== "string") throw new FoodError("FOOD_INVALID_ALIAS"); writeJson(response, 201, { data: { id: foods.addAlias(decodeURIComponent(aliasMatch[1]!), body.alias) } }); return; }
         if (aliasMatch && request.method === "DELETE" && aliasMatch[2]) { foods.deleteAlias(decodeURIComponent(aliasMatch[1]!), decodeURIComponent(aliasMatch[2])); writeJson(response, 200, { data: { ok: true } }); return; }
+        if (diaryMatch && request.method === "GET") { writeJson(response, 200, { data: diary.getDay({ userId: "local-user", date: diaryMatch[1]! }) }); return; }
+        if (diaryEntryMatch && request.method === "POST" && !diaryEntryMatch[2]) { const body = await readJson(request); const entry = diary.createEntry({ userId: "local-user", date: diaryEntryMatch[1]!, mealSlotId: String(body.mealSlotId ?? ""), foodId: String(body.foodId ?? ""), amount: body.amount as number, unit: body.unit as "g" | "ml" | "serving", ...(typeof body.servingId === "string" ? { servingId: body.servingId } : {}), ...(typeof body.note === "string" ? { note: body.note } : {}), source: body.source as "manual" | "ai_confirmed" | "import", ...(typeof request.headers["idempotency-key"] === "string" ? { idempotencyKey: request.headers["idempotency-key"] } : {}) }); writeJson(response, 201, { data: entry }); return; }
+        if (diaryEntryMatch && request.method === "PATCH" && diaryEntryMatch[2]) { const body = await readJson(request); const entry = diary.updateEntry({ userId: "local-user", date: diaryEntryMatch[1]!, entryId: decodeURIComponent(diaryEntryMatch[2]), ...(typeof body.amount === "number" ? { amount: body.amount } : {}), ...(typeof body.unit === "string" ? { unit: body.unit as "g" | "ml" | "serving" } : {}), ...(typeof body.mealSlotId === "string" ? { mealSlotId: body.mealSlotId } : {}), ...(typeof body.servingId === "string" ? { servingId: body.servingId } : {}), ...(typeof body.note === "string" ? { note: body.note } : {}), version: body.version as number }); writeJson(response, 200, { data: entry }); return; }
+        if (diaryEntryMatch && request.method === "DELETE" && diaryEntryMatch[2]) { diary.deleteEntry({ userId: "local-user", date: diaryEntryMatch[1]!, entryId: decodeURIComponent(diaryEntryMatch[2]) }); writeJson(response, 200, { data: { ok: true } }); return; }
+        if (copyMealMatch && request.method === "POST") { const body = await readJson(request); const entries = diary.copyMeal({ userId: "local-user", date: copyMealMatch[1]!, fromDate: String(body.fromDate ?? ""), fromMealSlotId: String(body.fromMealSlotId ?? ""), toMealSlotId: String(body.toMealSlotId ?? "") }); writeJson(response, 201, { data: entries }); return; }
       if (request.method === "GET" && request.url === "/") {
         writeHome(response);
         return;
@@ -104,7 +123,7 @@ export async function startApiServer(options: ApiOptions): Promise<ApiRuntime> {
         return;
       }
       writeJson(response, 404, { error: { code: "NOT_FOUND", message: "Not found", requestId } });
-      } catch (error) { if (!foodError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } }); }
+      } catch (error) { if (!foodError(response, error, requestId) && !diaryError(response, error, requestId)) writeJson(response, 500, { error: { code: "DATABASE_ERROR", message: "Internal server error", requestId } }); }
     });
 
     await new Promise<void>((resolve, reject) => {

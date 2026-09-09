@@ -350,3 +350,62 @@ export const FOOD_MIGRATIONS: readonly SqliteMigration[] = [
     `,
   },
 ];
+
+export const DIARY_MIGRATIONS: readonly SqliteMigration[] = [
+  {
+    version: "0007_diary_snapshots",
+    sql: `
+      CREATE TABLE diary_day (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES profile_user(id) ON DELETE RESTRICT,
+        local_date TEXT NOT NULL CHECK (local_date GLOB '????-??-??'),
+        goal_id TEXT REFERENCES profile_nutrition_goal(id) ON DELETE SET NULL,
+        note TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(user_id, local_date)
+      );
+      CREATE INDEX diary_day_user_date_idx ON diary_day(user_id, local_date);
+
+      CREATE TABLE diary_meal_slot (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES profile_user(id) ON DELETE CASCADE,
+        key TEXT NOT NULL CHECK (key IN ('breakfast', 'lunch', 'dinner', 'snack')),
+        display_name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL CHECK (sort_order >= 0),
+        active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+        UNIQUE(user_id, key)
+      );
+
+      CREATE TABLE diary_entry (
+        id TEXT PRIMARY KEY,
+        diary_day_id TEXT NOT NULL REFERENCES diary_day(id) ON DELETE CASCADE,
+        meal_slot_id TEXT NOT NULL REFERENCES diary_meal_slot(id) ON DELETE RESTRICT,
+        food_id TEXT REFERENCES food_item(id) ON DELETE SET NULL,
+        recipe_id TEXT,
+        display_name_snapshot TEXT NOT NULL,
+        source_snapshot TEXT NOT NULL,
+        amount REAL NOT NULL CHECK (amount > 0),
+        unit TEXT NOT NULL CHECK (unit IN ('g', 'ml', 'serving')),
+        gram_equivalent REAL CHECK (gram_equivalent IS NULL OR gram_equivalent > 0),
+        serving_label_snapshot TEXT,
+        note TEXT,
+        entry_source TEXT NOT NULL CHECK (entry_source IN ('manual', 'ai_confirmed', 'copy', 'copy_snapshot', 'import')),
+        version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX diary_entry_day_meal_idx ON diary_entry(diary_day_id, meal_slot_id, created_at);
+
+      CREATE TABLE diary_entry_nutrient (
+        entry_id TEXT NOT NULL REFERENCES diary_entry(id) ON DELETE CASCADE,
+        nutrient_id TEXT NOT NULL REFERENCES food_nutrient_definition(id) ON DELETE RESTRICT,
+        amount_numeric REAL,
+        amount_raw TEXT,
+        value_status TEXT NOT NULL CHECK (value_status IN ('known', 'trace', 'unknown', 'not_applicable', 'estimated')),
+        source_basis_json TEXT NOT NULL,
+        PRIMARY KEY(entry_id, nutrient_id)
+      );
+    `,
+  },
+];

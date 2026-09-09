@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-09 20:35 +08:00
+> 最后更新：2026-09-09 21:20 +08:00
 
 ## 1. 当前快照
 
@@ -12,10 +12,10 @@
 | 项目阶段 | M1 饮食记录纵向切片实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M1 — 饮食记录纵向切片 |
-| 当前焦点 | M1-004 Food search/detail API 最终复审确认 |
-| 下一步 | 确认 search_key migration、PATCH validation 和 optional nutrient upsert 后进入 M1-005 |
-| 当前阻塞 | 无；M1-003 已完成并通过两轮复审 |
-| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline 已完成 |
+| 当前焦点 | M1-006 Dashboard read model |
+| 下一步 | 从 diary 的已存快照构建可重建的日汇总；不得重算历史 food 数据 |
+| 当前阻塞 | 无；M1-005 实现完成，待独立复审 |
+| 业务代码 | M1-001 Nutrition Engine、M1-002 Food canonical schema、M1-003 Food import pipeline、M1-004 Food search/detail API、M1-005 Diary domain 与 snapshot 已完成 |
 | Git | 远程 `main` 已包含 M1-001；根路径镜像仍可用 `cc60f7c62750202ef36d8601b67ee1e6b41dfaec` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 2/8 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `IN_PROGRESS` | 5/8 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `PLANNED` | 0/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `PLANNED` | 0/6 | 菜谱/运动快照和预算策略通过 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -128,16 +128,30 @@
 
 ### M1-004 — Food search/detail API
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-09 20:35 +08:00
-- 完成时间：未完成
+- 完成时间：2026-09-09 21:10 +08:00
 - 操作者：Codex + delegated implementer
 - 依赖：M1-003
 - 计划变更：实现本地搜索、detail、custom food、alias、serving、favorite contracts，并接入 API；无本地结果不得触发 AI/外部网络
 - 计划验收：TDD RED/GREEN；精确名/别名/前缀/FTS、inactive 过滤、cursor、raw/status detail、custom/reference 编辑边界、alias/serving 校验、favorite 幂等与无网络空结果；全量门禁
-- 当前进展：已完成最终复审修复：新增 `0005/0006` search key/NOCASE 前向索引、PATCH runtime validation、optional nutrient revision upsert，并将 search cursor 固定为 `meta.nextCursor`；聚焦 2 files/7 tests、全量 28 files/137 tests 和本地门禁均通过，等待复审确认。
+- 当前进展：已完成三轮复审修复：新增 `0005/0006` search key/NOCASE 前向索引、PATCH runtime validation、optional nutrient revision upsert，并将 search cursor 固定为 `meta.nextCursor`；聚焦 3 files/15 tests、全量 28 files/137 tests 和本地门禁均通过。
 - 阻塞/风险：未测量 1,677/100k 的 p50/p95，不宣称 <100ms；当前搜索使用 indexed name/alias SQL，FTS/pinyin 的性能策略需在基准任务中量化。
-- 下一步：独立复审后处理发现项，才可标记 DONE
+- 下一步：进入 M1-005 Diary domain 与 snapshot
+
+### M1-005 — Diary domain 与 snapshot
+
+- 状态：`DONE`
+- 开始时间：2026-09-09 21:15 +08:00
+- 完成时间：2026-09-09 21:20 +08:00
+- 操作者：Codex + delegated implementer
+- 依赖：M1-001、M1-004
+- 计划变更：增加 `0007_diary_snapshots` 前向迁移、日记 domain 和核心 REST 读写路径；以存储快照保持历史不随 food 更新或停用而漂移。
+- 计划验收：TDD RED/GREEN；快照缩放、food edit/deactivation 后历史稳定、幂等、乐观锁、copy fallback、事务回滚与 API error envelope；全量门禁。
+- 当前进展：`diary_day`、默认餐次、entry/version 与每营养快照已在同一事务落库；`source_basis_json` 保存引擎版本、来源 food/serving 与 basis；copy 优先当前 active food，缺失/停用时使用 `copy_snapshot`。
+- 验收结果：EVD-M1-005-A；聚焦 2 files/5 tests、全量 51 files/250 tests；lint/typecheck/integration/build/API smoke 均 exit 0；Docker smoke 如实报告本机 Docker CLI 缺失并 exit 0。
+- 阻塞/风险：菜谱、照片、goal snapshot、Dashboard/UI 与外部调用均未扩展到本任务；API 当前以基础单用户 `local-user` 承载，后续鉴权路由应接入 session user。
+- 下一步：独立复审后进入 M1-006 Dashboard read model。
 
 ## 4. DOC 任务板
 
@@ -217,6 +231,8 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | EVD-M1-001-B | M1-001 | 2026-09-09 10:15 +08:00 | `pnpm exec vitest run packages/nutrition-engine/test/nutrition-engine.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build` | coverage=0.5 的新断言先失败（received 0.625），最小修复后聚焦 1 file/6 tests、全量 7 files/28 tests 通过；所有列出命令 exit 0 |
 | EVD-M1-003-A | M1-003 | 2026-09-09 18:37 +08:00 | importer focused/full verification before final identity fix | 4 项独立复审 Important 已修复；聚焦 2 files/15 tests、全量 13 files/63 tests，lint/typecheck/integration/build/API smoke exit 0；Docker CLI 缺失由 smoke 如实记录 |
 | EVD-M1-003-B | M1-003 | 2026-09-09 20:30 +08:00 | `pnpm exec vitest run tools/food-import/test/food-import.test.ts packages/db/test/food-schema.test.ts`; full `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 最终 identity 回归后聚焦 2 files/16 tests、全量 13 files/64 tests；所有命令 exit 0；API home/health/ready=200；Docker CLI 缺失已记录 |
+| EVD-M1-004-A | M1-004 | 2026-09-09 20:42 +08:00 | 初版 focused/full gates | 聚焦 2 files/4 tests、全量 28 files/131 tests；API smoke 200；审查后发现 custom 原子性、快照、FTS/keyset、错误 envelope 等问题 |
+| EVD-M1-004-E | M1-004 | 2026-09-09 21:10 +08:00 | 最终 `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`；focused DB/domain/route | 三轮审查修复后聚焦 3 files/15 tests、全量 28 files/137 tests；所有命令 exit 0；API home/health/ready=200；Docker CLI 缺失已记录；未声称 1,677/100k 性能目标 |
 | EVD-M1-003-A | M1-003 | 2026-09-09 18:28 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 1 file/5 tests、全量 13 files/59 tests，lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；实现待独立复审 |
 | EVD-M1-003-B | M1-003 | 2026-09-09 18:37 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts`; `pnpm vitest run packages/db/test/food-schema.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 审查修复聚焦 7 importer tests、8 schema tests；全量 13 files/63 tests；lint/typecheck/build/API smoke 均 exit 0；docker smoke 正确报告 Docker CLI 缺失；等待复审确认 |
 | EVD-M1-004-A | M1-004 | 2026-09-09 20:42 +08:00 | `pnpm vitest run packages/food/test/food-api.test.ts apps/api/test/food-routes.test.ts`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke` | 聚焦 2 files/4 tests、全量 28 files/131 tests，lint/typecheck/integration/build/API smoke 均 exit 0；Docker CLI 缺失由 smoke 如实记录；实现等待独立复审，未测量 1,677/100k p50/p95 |
@@ -298,6 +314,9 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-09 18:37 +08:00 | Codex + delegated implementer | 完成 M1-003 审查修复 | 新增 `0004` 前向迁移保留旧营养行并允许 `kJ`、加入 source remark；metadata 完整的结构失败进入 failed staging；非法数值拒绝且不会变为 unknown；复审回归与全量门禁通过 |
 | 2026-09-09 20:30 +08:00 | Codex | 完成 M1-003 最终范围复审与幂等修复 | 修复 malformed same-identity 文档不可降级 promoted staging；聚焦 16 tests、全量 64 tests 和全部本地门禁通过；进入 M1-004 |
 | 2026-09-09 20:35 +08:00 | Codex | 开始 M1-004 Food search/detail API | 固定本地查询、custom/reference 写边界、alias/serving/favorite 与无网络 fallback contract；先写 domain/route RED tests |
+| 2026-09-09 21:10 +08:00 | Codex | 完成 M1-004 最终复审 | 三轮独立复审完成；search envelope、indexed prefix/FTS、PATCH validation/revision、reference user additions 与事务边界均通过；进入 M1-005 |
+| 2026-09-09 21:15 +08:00 | Codex | 开始 M1-005 Diary domain 与 snapshot | 读取 API/DB/roadmap；先固定快照、幂等、复制 fallback 与 optimistic concurrency contract |
+| 2026-09-09 21:20 +08:00 | Codex + delegated implementer | 完成 M1-005 Diary domain 与 snapshot | 先观察 diary domain 缺失/API 404 RED；`0007`、已存营养快照、幂等、版本冲突、复制 fallback 和核心 REST API 完成；聚焦 5 tests、全量 250 tests 与全部本地门禁通过，Docker CLI 缺失如实记录 |
 | 2026-09-09 20:42 +08:00 | Codex + delegated implementer | M1-004 实现完成，等待复审 | 本地 search/detail/custom/alias/serving/favorite 路由和 domain 已完成；聚焦 4 tests、全量 131 tests 与门禁通过；100k 性能未测量并已记录限制 |
 | 2026-09-09 20:52 +08:00 | Codex + delegated implementer | M1-004 复审修复完成，等待确认 | nested custom transaction、source revision、FTS/keyset、error envelope、reference user additions 和 strict cursor 回归均通过；全量 135 tests |
 | 2026-09-09 21:02 +08:00 | Codex + delegated implementer | M1-004 最终复审修复完成，等待确认 | `0005` search key/index、strict PATCH body 和 optional nutrient revision upsert 已覆盖；全量 137 tests |

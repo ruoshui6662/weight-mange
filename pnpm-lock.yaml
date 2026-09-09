@@ -38,6 +38,9 @@ importers:
       '@nutrition-tracker/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@nutrition-tracker/diary':
+        specifier: workspace:*
+        version: link:../../packages/diary
       '@nutrition-tracker/food':
         specifier: workspace:*
         version: link:../../packages/food
@@ -51,6 +54,19 @@ importers:
       drizzle-orm:
         specifier: 1.0.0-rc.4
         version: 1.0.0-rc.4
+
+  packages/diary:
+    dependencies:
+      '@nutrition-tracker/db':
+        specifier: workspace:*
+        version: link:../db
+      '@nutrition-tracker/nutrition-engine':
+        specifier: workspace:*
+        version: link:../nutrition-engine
+    devDependencies:
+      '@nutrition-tracker/food':
+        specifier: workspace:*
+        version: link:../food
 
   packages/food:
     dependencies:
