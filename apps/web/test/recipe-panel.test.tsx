@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, recipeSearchQuery, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -24,6 +24,11 @@ const recipe: Recipe = {
 };
 
 describe("RecipePanel", () => {
+  it("searches an existing ingredient using the visible query without retyping", () => {
+    expect(recipeSearchQuery({}, { key: "ingredient-1", name: "馒头" })).toBe("馒头");
+    expect(recipeSearchQuery({ "ingredient-1": "  面包  " }, { key: "ingredient-1", name: "馒头" })).toBe("面包");
+  });
+
   it("uses a deterministic key when randomUUID is unavailable", () => {
     const originalCrypto = globalThis.crypto;
     try {

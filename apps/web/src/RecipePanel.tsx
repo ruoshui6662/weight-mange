@@ -44,6 +44,10 @@ export function clearFoodSearchResults(current: Record<string, FoodResult[]>, ro
   return next;
 }
 
+export function recipeSearchQuery(searches: Record<string, string>, row: Pick<RecipeDraftIngredient, "key" | "name">): string {
+  return (searches[row.key] ?? row.name).trim();
+}
+
 /** Search completion is intentionally independent from write-operation state. */
 export function clearRecipeSearchPending(current: Record<string, boolean>, rowKey: string): Record<string, boolean> {
   const next = { ...current };
@@ -149,7 +153,7 @@ export function RecipePanel(props: RecipePanelProps): ReactElement {
 
   async function searchFood(event: FormEvent, row: RecipeDraftIngredient) {
     event.preventDefault();
-    const query = (searches[row.key] ?? "").trim();
+    const query = recipeSearchQuery(searches, row);
     if (!query) return;
     setSearchError((current) => ({ ...current, [row.key]: "" }));
     setSearchPending((current) => ({ ...current, [row.key]: true }));
