@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, copyRecipeAction, deleteRecipeAction, RecipeListStatus, RecipePanel, recipeErrorText, refreshRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeErrorText, refreshRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -24,6 +24,21 @@ const recipe: Recipe = {
 };
 
 describe("RecipePanel", () => {
+  it("uses a deterministic key when randomUUID is unavailable", () => {
+    const originalCrypto = globalThis.crypto;
+    try {
+      vi.stubGlobal("crypto", { randomUUID: undefined });
+      expect(createIngredientRowKey()).toBe("ingredient-row-1");
+    } finally {
+      vi.stubGlobal("crypto", originalCrypto);
+    }
+  });
+
+  it("shows completion feedback when a food search returns no matches", () => {
+    const html = renderToStaticMarkup(React.createElement(RecipeFoodSearchStatus, { searched: true, resultCount: 0 }));
+    expect(html).toContain("没有找到匹配原料");
+  });
+
   it("sends the current version and preserves the draft when an update conflicts", async () => {
     const draft = { name: "新名字", cookedWeightG: "220", servingCount: "2", ingredients: [{ key: "ingredient-1", foodId: "food-1", name: "馒头", amount: "120" }] };
     const update = vi.fn(async () => { throw new ApiError("RECIPE_VERSION_CONFLICT", 409); });
