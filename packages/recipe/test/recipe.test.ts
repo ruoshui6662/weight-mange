@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyMigrations, openDatabase } from "../../db/src/index.js";
 import { CORE_MIGRATIONS, DIARY_MIGRATIONS, FOOD_MIGRATIONS, ANALYTICS_MIGRATIONS, BODY_MIGRATIONS, RECIPE_MIGRATIONS } from "../../db/src/schema.js";
 import { createFoodCatalog } from "../../food/src/index.js";
+import { createDiaryService } from "../../diary/src/index.js";
 
 import { calculateRecipe, createRecipeService, RECIPE_CALC_VERSION } from "../src/index.js";
 
@@ -11,8 +12,9 @@ function setup() {
   sqlite.prepare("INSERT INTO profile_user (id,display_name,timezone,created_at,updated_at) VALUES ('user-1','User','Asia/Shanghai',1,1)").run();
   const foods = createFoodCatalog(sqlite, { now: () => 10, id: (() => { let i = 0; return () => `food-${++i}`; })() });
   const food = foods.createCustom({ name: "豆浆", nutrients: { energyKcal: 30, proteinG: 2, fatG: 1, carbG: 3 }, servings: [{ label: "一杯", amount: 250, unit: "g", equivalentG: 250 }] });
-  const recipes = createRecipeService(sqlite, { now: () => 100, id: (() => { let i = 0; return () => `recipe-${++i}`; })() });
-  return { sqlite, foods, foodId: food.id, servingId: foods.detail(food.id)?.servings[0]?.id as string, recipes };
+  const diary = createDiaryService(sqlite, { now: () => 200, id: (() => { let i = 0; return () => `diary-${++i}`; })() });
+  const recipes = createRecipeService(sqlite, { now: () => 100, id: (() => { let i = 0; return () => `recipe-${++i}`; })(), diary });
+  return { sqlite, foods, foodId: food.id, servingId: foods.detail(food.id)?.servings[0]?.id as string, recipes, diary };
 }
 
 describe("recipe package baseline", () => {
@@ -128,4 +130,19 @@ describe("recipe package baseline", () => {
     expect(recipes.get({ userId: "user-1", recipeId: copy.id })).not.toBeNull();
     sqlite.close();
   });
+
+  it("adds a recipe portion to diary using a fresh nutrition snapshot", () => {
+    const { sqlite, foodId, recipes, diary } = setup();
+    const created = recipes.create({ userId: "user-1", name: "日记菜谱", cookedWeightG: 200, ingredients: [{ foodId, amount: 100, unit: "g" }] });
+    const entry = recipes.addToDiary({ userId: "user-1", recipeId: created.id, date: "2026-09-09", mealSlotId: "dinner", amount: 165, unit: "g" });
+    expect(entry).toMatchObject({ recipeId: created.id, displayNameSnapshot: "日记菜谱", amount: 165 });
+    expect(entry.nutrients.find((nutrient) => nutrient.nutrientId === "energy_kcal")?.amountNumeric).toBeCloseTo(24.75);
+    foodsUpdate(sqlite, foodId, 999);
+    expect(diary.getDay({ userId: "user-1", date: "2026-09-09" }).dailyTotal.nutrients.energy_kcal.amount).toBeCloseTo(24.75);
+    sqlite.close();
+  });
 });
+
+function foodsUpdate(sqlite: ReturnType<typeof openDatabase>["sqlite"], foodId: string, amount: number) {
+  sqlite.prepare("UPDATE food_nutrient_value SET amount_numeric=? WHERE food_id=? AND nutrient_id='energy_kcal'").run(amount, foodId);
+}

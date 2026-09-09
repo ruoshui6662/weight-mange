@@ -26,6 +26,7 @@ export type RecipeGetInput = { userId: string; recipeId: string };
 export type RecipeListInput = { userId: string };
 export type RecipeCopyInput = { userId: string; recipeId: string; name?: string };
 export type RecipeRefreshInput = { userId: string; recipeId: string; ingredientIds?: readonly string[] };
+export type RecipeAddToDiaryInput = { userId: string; recipeId: string; date: string; mealSlotId: string; amount: number; unit: "g"; note?: string | null };
 
 export type RecipeIngredient = {
   id: string; foodId: string | null; servingId: string | null; nameSnapshot: string; inputAmount: number; inputUnit: RecipeUnit; gramEquivalent: number | null; sortOrder: number;
@@ -37,7 +38,8 @@ export type Recipe = {
   ingredients: RecipeIngredient[]; total: Record<string, NutrientSummary>; per100g: Record<string, NutrientSummary> | null; perServing: Record<string, NutrientSummary> | null; warnings: RecipeWarning[]; calcVersion: typeof RECIPE_CALC_VERSION;
 };
 
-type Options = { now?: () => number; id?: () => string };
+type Options = { now?: () => number; id?: () => string; diary?: DiarySnapshotWriter };
+type DiarySnapshotWriter = { createRecipeSnapshotEntry(input: { userId: string; date: string; mealSlotId: string; recipeId: string; recipeName: string; amount: number; unit: "g"; gramEquivalent: number; sourceSnapshot: string; nutrients: Array<{ nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: string; sourceBasisJson: string }>; note?: string | null }): { id: string; recipeId: string | null; [key: string]: unknown } };
 type RecipeRow = { id: string; userId: string; name: string; cookedWeightG: number | null; servingCount: number | null; note: string | null; version: number; deletedAt: number | null; createdAt: number; updatedAt: number };
 type IngredientRow = { id: string; recipeId: string; foodId: string | null; servingId: string | null; nameSnapshot: string; inputAmount: number; inputUnit: RecipeUnit; gramEquivalent: number | null; sortOrder: number };
 type FoodResolution = { foodId: string; servingId: string | null; name: string; sourceSnapshot: Record<string, unknown>; gramEquivalent: number; snapshots: Array<{ id: string; nutrientId: string; amountNumeric: number | null; amountRaw: string | null; valueStatus: NutrientStatus | "not_applicable"; sourceBasisJson: string }> };
@@ -182,5 +184,19 @@ export function createRecipeService(sqlite: DatabaseSync, options: Options = {})
     } catch (error) { sqlite.exec("ROLLBACK"); throw error; }
   };
 
-  return { create, get, list, update, copy, delete: remove, refreshIngredients };
+  const addToDiary = (input: RecipeAddToDiaryInput) => {
+    if (!options.diary) throw new RecipeError("RECIPE_DIARY_UNAVAILABLE");
+    if (!input || !input.userId || !input.recipeId || !input.date || !input.mealSlotId || !finitePositive(input.amount) || input.unit !== "g") throw new RecipeError("RECIPE_INVALID_INPUT");
+    const recipe = get({ userId: input.userId, recipeId: input.recipeId });
+    if (!recipe) throw new RecipeError("RECIPE_NOT_FOUND");
+    if (!recipe.per100g) throw new RecipeError("RECIPE_COOKED_WEIGHT_REQUIRED");
+    const nutrients = Object.entries(recipe.per100g).map(([nutrientId, summary]) => {
+      const valueStatus = summary.hasTrace ? "trace" : summary.hasEstimated ? "estimated" : summary.coverage < 1 ? "unknown" : "known";
+      const amountNumeric = valueStatus === "known" || valueStatus === "estimated" ? summary.amount * input.amount / 100 : null;
+      return { nutrientId, amountNumeric, amountRaw: amountNumeric === null ? (valueStatus === "trace" ? "Tr" : "—") : String(amountNumeric), valueStatus, sourceBasisJson: JSON.stringify({ recipeId: recipe.id, calcVersion: recipe.calcVersion, ingredientIds: recipe.ingredients.map((ingredient) => ingredient.id), per100g: true, amountGrams: input.amount }) };
+    });
+    return options.diary.createRecipeSnapshotEntry({ userId: input.userId, date: input.date, mealSlotId: input.mealSlotId, recipeId: recipe.id, recipeName: recipe.name, amount: input.amount, unit: "g", gramEquivalent: input.amount, sourceSnapshot: JSON.stringify({ recipeId: recipe.id, calcVersion: recipe.calcVersion, ingredientIds: recipe.ingredients.map((ingredient) => ingredient.id), amountGrams: input.amount }), nutrients, ...(input.note === undefined ? {} : { note: input.note }) });
+  };
+
+  return { create, get, list, update, copy, delete: remove, refreshIngredients, addToDiary };
 }

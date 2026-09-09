@@ -125,3 +125,31 @@ it("rejects impossible dates on entry update and delete", () => {
   expect(() => diary.updateEntry({ userId: "user-1", date: "2026-02-30", entryId: entry.id, amount: 20, version: entry.version })).toThrow("DIARY_INVALID_DATE");
   expect(() => diary.deleteEntry({ userId: "user-1", date: "2026-02-30", entryId: entry.id })).toThrow("DIARY_INVALID_DATE");
 });
+
+it("writes a recipe-backed diary snapshot without re-reading food values", () => {
+  const { sqlite, diary } = setup();
+  const entry = diary.createRecipeSnapshotEntry({
+    userId: "user-1",
+    date: "2026-09-09",
+    mealSlotId: "dinner",
+    recipeId: "recipe-1",
+    recipeName: "豆浆菜谱",
+    amount: 165,
+    unit: "g",
+    gramEquivalent: 165,
+    sourceSnapshot: JSON.stringify({ recipeId: "recipe-1", calcVersion: "recipe_yield_v1" }),
+    nutrients: [{ nutrientId: "energy_kcal", amountNumeric: 49.5, amountRaw: "49.5", valueStatus: "known", sourceBasisJson: "{}" }],
+  });
+  expect(entry).toMatchObject({ recipeId: "recipe-1", displayNameSnapshot: "豆浆菜谱", amount: 165, unit: "g", gramEquivalent: 165, entrySource: "manual" });
+  expect(entry.nutrients[0]).toMatchObject({ nutrientId: "energy_kcal", amountNumeric: 49.5, valueStatus: "known" });
+  sqlite.prepare("UPDATE food_nutrient_value SET amount_numeric=999 WHERE nutrient_id='energy_kcal'").run();
+  expect(diary.getDay({ userId: "user-1", date: "2026-09-09" }).dailyTotal.nutrients.energy_kcal.amount).toBe(49.5);
+});
+
+it("rolls back a recipe snapshot when the target meal slot is invalid", () => {
+  const { sqlite, diary } = setup();
+  expect(() => diary.createRecipeSnapshotEntry({
+    userId: "user-1", date: "2026-09-09", mealSlotId: "invalid", recipeId: "recipe-1", recipeName: "错误", amount: 10, unit: "g", gramEquivalent: 10, sourceSnapshot: "{}", nutrients: [],
+  })).toThrow("DIARY_MEAL_SLOT_NOT_FOUND");
+  expect(sqlite.prepare("SELECT count(*) count FROM diary_entry").get()).toEqual({ count: 0 });
+});
