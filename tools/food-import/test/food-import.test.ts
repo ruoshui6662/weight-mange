@@ -66,6 +66,23 @@ describe("food import staging pipeline", () => {
     expect(parseFoodImport(JSON.stringify({ ...document(), foods: [food(1), food(1)] })).errors[0]?.code).toBe("DUPLICATE_FOOD_CODE");
   });
 
+  it("parses numeric values with a trailing source footnote marker without losing the raw value", () => {
+    const parsed = parseFoodImport(JSON.stringify({ ...document(), foods: [{ ...food(1), energyKCal: "899*", energyKJ: "3761*" }] }));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.document.foods[0]?.nutrients.energyKCal).toMatchObject({ amountRaw: "899*", amountNumeric: 899, valueStatus: "known" });
+    expect(parsed.document.foods[0]?.nutrients.energyKJ).toMatchObject({ amountRaw: "3761*", amountNumeric: 3761, valueStatus: "known" });
+  });
+
+  it("preserves the source unknown marker used by the remote dataset", () => {
+    const input = JSON.stringify({ ...document(), foods: [{ ...food(1), energyKCal: "un" }] });
+    const parsed = parseFoodImport(input);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.document.foods[0]?.nutrients.energyKCal).toMatchObject({ amountRaw: "un", amountNumeric: null, valueStatus: "unknown" });
+    expect(importFoodDataset(openFoodDatabase(), input, importerOptions).status).toBe("promoted");
+  });
+
   it("stages, validates, normalizes, promotes, and explicitly rebuilds FTS without losing raw nutrient states", () => {
     const sqlite = openFoodDatabase();
     const result = importFoodDataset(sqlite, JSON.stringify(document()), importerOptions);

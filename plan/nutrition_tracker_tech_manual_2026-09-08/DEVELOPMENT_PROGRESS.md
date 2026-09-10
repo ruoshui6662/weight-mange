@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 20:10 +08:00
+> 最后更新：2026-09-10 20:40 +08:00
 
 ## 1. 当前快照
 
@@ -15,8 +15,8 @@
 | 当前焦点 | M3-004 MET/运动计算准备 |
 | 下一步 | 先阅读运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 饮食分餐快捷添加已完成 |
-| Git | 本地 `main` 已包含 M3-008 实现提交；远程发布不属于本任务 |
+| 业务代码 | M1-001 至 M1-010、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 饮食分餐快捷添加已完成 |
+| Git | M1-010 远程导入改动已完成，待提交到本地 `main`；远程发布不在本任务范围 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -26,7 +26,7 @@
 |---|---|---:|---:|---|
 | DOC | 审查方案并建立可交接路线 | `DONE` | 2/2 | 新增文档可读、互链、结构与任务统计检查通过 |
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
-| M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
+| M1 | 饮食记录纵向切片 | `DONE` | 10/10 | 饮食记录闭环、远程测试目录 bootstrap 与本地导入验证通过 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
 | M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 5/8 | M3-003、M3-007、M3-008 与 DOC-005 已完成；下一步进入 M3-004 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
@@ -210,6 +210,19 @@
 - 阻塞/风险：无功能阻塞；360/390/430 视觉基线与浏览器级 E2E 仍归 M1-007 后续验收。
 - 下一步：回到 M1-007，完成目标 viewport 视觉证据。
 
+### M1-010 — 测试期远程食物目录导入
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 20:20 +08:00
+- 完成时间：2026-09-10 20:40 +08:00
+- 操作者：Codex
+- 依赖：M1-003、FOOD_DATA_SPEC.md、DOCKER_DEPLOYMENT.md §22
+- 计划变更：从 `ruoshui6662/china-food-composition-data` 的 fixed-en JSON 目录拉取并合并食物记录，生成带来源与 checksum 的 manifest，复用现有 staging/promote 导入；只在容器启动前执行一次，搜索仍只访问本地 SQLite。
+- 计划验收：远程目录过滤/合并/checksum、重复导入幂等、失败不覆盖既有 active dataset；Compose 启动前导入；focused tests、全量 tests、lint、typecheck、build、E2E 和 diff check 通过。
+- 当前进展：远程目录客户端按文件名过滤 `merged_*.json`，排序合并并生成 SHA-256 checksum；启动脚本在 API 前应用迁移并执行现有 importer，失败时不覆盖已有 active dataset；测试 Compose 已默认指向用户 fork，生产可用环境变量关闭。
+- 验收结果：EVD-M1-010-A；远程真实拉取 61 个文件/1677 条食物首次 `promoted`，checksum `76b5f360c3286e1a14c9e1c586335f3cae06ea9afed6acdce198998cda643ea2`，第二次 `already_promoted`；全量 183 files/1067 tests、lint/typecheck/build/API smoke/integration/E2E 2 passed/diff check 均 exit 0；docker smoke exit 0 但本机 Docker CLI 不可用。
+- 下一步：进入 M3-004 MET/运动计算准备。
+
 ### M2-001 — Profile 与目标版本
 
 - 状态：`DONE`
@@ -378,6 +391,7 @@
 | DOC-005 | 按第三套方案重写统一 UI 设计规范手册 | `DONE` | Codex | `UI_DESIGN_SYSTEM.md` v2.0；覆盖桌面/移动端、六页、组件状态、交互一致性、无障碍和视觉验收；EVD-DOC-005 |
 | M3-007 | Data Garden 全站 UI 重构 | `DONE` | Codex | Task 1–8 代码与独立复审完成；全量 E2E 在 workers=1 下 2 tests passed，证据见 `task-8-report.md` |
 | M3-008 | 饮食分餐快捷添加 | `DONE` | Codex | 四餐快捷入口、目标餐次预选、搜索框聚焦与响应式 44px 命中区已完成；见 EVD-M3-008-A |
+| M1-010 | 测试期远程食物目录导入 | `DONE` | Codex | 61 个 JSON/1677 条食物真实拉取并导入；重复启动幂等；见 EVD-M1-010-A |
 
 ## 5. M0 待办队列
 
@@ -502,6 +516,7 @@ result: 42 passed, 0 failed
 | EVD-M3-003-A | M3-003 | 2026-09-10 07:01 +08:00（历史基线，已被终审修复 supersede） | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 首轮全部 exit 0；全量 176 files/1017 tests passed；integration 无匹配测试文件并正常 exit 0；build 产物生成成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed，覆盖菜谱生命周期、snapshot 稳定性及 360/390/430 viewport；本机 Docker CLI 缺失，未宣称容器验证；实现提交 `b52b976`、`895594a`、`7958351`、`fdc3b2c`、`9523abe`、`85d3865`、`7efb600`、`2d0c343`、`d5dad06`；终审发现后不再作为当前 DONE 证据 |
 | EVD-M3-003-B | M3-003 | 2026-09-10 08:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全部 exit 0；全量 176 files/1031 tests passed；integration 无匹配测试文件并正常 exit 0；build 成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed（7.1s），覆盖菜谱创建/搜索/计算结果/warning/复制/编辑/刷新/删除/加入日记 snapshot 稳定性，以及 360/390/430 viewport 无溢出和 44px 命中区；本机 Docker CLI 缺失，未宣称本地容器验证；修复提交 `85aa305`、`65e1029`、`450cc46`、`1bd4267`、`0514e52`、`8cf3d48`、`1916a57`、`26ab2d0`、`96d7367`、`fe5228f`、`09583eb`、`9738704` |
 | EVD-M3-008-A | M3-008 | 2026-09-10 20:10 +08:00 | `pnpm vitest run apps/web/test/diary-page.test.tsx apps/web/test/dashboard-view.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm exec playwright test e2e/ui-regression.spec.ts`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先验证四餐入口契约缺失；GREEN 聚焦 2 files/11 tests；全量 182 files/1063 tests；lint/typecheck/build/diff check exit 0；单文件 Playwright 1 passed、全量 E2E 2 passed（workers=1），覆盖四餐按钮、目标餐次预选、搜索框焦点、44px 命中区和 360/390/430/1024/1440 视口；本机 Docker CLI 缺失，仅未执行容器实测 |
+| EVD-M1-010-A | M1-010 | 2026-09-10 20:40 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts tools/food-import/test/remote-food.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm test:e2e`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 真实 `node scripts/food-remote-import.mjs` 临时 SQLite 两次 | RED 先暴露远程模块缺失、`899*` footnote 和 `un` unknown marker；GREEN 聚焦 2 files/12 tests、全量 183 files/1067 tests；真实远程 61 files/1677 foods 首次 `promoted`、二次 `already_promoted`，checksum `76b5f360c3286e1a14c9e1c586335f3cae06ea9afed6acdce198998cda643ea2`；lint/typecheck/build/integration/API smoke/E2E 2/diff check exit 0；docker smoke exit 0 但 Docker CLI 不可用 |
 
 ## 9. 问题队列
 
@@ -638,10 +653,12 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 19:45 +08:00 | Codex | 完成 M3-007 Data Garden 全站 UI 重构 | Task 1–8 均完成独立实现与复审；全量 182 files/1062 tests、lint/typecheck/integration/build/API smoke/diff check exit 0；`pnpm test:e2e` 在 `workers: 1` 下 2 tests passed，覆盖六导航与 1440/1024/430/390/360 视口；Docker CLI 缺失如实保留；下一步进入 M3-004 MET/运动计算 |
 | 2026-09-10 19:55 +08:00 | Codex | 开始 M3-008 饮食分餐快捷添加 | 用户确认增加每餐添加入口；基于 UI_DESIGN_SYSTEM.md §7.2，将四餐快捷按钮接入统一搜索/份量确认状态机；计划先运行 focused RED 测试，再实现、验收并更新交接摘要 |
 | 2026-09-10 20:10 +08:00 | Codex | 完成 M3-008 饮食分餐快捷添加 | RED 先失败后 GREEN；四餐摘要增加快捷添加、目标餐次预选、统一搜索框聚焦与响应式 44px 命中区；聚焦 2 files/11 tests、全量 182 files/1063 tests、lint/typecheck/build/diff check、Playwright 2 tests 均 exit 0；下一步进入 M3-004 MET/运动计算准备 |
+| 2026-09-10 20:20 +08:00 | Codex | 开始 M1-010 测试期远程食物目录导入 | 用户确认测试阶段直接拉取 `ruoshui6662/china-food-composition-data`；已确认 fixed-en 目录存在 61 个合并 JSON 文件及全量 CSV；计划先补远程目录合并与 checksum 的 RED 测试 |
+| 2026-09-10 20:40 +08:00 | Codex | 完成 M1-010 测试期远程食物目录导入 | 新增远程目录合并、checksum、启动前导入脚本与 Compose 配置；兼容上游 `899*` footnote 和 `un` unknown marker；真实 fork 61 files/1677 foods 首次 promoted、二次 already_promoted；全量 183 files/1067 tests、lint/typecheck/build/API smoke/E2E/diff check 通过；下一步进入 M3-004 MET/运动计算准备 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构与 M3-008 分餐快捷添加已完成。后续接手者应：
+M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构与 M3-008 分餐快捷添加已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；

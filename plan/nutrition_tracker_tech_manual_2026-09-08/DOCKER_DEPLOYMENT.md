@@ -562,6 +562,23 @@ Provider timeout：
 
 用户手动放入 Sanotsu 导出的 JSON，或者开发阶段脚本拉取。
 
+### 22.1 测试阶段远程 bootstrap
+
+当前测试 Compose 默认从用户 fork 拉取一次 fixed-en 食物目录，在 API 进程启动前完成合并、checksum、staging/promote：
+
+```env
+FOOD_DATA_REMOTE_ENABLED=true
+FOOD_DATA_REMOTE_REPOSITORY=ruoshui6662/china-food-composition-data
+FOOD_DATA_REMOTE_REF=main
+FOOD_DATA_REMOTE_DIRECTORY=json_data_v3_20260825_qwen38max_kimi_k3_fixed_en
+FOOD_DATA_REMOTE_DATASET_KEY=cfcd6-ruoshui-fork
+FOOD_DATA_REMOTE_VERSION=20260825-fixed-en
+```
+
+启动脚本只拉取 `merged_*.json`，搜索请求仍只查询本地 SQLite。相同版本与 checksum 重启时返回 `already_promoted`，不会重复写入；远程不可用或校验失败时，已有 active dataset 保持不变；空数据库首次导入失败则阻止 API 启动并输出错误。
+
+正式环境应显式设置 `FOOD_DATA_REMOTE_ENABLED=false`，改用 `/data/imports/` 中经过审核的本地文件。远程数据不进入镜像和 Git 仓库。
+
 导入命令示例：
 
 ```bash

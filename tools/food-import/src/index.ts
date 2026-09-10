@@ -50,15 +50,18 @@ const NUTRIENTS = {
 } as const;
 type NutrientInputKey = keyof typeof NUTRIENTS;
 const MACRO_KEYS = new Set<NutrientInputKey>(["protein", "fat", "CHO", "dietaryFiber"]);
+const UNKNOWN_MARKERS = new Set(["", "—", "un"]);
 
 function emptyDiff(): ImportDiff { return { added: [], removed: [], changedName: [], changedMacro: [], changedMicronutrient: [], changedEdible: [], changedEnergy: [] }; }
 function asNonEmptyString(value: unknown): string | null { return typeof value === "string" && value.trim() ? value.trim() : null; }
 function rawValue(value: unknown): string | null { return typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : null; }
+function isUnknownMarker(value: string) { return UNKNOWN_MARKERS.has(value) || value.toLowerCase() === "un"; }
 function parseNutrient(key: string, value: unknown): ParsedNutrient {
   const amountRaw = rawValue(value);
   if (amountRaw === "Tr") return { key, amountRaw, amountNumeric: null, valueStatus: "trace" };
-  if (amountRaw === null || amountRaw === "" || amountRaw === "—") return { key, amountRaw, amountNumeric: null, valueStatus: "unknown" };
-  const numeric = Number(amountRaw);
+  if (amountRaw === null || isUnknownMarker(amountRaw)) return { key, amountRaw, amountNumeric: null, valueStatus: "unknown" };
+  const numericRaw = amountRaw.replace(/\*+$/, "");
+  const numeric = numericRaw ? Number(numericRaw) : Number.NaN;
   return Number.isFinite(numeric) ? { key, amountRaw, amountNumeric: numeric, valueStatus: "known" } : { key, amountRaw, amountNumeric: null, valueStatus: "unknown" };
 }
 
@@ -133,7 +136,7 @@ function validate(document: ParsedDocument): ValidationReport {
     if ((food.edibleRaw !== null && !["", "—"].includes(food.edibleRaw) && food.edibleRatio === null) || (food.edibleRatio !== null && (food.edibleRatio < 0 || food.edibleRatio > 1))) errors.push({ code: "INVALID_EDIBLE_PERCENTAGE", path: `food:${food.foodCode}.edible`, message: "edible must be a finite percentage between 0 and 100." });
     for (const nutrient of Object.values(food.nutrients)) {
       if (nutrient.amountNumeric !== null && nutrient.amountNumeric < 0) errors.push({ code: "NEGATIVE_NUTRIENT", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values cannot be negative." });
-      if (nutrient.amountRaw !== null && !["", "Tr", "—"].includes(nutrient.amountRaw) && nutrient.amountNumeric === null) errors.push({ code: "INVALID_NUTRIENT_NUMBER", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values must be finite numeric strings or documented unknown markers." });
+      if (nutrient.amountRaw !== null && nutrient.amountRaw !== "Tr" && !isUnknownMarker(nutrient.amountRaw) && nutrient.amountNumeric === null) errors.push({ code: "INVALID_NUTRIENT_NUMBER", path: `food:${food.foodCode}.${nutrient.key}`, message: "Nutrient values must be finite numeric strings or documented unknown markers." });
     }
     const kcal = food.nutrients.energyKCal!.amountNumeric; const kj = food.nutrients.energyKJ!.amountNumeric;
     if (kcal !== null && kj !== null && Math.abs(kj - kcal * 4.184) / Math.max(kj, 1) > 0.1) warnings.push({ code: "ENERGY_INCONSISTENCY", path: `food:${food.foodCode}`, message: "kcal/kJ difference exceeds 10%." });

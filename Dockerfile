@@ -29,6 +29,8 @@ COPY --from=build /workspace/apps/api/package.json ./apps/api/package.json
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build /workspace/apps/web/dist ./web
 COPY --from=build /workspace/packages ./packages
+COPY --from=build /workspace/tools/food-import/dist ./tools/food-import/dist
+COPY --from=build /workspace/scripts/food-remote-import.mjs ./scripts/food-remote-import.mjs
 COPY --from=build /workspace/scripts/healthcheck.mjs ./scripts/healthcheck.mjs
 
 USER appuser

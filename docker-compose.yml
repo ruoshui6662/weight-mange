@@ -14,7 +14,7 @@ services:
       - -c
       - >-
         chown -R 10001:10001 /data &&
-        exec su -s /bin/sh appuser -c 'exec node /app/apps/api/dist/index.js'
+        exec su -s /bin/sh appuser -c 'node /app/scripts/food-remote-import.mjs && exec node /app/apps/api/dist/index.js'
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
@@ -25,6 +25,13 @@ services:
       AUTH_MODE: ${AUTH_MODE:-password}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       WEB_DIST_DIR: /app/web
+      # 测试阶段从用户 fork 拉取一次食物目录，导入成功后搜索只读本地 SQLite。
+      FOOD_DATA_REMOTE_ENABLED: ${FOOD_DATA_REMOTE_ENABLED:-true}
+      FOOD_DATA_REMOTE_REPOSITORY: ${FOOD_DATA_REMOTE_REPOSITORY:-ruoshui6662/china-food-composition-data}
+      FOOD_DATA_REMOTE_REF: ${FOOD_DATA_REMOTE_REF:-main}
+      FOOD_DATA_REMOTE_DIRECTORY: ${FOOD_DATA_REMOTE_DIRECTORY:-json_data_v3_20260825_qwen38max_kimi_k3_fixed_en}
+      FOOD_DATA_REMOTE_DATASET_KEY: ${FOOD_DATA_REMOTE_DATASET_KEY:-cfcd6-ruoshui-fork}
+      FOOD_DATA_REMOTE_VERSION: ${FOOD_DATA_REMOTE_VERSION:-20260825-fixed-en}
     healthcheck:
       test: ["CMD", "node", "/app/scripts/healthcheck.mjs"]
       interval: 30s

@@ -129,6 +129,8 @@ amount_numeric = null
 value_status = "trace"
 ```
 
+远程 fixed-en 数据还会出现带脚注的数字（例如 `"899*"`）和未知标记 `"un"`：脚注数字保留 raw string，同时去除末尾脚注符号后参与数值计算；`un` 保留 raw string、映射为 `unknown`，不能当作 0。
+
 对于 `"—"`：
 - 不直接等于 0；
 - 映射为 unknown；
@@ -706,6 +708,7 @@ Open Food Facts
 - 本项目仅自用时，可将其作为本地导入源；
 - 不建议默认把原始书籍截图或整套重打包数据随自己的公开镜像分发；
 - Docker image 设计成“首次启动从本地 data seed 导入”比把源数据焊死在镜像更稳妥；
+- 测试阶段允许通过 `FOOD_DATA_REMOTE_*` 从 `ruoshui6662/china-food-composition-data` fork 启动前拉取 fixed-en JSON；正式环境应关闭远程 bootstrap，使用本地审核文件；
 - 如果以后公开发布，再重新核对数据授权。
 
 ---
