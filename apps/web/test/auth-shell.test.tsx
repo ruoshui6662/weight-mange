@@ -28,6 +28,9 @@ describe("Data Garden identity surfaces", () => {
     expect(html).toContain("数据与备份");
     expect(html).toContain("危险操作");
     expect(html).toContain("查看食物目录导入说明");
+    expect(html).toContain("由本地账户管理");
+    expect(html).toContain("查看备份说明");
+    expect((html.match(/data-button-variant="tertiary"/g) ?? []).length).toBeGreaterThanOrEqual(6);
     expect(html).toContain("本地账户");
   });
 });
