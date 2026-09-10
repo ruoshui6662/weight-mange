@@ -8,6 +8,7 @@ import { RecipePanel } from "./RecipePanel";
 import { AppShell } from "./ui/AppShell";
 import { TodayPage } from "./ui/TodayPage";
 import { DiaryPage } from "./ui/DiaryPage";
+import { WeightPage } from "./ui/WeightPage";
 
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
@@ -188,7 +189,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
     {activeTab === "diary" ? <DiaryPage today={today} dashboard={props.dashboard} diary={props.diary} query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} searchError={searchStatus === "error" ? props.error : undefined} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyDay={copyDay} onCopyMeal={copyMeal} /> : null}
     {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => { props.setError(""); setActiveTab("diary"); }} /> : null}
     {activeTab === "profile" ? <ProfilePanel profile={props.profile} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} /> : null}
-    {activeTab === "weight" ? <WeightPanel records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
+    {activeTab === "weight" ? <WeightPage today={today} records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
     {activeTab === "analytics" ? <AnalyticsPanel overview={analyticsOverview} tdee={tdee} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
     {props.error ? <p className="error page-error" role="alert">{props.error}</p> : null}
   </AppShell>;
