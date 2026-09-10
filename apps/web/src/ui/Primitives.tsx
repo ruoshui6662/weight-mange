@@ -4,7 +4,7 @@ export type ButtonVariant = "primary" | "secondary" | "tertiary" | "destructive"
 export type StatusKind = "loading" | "empty" | "error" | "offline" | "conflict" | "success" | "warning";
 
 export function Button({ variant = "primary", busy = false, children, className = "", disabled, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; busy?: boolean }) {
-  return <button {...props} className={`dg-button dg-button-${variant} ${className}`.trim()} data-button-variant={variant} disabled={disabled || busy} aria-busy={busy || undefined}>{busy ? `${children}中…` : children}</button>;
+  return <button {...props} className={`dg-button dg-button-${variant} ${className}`.trim()} data-button-variant={variant} data-hit-area="44" disabled={disabled || busy} aria-busy={busy || undefined}>{busy ? `${children}中…` : children}</button>;
 }
 
 export function IconButton({ label, children, className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {

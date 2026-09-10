@@ -138,13 +138,13 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .today-meal-group { min-width: 0; min-height: 142px; padding: 18px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface-soft); }
 .today-meal-heading, .today-entry, .today-entry-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .today-meal-heading h3 { margin: 0 0 3px; font-size: 16px; }
-.today-meal-heading .dg-button { min-height: 36px; padding: 0 8px; font-size: 12px; }
+.today-meal-heading .dg-button { min-height: 44px; padding: 0 8px; font-size: 12px; }
 .today-empty-meal { margin: 24px 0 0; color: var(--color-text-secondary); font-size: 13px; }
 .today-entry-list { display: grid; gap: 10px; margin-top: 16px; }
 .today-entry { align-items: flex-start; padding-top: 10px; border-top: 1px solid var(--color-border); }
 .today-entry > div:first-child { display: grid; gap: 3px; min-width: 0; }
 .today-entry-actions { flex-wrap: wrap; justify-content: flex-end; }
-.today-entry-actions .dg-button { min-height: 36px; padding: 0 8px; font-size: 12px; }
+.today-entry-actions .dg-button { min-height: 44px; padding: 0 8px; font-size: 12px; }
 .today-entry-edit { display: grid; gap: 10px; width: 100%; margin-top: 10px; }
 .today-entry-edit input { min-height: 44px; width: 100%; border: 1px solid var(--color-border); border-radius: 12px; padding: 0 12px; background: #fff; }
 .today-weekly-summary { padding: 20px; }

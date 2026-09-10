@@ -76,4 +76,15 @@ describe("TodayPage", () => {
     expect(html).toContain("先记录一餐");
     expect(html).not.toContain("0 kcal");
   });
+
+  it("keeps the meal-slot selector and 44px hit-area contract while editing", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      editingEntry: { id: "entry-1", displayName: "燕麦", amount: 100, unit: "g", mealSlotId: "breakfast", version: 0 },
+    }));
+    expect(html).toContain('aria-label="编辑餐次-燕麦"');
+    expect(html).toContain('value="breakfast"');
+    expect(html).toContain("午餐");
+    expect(html.match(/data-hit-area="44"/g)?.length).toBeGreaterThanOrEqual(5);
+  });
 });
