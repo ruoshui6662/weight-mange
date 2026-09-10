@@ -9,6 +9,7 @@ import { AppShell } from "./ui/AppShell";
 import { TodayPage } from "./ui/TodayPage";
 import { DiaryPage } from "./ui/DiaryPage";
 import { WeightPage } from "./ui/WeightPage";
+import { AnalyticsPage } from "./ui/AnalyticsPage";
 
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
@@ -102,6 +103,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   const [weightTrend, setWeightTrend] = useState<WeightTrend | null>(null);
   const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverview | null>(null);
   const [tdee, setTdee] = useState<TdeeEstimate | null>(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<7 | 30 | 90>(30);
   const [m2Loading, setM2Loading] = useState(false);
   const [m2Error, setM2Error] = useState("");
   const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
@@ -176,10 +178,10 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
     try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
   }, [today]);
 
-  const loadAnalyticsPanel = useCallback(async () => {
+  const loadAnalyticsPanel = useCallback(async (periodDays = analyticsPeriod) => {
     setM2Loading(true); setM2Error("");
-    try { const from = daysAgo(today, 29); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
-  }, [today]);
+    try { const from = daysAgo(today, periodDays - 1); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
+  }, [analyticsPeriod, today]);
 
   useEffect(() => { if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadWeightPanel]);
 
@@ -190,7 +192,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
     {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => { props.setError(""); setActiveTab("diary"); }} /> : null}
     {activeTab === "profile" ? <ProfilePanel profile={props.profile} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} /> : null}
     {activeTab === "weight" ? <WeightPage today={today} records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
-    {activeTab === "analytics" ? <AnalyticsPanel overview={analyticsOverview} tdee={tdee} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
+    {activeTab === "analytics" ? <AnalyticsPage overview={analyticsOverview} tdee={tdee} periodDays={analyticsPeriod} onPeriodChange={(periodDays) => { setAnalyticsPeriod(periodDays); void loadAnalyticsPanel(periodDays); }} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
     {props.error ? <p className="error page-error" role="alert">{props.error}</p> : null}
   </AppShell>;
 }

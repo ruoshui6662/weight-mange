@@ -285,3 +285,34 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .weight-context-note { background: var(--color-surface-soft); }
 @media (max-width: 899px) { .weight-page { grid-template-columns: 1fr; } .weight-context-rail { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (max-width: 599px) { .weight-hero { align-items: flex-start; padding: 20px; } .weight-hero-badge { width: 88px; height: 88px; flex: 0 0 88px; border-width: 8px; font-size: 15px; } .weight-section-heading { display: grid; } .weight-range-tabs { width: 100%; } .weight-range-tabs button { flex: 1; } .weight-summary-grid { grid-template-columns: 1fr; } .weight-context-rail { grid-template-columns: 1fr; } .weight-trend-surface, .weight-records, .weight-record-form, .weight-context-note { padding: 18px; } }
+
+/* Data Garden — evidence-first analytics */
+.analytics-page { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 24px; align-items: start; }
+.analytics-page-main, .analytics-context-rail { display: grid; gap: 18px; min-width: 0; }
+.analytics-hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; padding: 28px; background: linear-gradient(135deg, #fff 0%, #eef9f3 100%); }
+.analytics-hero h2, .analytics-section-heading h2, .analytics-quality-card h2, .analytics-readonly-card h2 { margin: 6px 0; color: var(--color-text); font-size: 22px; }
+.analytics-hero p { max-width: 620px; margin-bottom: 0; }
+.analytics-period { display: grid; gap: 8px; min-width: 196px; }
+.analytics-control-label { color: var(--color-text-secondary); font-size: 12px; font-weight: 800; }
+.analytics-period-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--color-surface-soft); }
+.analytics-period-tabs button { min-height: 44px; border: 0; border-radius: 9px; padding: 0 12px; color: var(--color-text-secondary); background: transparent; font-weight: 700; cursor: pointer; }
+.analytics-period-tabs button.active { color: var(--color-primary-strong); background: #fff; box-shadow: 0 1px 4px rgb(20 71 48 / 8%); }
+.analytics-facts, .analytics-estimate, .analytics-quality-card, .analytics-readonly-card { padding: 22px; }
+.analytics-section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+.analytics-section-heading p { margin: 0; }
+.analytics-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.analytics-metric-grid .dg-metric { min-height: 108px; }
+.analytics-evidence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.analytics-evidence-grid > div { display: grid; gap: 5px; padding: 16px; border: 1px solid var(--color-border); border-radius: 14px; background: #fbfdfc; }
+.analytics-evidence-grid span, .analytics-evidence-grid small { color: var(--color-text-secondary); font-size: 12px; }
+.analytics-evidence-grid strong { color: var(--color-text); font-size: 22px; font-variant-numeric: tabular-nums; }
+.analytics-estimate { background: #f5fbf7; }
+.analytics-estimate-result { display: grid; gap: 5px; padding: 20px; border: 1px solid #cfe9da; border-radius: 16px; background: #fff; }
+.analytics-estimate-result strong { color: var(--color-primary-strong); font-size: 34px; font-variant-numeric: tabular-nums; }
+.analytics-estimate-result span, .analytics-estimate-result small { color: var(--color-text-secondary); }
+.analytics-quality-card, .analytics-readonly-card { background: var(--color-surface-soft); }
+.analytics-quality-card p, .analytics-readonly-card p { margin-bottom: 0; }
+.analytics-source-note { padding-top: 14px; border-top: 1px solid var(--color-border); font-size: 12px; font-variant-numeric: tabular-nums; }
+.analytics-readonly-card .dg-status-chip { display: inline-flex; }
+@media (max-width: 899px) { .analytics-page { grid-template-columns: 1fr; } .analytics-context-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 599px) { .analytics-hero { display: grid; align-items: start; padding: 20px; } .analytics-period { width: 100%; } .analytics-period-tabs button { flex: 1; } .analytics-section-heading { display: grid; } .analytics-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .analytics-evidence-grid { grid-template-columns: 1fr; } .analytics-facts, .analytics-estimate, .analytics-quality-card, .analytics-readonly-card { padding: 18px; } .analytics-context-rail { grid-template-columns: 1fr; } }
