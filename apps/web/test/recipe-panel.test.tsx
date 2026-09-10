@@ -1,4 +1,6 @@
 import React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, RecipeNutrientResults, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, recipeSearchQuery, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
@@ -206,6 +208,13 @@ describe("RecipePanel", () => {
     expect(html).toContain('data-recipe-zone="results"');
     expect(html.indexOf("总营养")).toBeLessThan(html.indexOf("每100克营养"));
     expect(html.indexOf("每100克营养")).toBeLessThan(html.indexOf("每份营养"));
+  });
+
+  it("defines a real three-zone desktop recipe detail layout that collapses responsively", () => {
+    const styles = readFileSync(resolve(process.cwd(), "apps/web/src/styles.css"), "utf8");
+    expect(styles).toContain(".recipe-detail-layout { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(320px, 1.4fr) minmax(220px, .8fr);");
+    expect(styles).toContain(".recipe-detail-layout .recipe-detail-editor");
+    expect(styles).toContain("@media (max-width: 1199px) { .recipe-detail-layout");
   });
 
   it("keeps existing recipes visible when a reload fails", () => {
