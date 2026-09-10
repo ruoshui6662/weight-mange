@@ -20,6 +20,7 @@ describe("Data Garden application shell", () => {
     expect(html).toContain('class="dg-nav" aria-label="主导航"');
     expect(html).toContain('data-nav-icon="today"');
     expect(html).toContain('aria-hidden="true"');
+    expect(html.match(/data-nav-icon=/g)).toHaveLength(12);
   });
 
   it("exposes one primary action and keeps context rail optional", () => {
