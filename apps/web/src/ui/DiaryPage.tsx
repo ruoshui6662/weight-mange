@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from "react";
+import { useRef, type FormEvent, type ReactNode } from "react";
 import type { Dashboard, Diary } from "../api";
 import type { FoodSearchStatus } from "../search-state";
 import { Button, IconButton, StatusMessage, Surface } from "./Primitives";
@@ -27,6 +27,7 @@ export type DiaryPageProps = {
   setShowImportGuide: (value: boolean) => void;
   onSearch: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onAddEntry: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onStartMealAdd: (mealSlotId: string) => void;
   mealEntries: Map<string, MealEntryGroupForPage>;
   editingEntry: DiaryEntryForPage | null;
   busyEntry: string | null;
@@ -41,19 +42,25 @@ export type DiaryPageProps = {
 const mealLabels: Record<string, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" };
 
 export function DiaryPage(props: DiaryPageProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const startMealAdd = (mealSlotId: string) => {
+    props.onStartMealAdd(mealSlotId);
+    searchInputRef.current?.focus();
+  };
   return <div className="dg-page diary-page" data-diary-layout="workspace">
     <div className="diary-workspace">
       <Surface className="diary-search-panel">
         <div className="diary-panel-heading"><div><span className="dg-eyebrow">饮食 · {props.today}</span><h2>记录一餐</h2><p className="dg-muted">从本地食物目录选择食物，确认份量后保存到今天。</p></div><span className="dg-status-chip">本地食物目录</span></div>
         <form className="diary-search-form" onSubmit={(event) => void props.onSearch(event)}>
-          <label className="diary-search-field"><span>搜索食物</span><input aria-label="搜索食物" placeholder="搜索馒头、鸡蛋…" value={props.query} onChange={(event) => props.setQuery(event.target.value)} /></label>
+          <label className="diary-search-field"><span>搜索食物</span><input ref={searchInputRef} aria-label="搜索食物" placeholder="搜索馒头、鸡蛋…" value={props.query} onChange={(event) => props.setQuery(event.target.value)} /></label>
           <Button type="submit" variant="secondary" busy={props.searchStatus === "loading"}>搜索食物</Button>
         </form>
+        <p className="diary-active-meal" data-active-meal={props.meal}>当前添加到：{mealLabels[props.meal] ?? props.meal}</p>
         <SearchState {...props} />
         {props.searchStatus === "success" ? <div className="diary-results" aria-label="食物搜索结果">{props.results.map((food) => <button type="button" className={`diary-result-row ${props.selected === food.id ? "selected" : ""}`} data-food-result={food.id} aria-label={`选择${food.name} · ${food.summary.energyKcal ?? "—"} kcal`} aria-pressed={props.selected === food.id} key={food.id} onClick={() => props.setSelected(food.id)}><span><strong>{food.name}</strong><small>本地目录 · 每 100g</small></span><span className="diary-result-kcal">{food.summary.energyKcal ?? "—"} kcal</span></button>)}</div> : null}
         {props.selected ? <QuantityConfirmation {...props} /> : null}
       </Surface>
-      <SummaryPanel {...props} />
+      <SummaryPanel {...props} onStartMealAdd={startMealAdd} />
     </div>
   </div>;
 }
@@ -86,7 +93,7 @@ function MealGroup(props: DiaryPageProps & { mealKey: string }) {
   const group = props.mealEntries.get(props.mealKey);
   const label = group?.mealSlot.displayName ?? mealLabels[props.mealKey] ?? props.mealKey;
   const total = props.dashboard?.meals.find((meal) => meal.key === props.mealKey)?.totals.kcal;
-  return <section className="diary-meal-group"><div className="diary-meal-heading"><div><h3>{label}</h3><span>{total === undefined ? "暂无数据" : `${Math.round(total)} kcal`}</span></div><Button variant="tertiary" type="button" busy={props.busyEntry === `copy-meal:${group?.mealSlot.key ?? props.mealKey}`} onClick={() => void props.onCopyMeal(group?.mealSlot.key ?? props.mealKey)}>复制昨日{label}</Button></div>{group?.entries.length ? <div className="diary-entry-list">{group.entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={entry} />)}</div> : <p className="diary-empty-meal">还没有记录</p>}</section>;
+  return <section className="diary-meal-group"><div className="diary-meal-heading"><div><h3>{label}</h3><span>{total === undefined ? "暂无数据" : `${Math.round(total)} kcal`}</span></div><div className="diary-meal-actions"><Button variant="secondary" type="button" data-meal-add={props.mealKey} aria-label={`添加${label}食物`} onClick={() => props.onStartMealAdd(props.mealKey)}>添加食物</Button><Button variant="tertiary" type="button" busy={props.busyEntry === `copy-meal:${group?.mealSlot.key ?? props.mealKey}`} onClick={() => void props.onCopyMeal(group?.mealSlot.key ?? props.mealKey)}>复制昨日{label}</Button></div></div>{group?.entries.length ? <div className="diary-entry-list">{group.entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={entry} />)}</div> : <p className="diary-empty-meal">还没有记录</p>}</section>;
 }
 
 function DiaryEntry(props: DiaryPageProps & { entry: DiaryEntryForPage }) {

@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 19:45 +08:00
+> 最后更新：2026-09-10 20:10 +08:00
 
 ## 1. 当前快照
 
@@ -15,8 +15,8 @@
 | 当前焦点 | M3-004 MET/运动计算准备 |
 | 下一步 | 先阅读运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构已完成 |
-| Git | 本地 `main` 已包含 UI 重构计划提交，当前任务开始前将先提交路线登记；远程发布不属于本任务 |
+| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 饮食分餐快捷添加已完成 |
+| Git | 本地 `main` 已包含 M3-008 实现提交；远程发布不属于本任务 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 4/7 | M3-003、M3-007 与 DOC-005 已完成；下一步进入 M3-004 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 5/8 | M3-003、M3-007、M3-008 与 DOC-005 已完成；下一步进入 M3-004 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -340,6 +340,19 @@
 - 阻塞/风险：本机 Docker CLI 缺失，未执行本地容器构建/启动验证；该限制不影响非 Docker 门禁，CI buildx 发布证据沿用 M0-007。无当前实现阻塞。
 - 下一步：进入 M3-004 MET/运动计算，先读取运动产品/技术规范并定义运动记录、MET 计算和历史 snapshot 边界。
 
+### M3-008 — 饮食分餐快捷添加
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 19:55 +08:00
+- 完成时间：2026-09-10 20:10 +08:00
+- 操作者：Codex
+- 依赖：M3-007、UI_DESIGN_SYSTEM.md §7.2
+- 计划变更：为早餐、午餐、晚餐、加餐增加快捷添加入口；点击后复用统一搜索/份量确认流程并预选目标餐次，不改变 API、数据库、营养计算或快照边界。
+- 计划验收：四餐入口可见且键盘可达；目标餐次预选；搜索/选择/份量/保存路径保持；移动端无横向溢出且控件命中区不小于 44px；focused tests、lint、typecheck、build、E2E 和 diff check 通过。
+- 当前进展：先观察四餐入口契约缺失的 RED，再实现四个餐次摘要的快捷添加按钮；点击后预选目标餐次、清空旧选择、聚焦统一搜索框，并保留原有份量确认、保存、编辑、删除、复制和 API/快照边界。移动端补齐按钮堆叠与 44px 命中区。
+- 验收结果：EVD-M3-008-A；聚焦 2 files/11 tests、全量 182 files/1063 tests、lint/typecheck/build/diff check、Playwright 2 tests 均 exit 0；四餐按钮、目标餐次上下文、搜索框焦点、360/390/430/1024/1440 视口无回归。
+- 下一步：进入 M3-004 MET/运动计算准备。
+
 ### M3-007 — Data Garden 全站 UI 重构
 
 - 状态：`DONE`
@@ -364,6 +377,7 @@
 | DOC-004 | 建立 GitHub Docker 内容发布计划与敏感内容隔离规则 | `DONE` | Codex | EVD-DOC-004；已同步 README 与 DOCKER_DEPLOYMENT；当前未执行远程上传 |
 | DOC-005 | 按第三套方案重写统一 UI 设计规范手册 | `DONE` | Codex | `UI_DESIGN_SYSTEM.md` v2.0；覆盖桌面/移动端、六页、组件状态、交互一致性、无障碍和视觉验收；EVD-DOC-005 |
 | M3-007 | Data Garden 全站 UI 重构 | `DONE` | Codex | Task 1–8 代码与独立复审完成；全量 E2E 在 workers=1 下 2 tests passed，证据见 `task-8-report.md` |
+| M3-008 | 饮食分餐快捷添加 | `DONE` | Codex | 四餐快捷入口、目标餐次预选、搜索框聚焦与响应式 44px 命中区已完成；见 EVD-M3-008-A |
 
 ## 5. M0 待办队列
 
@@ -487,6 +501,7 @@ result: 42 passed, 0 failed
 | EVD-M3-002-F | M3-002 | 2026-09-10 04:50 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | lint/typecheck/build/API smoke/diff check exit 0；integration 无测试文件并正常 exit 0；全量 174 files/993 tests passed；Playwright 1 passed，覆盖首次设置、登录、搜索、添加/编辑/复制/删除、体重写入、分析不足及 360/390/430 无横向溢出；时区日期回归与日期依赖闭包修复通过 |
 | EVD-M3-003-A | M3-003 | 2026-09-10 07:01 +08:00（历史基线，已被终审修复 supersede） | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 首轮全部 exit 0；全量 176 files/1017 tests passed；integration 无匹配测试文件并正常 exit 0；build 产物生成成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed，覆盖菜谱生命周期、snapshot 稳定性及 360/390/430 viewport；本机 Docker CLI 缺失，未宣称容器验证；实现提交 `b52b976`、`895594a`、`7958351`、`fdc3b2c`、`9523abe`、`85d3865`、`7efb600`、`2d0c343`、`d5dad06`；终审发现后不再作为当前 DONE 证据 |
 | EVD-M3-003-B | M3-003 | 2026-09-10 08:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全部 exit 0；全量 176 files/1031 tests passed；integration 无匹配测试文件并正常 exit 0；build 成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed（7.1s），覆盖菜谱创建/搜索/计算结果/warning/复制/编辑/刷新/删除/加入日记 snapshot 稳定性，以及 360/390/430 viewport 无溢出和 44px 命中区；本机 Docker CLI 缺失，未宣称本地容器验证；修复提交 `85aa305`、`65e1029`、`450cc46`、`1bd4267`、`0514e52`、`8cf3d48`、`1916a57`、`26ab2d0`、`96d7367`、`fe5228f`、`09583eb`、`9738704` |
+| EVD-M3-008-A | M3-008 | 2026-09-10 20:10 +08:00 | `pnpm vitest run apps/web/test/diary-page.test.tsx apps/web/test/dashboard-view.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm exec playwright test e2e/ui-regression.spec.ts`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先验证四餐入口契约缺失；GREEN 聚焦 2 files/11 tests；全量 182 files/1063 tests；lint/typecheck/build/diff check exit 0；单文件 Playwright 1 passed、全量 E2E 2 passed（workers=1），覆盖四餐按钮、目标餐次预选、搜索框焦点、44px 命中区和 360/390/430/1024/1440 视口；本机 Docker CLI 缺失，仅未执行容器实测 |
 
 ## 9. 问题队列
 
@@ -621,10 +636,12 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 08:34 +08:00 | Codex | 完成 DOC-005 | `UI_DESIGN_SYSTEM.md` v2.0 完成（613 行、45 个标题、13 个代码块）；六页规范、Data Garden token、桌面三栏、320–1440 响应式、按钮状态、数据可信边界、无障碍和验收清单均已写入；必需章节检查通过、占位符扫描无结果、`git diff --check` exit 0；下一步 M3-004 |
 | 2026-09-10 08:52 +08:00 | Codex | 开始 M3-007 | 用户确认基于 Data Garden 规范重构全站 UI；已新增实施计划与 SDD ledger，基线 `pnpm test` 为 176 files/1031 tests passed；任务按共享壳层、六个页面和跨页 QA 独立执行 |
 | 2026-09-10 19:45 +08:00 | Codex | 完成 M3-007 Data Garden 全站 UI 重构 | Task 1–8 均完成独立实现与复审；全量 182 files/1062 tests、lint/typecheck/integration/build/API smoke/diff check exit 0；`pnpm test:e2e` 在 `workers: 1` 下 2 tests passed，覆盖六导航与 1440/1024/430/390/360 视口；Docker CLI 缺失如实保留；下一步进入 M3-004 MET/运动计算 |
+| 2026-09-10 19:55 +08:00 | Codex | 开始 M3-008 饮食分餐快捷添加 | 用户确认增加每餐添加入口；基于 UI_DESIGN_SYSTEM.md §7.2，将四餐快捷按钮接入统一搜索/份量确认状态机；计划先运行 focused RED 测试，再实现、验收并更新交接摘要 |
+| 2026-09-10 20:10 +08:00 | Codex | 完成 M3-008 饮食分餐快捷添加 | RED 先失败后 GREEN；四餐摘要增加快捷添加、目标餐次预选、统一搜索框聚焦与响应式 44px 命中区；聚焦 2 files/11 tests、全量 182 files/1063 tests、lint/typecheck/build/diff check、Playwright 2 tests 均 exit 0；下一步进入 M3-004 MET/运动计算准备 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策、M3-002 菜谱计算/API 与 M3-003 菜谱 UI/E2E 已完成。后续接手者应：
+M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构与 M3-008 分餐快捷添加已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；

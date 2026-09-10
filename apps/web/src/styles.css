@@ -217,6 +217,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .diary-search-field, .diary-meal-field, .diary-quantity, .diary-edit-form label { display: grid; gap: 8px; min-width: 0; color: var(--color-text-secondary); font-size: 14px; font-weight: 700; }
 .diary-search-field input, .diary-meal-field select, .diary-quantity input, .diary-edit-form input, .diary-edit-form select { min-height: 48px; width: 100%; min-width: 0; border: 1px solid var(--color-border); border-radius: 12px; padding: 0 12px; color: var(--color-text); background: #fbfdfc; }
 .diary-search-form > .dg-button { min-width: 112px; }
+.diary-active-meal { margin: 10px 0 0; color: var(--color-primary-strong); font-size: 13px; font-weight: 700; }
 .diary-results { display: grid; gap: 8px; margin-top: 20px; }
 .diary-result-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 64px; border: 1px solid var(--color-border); border-radius: 14px; padding: 12px 16px; color: var(--color-text); background: var(--color-surface); text-align: left; }
 .diary-result-row:hover, .diary-result-row:focus-visible, .diary-result-row.selected { border-color: var(--color-primary); background: var(--color-surface-selected); }
@@ -242,9 +243,11 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .diary-meal-groups { display: grid; gap: 4px; margin-top: 20px; }
 .diary-meal-group { padding: 16px 0; border-top: 1px solid var(--color-border); }
 .diary-meal-heading { align-items: center; }
+.diary-meal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .diary-meal-heading h3 { margin: 0 0 4px; font-size: 16px; }
 .diary-meal-heading span, .diary-empty-meal, .diary-entry-main > span { color: var(--color-text-secondary); font-size: 13px; }
 .diary-meal-heading .dg-button { padding: 0 8px; font-size: 12px; }
+.diary-meal-actions .dg-button { min-height: 44px; }
 .diary-empty-meal { margin: 12px 0 0; }
 .diary-entry-list { display: grid; gap: 12px; margin-top: 12px; }
 .diary-entry { display: grid; gap: 10px; min-width: 0; padding-top: 12px; border-top: 1px solid var(--color-border); }
@@ -256,7 +259,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .diary-edit-form > div { display: flex; align-items: end; gap: 8px; grid-column: 1 / -1; }
 .diary-page-error { margin-top: 16px; color: var(--color-danger); }
 @media (max-width: 1199px) { .diary-workspace { grid-template-columns: minmax(0, 1fr); } .diary-summary { position: static; } .diary-mobile-sheet-hint { display: block; margin: 8px 0 0; } }
-@media (max-width: 719px) { .diary-workspace { display: flex; flex-direction: column; gap: 16px; } .diary-search-panel, .diary-summary { padding: 18px; } .diary-panel-heading, .diary-summary-heading { align-items: flex-start; flex-direction: column; } .diary-panel-heading .dg-status-chip { order: -1; } .diary-search-form, .diary-confirmation-grid, .diary-edit-form { grid-template-columns: minmax(0, 1fr); } .diary-search-form > .dg-button, .diary-confirmation > .dg-button { width: 100%; } .diary-edit-form > div { grid-column: auto; } .diary-edit-form > div .dg-button { flex: 1; } .diary-result-row { padding: 12px; } }
+@media (max-width: 719px) { .diary-workspace { display: flex; flex-direction: column; gap: 16px; } .diary-search-panel, .diary-summary { padding: 18px; } .diary-panel-heading, .diary-summary-heading { align-items: flex-start; flex-direction: column; } .diary-panel-heading .dg-status-chip { order: -1; } .diary-search-form, .diary-confirmation-grid, .diary-edit-form { grid-template-columns: minmax(0, 1fr); } .diary-search-form > .dg-button, .diary-confirmation > .dg-button { width: 100%; } .diary-edit-form > div { grid-column: auto; } .diary-edit-form > div .dg-button { flex: 1; } .diary-result-row { padding: 12px; } .diary-meal-heading { align-items: flex-start; flex-direction: column; } .diary-meal-actions { width: 100%; justify-content: stretch; } .diary-meal-actions .dg-button { flex: 1; } }
 
 /* Data Garden recipe workspace: library, editor, and result hierarchy. */
 .recipe-page { min-width: 0; }

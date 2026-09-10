@@ -66,6 +66,17 @@ test("Data Garden all-page responsive and keyboard regression contract", async (
     }
 
     await page.getByRole("button", { name: "饮食", exact: true }).first().click();
+    for (const [mealKey, mealLabel] of [["breakfast", "早餐"], ["lunch", "午餐"], ["dinner", "晚餐"], ["snack", "加餐"]] as const) {
+      const addButton = page.getByRole("button", { name: `添加${mealLabel}食物`, exact: true });
+      await expect(addButton).toBeVisible();
+      await expect(addButton).toHaveAttribute("data-meal-add", mealKey);
+    }
+    const addDinner = page.getByRole("button", { name: "添加晚餐食物", exact: true });
+    await addDinner.click();
+    await expect(page.locator('[data-active-meal="dinner"]')).toContainText("当前添加到：晚餐");
+    await expect(page.getByLabel("搜索食物")).toBeFocused();
+    const mealButtonHeights = await page.locator("[data-meal-add]").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+    expect(mealButtonHeights.every((height) => height >= 44)).toBe(true);
     await page.getByLabel("搜索食物").fill("不存在的回归食物");
     await page.getByRole("button", { name: "搜索食物" }).click();
     await expect(page.getByText("没有找到匹配食物", { exact: true })).toBeVisible();

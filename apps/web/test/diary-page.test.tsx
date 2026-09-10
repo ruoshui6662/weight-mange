@@ -45,6 +45,7 @@ const props = {
   setShowImportGuide: vi.fn(),
   onSearch: vi.fn(async (event: React.FormEvent) => event.preventDefault()),
   onAddEntry: vi.fn(async (event: React.FormEvent) => event.preventDefault()),
+  onStartMealAdd: vi.fn(),
   mealEntries: new Map(),
   editingEntry: null,
   busyEntry: null,
@@ -111,5 +112,18 @@ describe("DiaryPage", () => {
     expect(html).toContain('aria-label="编辑馒头菜谱（副本）"');
     expect(html).toContain('aria-label="删除馒头菜谱（副本）"');
     expect(html).toContain('name="edit-amount-entry-1"');
+  });
+
+  it("renders a quick add action for every meal and exposes the selected target meal", () => {
+    const html = renderToStaticMarkup(React.createElement(DiaryPage, props));
+    expect(html).toContain('data-meal-add="breakfast"');
+    expect(html).toContain('data-meal-add="lunch"');
+    expect(html).toContain('data-meal-add="dinner"');
+    expect(html).toContain('data-meal-add="snack"');
+    expect(html).toContain('aria-label="添加早餐食物"');
+    expect(html).toContain('aria-label="添加午餐食物"');
+    expect(html).toContain('aria-label="添加晚餐食物"');
+    expect(html).toContain('aria-label="添加加餐食物"');
+    expect(html).toContain("当前添加到：早餐");
   });
 });
