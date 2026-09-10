@@ -1,6 +1,6 @@
 # Task 8 — Data Garden UI acceptance report
 
-时间：2026-09-10 19:20 +08:00  
+时间：2026-09-10 19:45 +08:00
 任务：M3-007 Task 8 — Cross-page visual QA, accessibility and handoff
 
 ## 结果摘要
@@ -12,7 +12,7 @@
 - Diary 语义回归先 RED：`diary-page.test.tsx` 缺少“馒头菜谱（副本） · 100g”、命名编辑/删除按钮和 `edit-amount-*` 字段；修复后 focused 5 tests passed。
 - 旧 `dashboard.spec.ts` 首次在新 UI 上失败于 diary 文本、搜索结果 accessible name、加入记录按钮、体重输入/空状态和分析重复状态；均以最小语义兼容修复，未弱化断言。
 - 修复后单测试 E2E：`dashboard.spec.ts` 1 passed；独立 `ui-regression.spec.ts` 1 passed，覆盖全部五档视口。
-- 全量 Playwright 在 `workers=2` 时出现测试间共享本地服务状态导致 bootstrap race（`ui-regression.spec.ts` exit 1，`dashboard.spec.ts` 同批 1 passed）；已将 `playwright.config.ts` 固定为 `workers: 1`，本次中断后未再次运行全量 E2E，需由主代理/CI 复验。
+- 全量 Playwright 在 `workers=2` 时出现测试间共享本地服务状态导致 bootstrap race（`ui-regression.spec.ts` exit 1，`dashboard.spec.ts` 同批 1 passed）；已将 `playwright.config.ts` 固定为 `workers: 1`，主线程最终复跑通过。
 
 ## 命令证据
 
@@ -27,7 +27,7 @@
 | `pnpm api:smoke` | 0 | home/health/ready 均 200 |
 | `pnpm test:e2e`（修复后第一次） | 0 | 1 dashboard test passed |
 | `pnpm exec playwright test e2e/ui-regression.spec.ts` | 0 | 1 cross-page test passed，5 viewports |
-| `pnpm test:e2e`（新增第二个 spec 并行运行） | 1 | dashboard passed；ui regression 因共享服务 bootstrap race 失败；已设置 `workers: 1`，待复验 |
+| `pnpm test:e2e`（最终，`workers: 1`） | 0 | 2 tests passed（dashboard + ui regression） |
 | `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 0 | 无 whitespace 错误，仅 CRLF 转换提示 |
 | `docker --version` / Docker smoke | N/A | 本机 Docker CLI 不可用，未执行本地容器 build/run；需 CI buildx 或 NAS 验证 |
 
@@ -37,8 +37,8 @@
 - 视口：1440×900、1024×768、430×932、390×844、360×800。
 - 状态：饮食本地目录空结果可见；页面 focused tests 覆盖 loading/error/empty/insufficient 语义。
 - 未改变 API、数据库、计算、快照或数据边界。
-- Docker 实测仍受本机缺少 Docker CLI 阻塞；全量 E2E 在 `workers: 1` 配置后的最终复跑留给主代理/CI，不在本次中断后继续长时间等待。
+- Docker 实测仍受本机缺少 Docker CLI 阻塞；容器 build/run 需由 CI buildx 或 NAS 验证。
 
 ## 交接
 
-下一步为 M3-004 MET/运动计算。接手者应先读取运动产品/技术规范；若要关闭最终发布门，应先执行 `pnpm test:e2e` 验证 `workers: 1` 后的两项测试，再按 CI/NAS 完成 Docker build/run。
+下一步为 M3-004 MET/运动计算。接手者应先读取运动产品/技术规范；容器 build/run 仍由 CI buildx 或 NAS 完成。

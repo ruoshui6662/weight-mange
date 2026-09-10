@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 19:25 +08:00
+> 最后更新：2026-09-10 19:45 +08:00
 
 ## 1. 当前快照
 
@@ -12,10 +12,10 @@
 | 项目阶段 | M3 菜谱、运动与预算策略实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M3 — 菜谱、运动与预算策略 |
-| 当前焦点 | M3-007 Task 8 E2E 最终复验 |
-| 下一步 | 以 `workers: 1` 复跑 `pnpm test:e2e`；通过后再关闭 M3-007 并进入 M3-004 |
+| 当前焦点 | M3-004 MET/运动计算准备 |
+| 下一步 | 先阅读运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003 已完成；M3-007 UI 重构代码完成但最终 E2E 复验待完成 |
+| 业务代码 | M1-001 至 M1-009、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构已完成 |
 | Git | 本地 `main` 已包含 UI 重构计划提交，当前任务开始前将先提交路线登记；远程发布不属于本任务 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 9/9 | 离线于公网完成真实食物记录闭环 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 3/7 | M3-003 与 DOC-005 已完成；M3-007 Task 8 最终 E2E 复验待完成 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 4/7 | M3-003、M3-007 与 DOC-005 已完成；下一步进入 M3-004 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -342,17 +342,17 @@
 
 ### M3-007 — Data Garden 全站 UI 重构
 
-- 状态：`IN_PROGRESS`
+- 状态：`DONE`
 - 开始时间：2026-09-10 08:52 +08:00
-- 更新时间：2026-09-10 19:25 +08:00
+- 完成时间：2026-09-10 19:45 +08:00
 - 操作者：Codex + 独立逐任务实现/复审
 - 依赖：DOC-005、M1-007、M2-006、M3-003
 - 计划变更：依据 `UI_DESIGN_SYSTEM.md` v2.0，按独立任务完成共用 AppShell/tokens、今日、饮食、菜谱、体重、分析、我的/auth/setup 和跨页 QA；不改变 API、数据库、营养计算或快照边界。
-- 当前进展：Task 1–7 均完成 scoped review；Task 8 补齐跨页 UI 回归、旧 diary E2E 文本契约和体重/分析可访问语义，覆盖 1440/1024/430/390/360 视口。
+- 当前进展：Task 1–8 均完成独立实现与 scoped review；Task 8 补齐跨页 UI 回归、旧 diary E2E 文本契约和体重/分析可访问语义，覆盖 1440/1024/430/390/360 视口。
 - 变更文件：`apps/web/src/ui/*`、`apps/web/src/App.tsx`、`apps/web/src/styles.css`、`apps/web/test/*`、`e2e/dashboard.spec.ts` 相关语义兼容、`e2e/ui-regression.spec.ts`。
-- 验收结果：详见 `docs/superpowers/sdd/2026-09-10-data-garden-ui-refactor/task-8-report.md`；lint/typecheck/test/integration/build/API smoke/diff gate 已通过，focused E2E 已通过；全量 E2E 因并行共享服务 bootstrap race exit 1，已设置 `workers: 1`，待最终复验。
+- 验收结果：详见 `docs/superpowers/sdd/2026-09-10-data-garden-ui-refactor/task-8-report.md`；lint/typecheck/test/integration/build/API smoke/diff gate 已通过；`pnpm test:e2e` 在 `workers: 1` 下 exit 0，2 tests passed，覆盖六导航与五档视口。
 - 阻塞/风险：本机 Docker CLI 不可用，未执行本地容器 build/run；不影响前端和 API 非容器门禁，后续应由 CI buildx 或 NAS 完成容器实测。跨页 Playwright 在本地可运行并通过 2 tests。
-- 下一步：先以 `workers: 1` 复跑 `pnpm test:e2e`；通过后再进入 M3-004 MET/运动计算。
+- 下一步：进入 M3-004 MET/运动计算，先读取运动产品/技术规范并定义运动记录、MET 计算和历史 snapshot 边界。
 
 ## 4. DOC 任务板
 
@@ -363,7 +363,7 @@
 | DOC-003 | 确认 P0 决策并同步修订原始规范（后续，不计入本次 DOC 基线） | `PLANNED` | 未分配 | 应在开始业务代码前处理 GAP-002/003/007/008/009 |
 | DOC-004 | 建立 GitHub Docker 内容发布计划与敏感内容隔离规则 | `DONE` | Codex | EVD-DOC-004；已同步 README 与 DOCKER_DEPLOYMENT；当前未执行远程上传 |
 | DOC-005 | 按第三套方案重写统一 UI 设计规范手册 | `DONE` | Codex | `UI_DESIGN_SYSTEM.md` v2.0；覆盖桌面/移动端、六页、组件状态、交互一致性、无障碍和视觉验收；EVD-DOC-005 |
-| M3-007 | Data Garden 全站 UI 重构 | `IN_PROGRESS` | Codex | Task 1–8 代码与 focused QA 完成；全量 E2E 最终复验待完成，证据见 `task-8-report.md` |
+| M3-007 | Data Garden 全站 UI 重构 | `DONE` | Codex | Task 1–8 代码与独立复审完成；全量 E2E 在 workers=1 下 2 tests passed，证据见 `task-8-report.md` |
 
 ## 5. M0 待办队列
 
@@ -620,13 +620,14 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 08:20 +08:00 | Codex | 开始 DOC-005 | 用户选择第三套 Data Garden 方案，要求从第一性原理重写统一 UI 设计规范；计划覆盖桌面与移动端 shell、今日/饮食/菜谱/体重/分析/我的、按钮功能映射、状态、无障碍和视觉验收；验收命令为 Markdown 结构检查、占位符扫描、链接目标检查和 `git diff --check` |
 | 2026-09-10 08:34 +08:00 | Codex | 完成 DOC-005 | `UI_DESIGN_SYSTEM.md` v2.0 完成（613 行、45 个标题、13 个代码块）；六页规范、Data Garden token、桌面三栏、320–1440 响应式、按钮状态、数据可信边界、无障碍和验收清单均已写入；必需章节检查通过、占位符扫描无结果、`git diff --check` exit 0；下一步 M3-004 |
 | 2026-09-10 08:52 +08:00 | Codex | 开始 M3-007 | 用户确认基于 Data Garden 规范重构全站 UI；已新增实施计划与 SDD ledger，基线 `pnpm test` 为 176 files/1031 tests passed；任务按共享壳层、六个页面和跨页 QA 独立执行 |
+| 2026-09-10 19:45 +08:00 | Codex | 完成 M3-007 Data Garden 全站 UI 重构 | Task 1–8 均完成独立实现与复审；全量 182 files/1062 tests、lint/typecheck/integration/build/API smoke/diff check exit 0；`pnpm test:e2e` 在 `workers: 1` 下 2 tests passed，覆盖六导航与 1440/1024/430/390/360 视口；Docker CLI 缺失如实保留；下一步进入 M3-004 MET/运动计算 |
 
 ## 11. 交接摘要
 
 M0 基础代码已完成；M1 9/9 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M3-001 决策、M3-002 菜谱计算/API 与 M3-003 菜谱 UI/E2E 已完成。后续接手者应：
 
-1. 先审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；
-2. 开始 M3-004 MET/运动计算，先读取运动产品/技术规范并定义运动记录、MET 计算和历史 snapshot 边界；
+1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
+2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
 4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
 
