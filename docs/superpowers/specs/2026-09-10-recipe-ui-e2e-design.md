@@ -99,3 +99,7 @@ diary snapshot ── GET diary ──> historical entry
 2. UI 首版只提交 `g`：API 已支持 `ml/serving`，但 serving 选择需要额外的食物详情交互；先保证克数路径正确，后续单独扩展单位选择器。
 3. warning 使用服务端原始语义展示：客户端不自行推断 coverage 或缺失原因，保持 `ADR-0002` 的 snapshot 与可追溯边界。
 4. 加入日记后立即刷新日记视图：用户需要看到事实已经落库，同时通过已有 diary snapshot 保证后续更新不漂移。
+
+## 验收状态
+
+M3-003 已于 2026-09-10 08:08 +08:00 完成终审门禁。`pnpm lint`、`pnpm typecheck`、`pnpm test`（176 files/1031 tests）、`pnpm test:integration`（无匹配测试文件，exit 0）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（Playwright 1 passed）和 `git diff --check` 均 exit 0。E2E 覆盖菜谱创建、食物搜索、total/per100g/perServing、warning、复制/编辑/刷新/删除、加入日记后的 snapshot 稳定性，以及 360/390/430px 无横向溢出和 44px 命中区。当前环境没有 Docker CLI，因此未宣称本地容器构建/启动验证；CI buildx 结果沿用既有发布证据。
