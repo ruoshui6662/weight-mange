@@ -212,8 +212,9 @@ pnpm docker:smoke
 - **M3-004 运动计算与数据：** MET、固定消耗、weight/MET/formula snapshot。
 - **M3-005 运动预算策略：** `display_only/eat_back_50/eat_back_100` 设置版本化并进入当日目标计算。
 - **M3-006 运动 UI/E2E：** 添加、编辑、删除、Dashboard 展示和双重计算提示。
+- **M3-007 Data Garden 全站 UI 重构：** 依据 `UI_DESIGN_SYSTEM.md` 统一 AppShell、桌面三栏、移动端重排、六个页面、按钮语义、状态、无障碍和视觉回归；不改变 API、数据库和快照事实边界。
 
-**M3 退出门槛：** 菜谱和运动所有 golden formulas 通过；修改原食物/MET/体重不改变既有日记或运动快照；默认不吃回运动热量。
+**M3 退出门槛：** 菜谱和运动所有 golden formulas 通过；修改原食物/MET/体重不改变既有日记或运动快照；默认不吃回运动热量；M3-007 的桌面/移动端 UI 与可访问性验收通过。
 
 ## 7. M4 — 可选 AI
 
@@ -257,7 +258,7 @@ pnpm docker:smoke
 | 饮食日记/复制/快照 | M1-005、M1-008 | snapshot/idempotency/conflict + E2E |
 | Dashboard | M1-006、M1-007 | read-model correctness + visual regression |
 | 目标/体重/分析 | M2-001 至 M2-006 | golden trend/TDEE + E2E |
-| 菜谱 | M3-001 至 M3-003 | recipe yield/snapshot + E2E |
+| 菜谱 | M3-001 至 M3-003、M3-007 | recipe yield/snapshot + E2E + unified UI |
 | 运动 | M3-004 至 M3-006 | MET/budget mode + E2E |
 | AI 文本/图片/总结 | M4-001 至 M4-006 | schema/proposal/security/degradation tests |
 | 备份恢复/迁移 | M0-004、M0-005、M5-001、M5-006 | historical fixtures + disaster drill |
@@ -274,4 +275,3 @@ pnpm docker:smoke
 - Dark Mode、围度管理、OCR 自动建档和外部数据源大规模镜像。
 
 上述内容如果重新进入范围，必须创建决策记录并重新评估数据模型、隐私和路线依赖。
-
