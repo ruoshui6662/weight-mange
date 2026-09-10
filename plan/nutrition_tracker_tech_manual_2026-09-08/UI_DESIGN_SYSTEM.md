@@ -1,1155 +1,613 @@
 <!--
-文档版本：v1.0
-日期：2026-09-08
+文档版本：v2.0
+设计基线：Data Garden（第三套方案）
+适用范围：今日、饮食、菜谱、体重、分析、我的，以及后续运动页面
 项目定位：个人自用、自托管 Docker 饮食/体重/运动/减脂管理应用
-设计原则：Local-first / Single-user-first / Modular Monolith / Data Traceability / AI as Assistant
+最后更新：2026-09-10
 -->
 
-# UI_DESIGN_SYSTEM.md
+# UI 设计规范手册
 
-## 1. 设计目标
+## 1. 这份手册解决什么问题
 
-界面目标是复现用户给出的薄荷健康饮食页所体现的视觉语言，而不是套用常见“AI Dashboard”模板。
+现有界面的问题不是“颜色不够漂亮”，而是页面没有遵循桌面端的空间规律：手机窄卡片被放大到 PC、信息层级不稳定、按钮语义不统一、不同页面没有共同的操作模型。
 
-核心关键词：
+本手册以第三套视觉方案 **Data Garden** 为唯一基线，规定：
 
-> **轻、白、柔和、克制、大圆角、低阴影、薄荷绿色、清晰数字层级、移动端优先。**
+- PC、平板、手机的布局骨架与断点；
+- 今日、饮食、菜谱、体重、分析、我的六个页面的任务结构；
+- 颜色、字体、间距、圆角、图标、按钮和表单状态；
+- 加载、空数据、错误、离线、保存中和冲突状态；
+- 数据来源、营养快照和“AI 不拥有事实”的显示边界；
+- 一致性、美学、无障碍、响应式和验收标准。
+
+这不是实现代码，也不是某一个页面的局部稿。后续所有页面和组件都必须先满足本手册，再进入实现和视觉验收。
+
+## 2. 第一性原理
+
+### 2.1 用户真正要完成的事情
+
+用户打开应用时只需要快速回答三个问题：
+
+1. 我今天的状态是什么？
+2. 我现在最应该记录什么？
+3. 记录之后，系统怎样证明它是可信的？
+
+所以 UI 的优先级固定为：
+
+```text
+当前任务 > 关键数字 > 下一步行动 > 解释与证据 > 次要设置
+```
+
+任何页面如果需要用户先读懂一组指标、筛选器或装饰卡片，才能找到主要动作，说明信息层级错误。
+
+### 2.2 设计推导出的八条原则
+
+| 原则 | 推导 | 设计约束 |
+|---|---|---|
+| 任务优先 | 用户来完成记录，不是浏览报表 | 每个页面只有一个 Primary action |
+| 一屏一主线 | 认知带宽有限 | 首屏只突出一个主任务和 1–2 个辅助区域 |
+| 数据可信 | 营养值、体重和快照必须可追溯 | 来源、覆盖度、估算和未知值不能被颜色或文案隐藏 |
+| 逐步展开 | 细节越多，决策越慢 | 默认先展示结论，详情使用抽屉、对话框或详情页 |
+| 错误可恢复 | 记录过程必然会改动和撤销 | 删除二次确认；冲突保留草稿；失败可重试 |
+| 一致降低成本 | 同一个动作不应在不同页变形 | 相同语义使用相同组件、位置、颜色和文案 |
+| 响应式重排 | PC 与手机的阅读路径不同 | 不是缩放手机卡片，而是按空间重新组合 |
+| 安静但有反馈 | 健康记录需要长期坚持 | 低阴影、低噪声；成功/错误必须有明确非颜色反馈 |
+
+### 2.3 视觉方案的性格
+
+Data Garden 的感觉是“安静、可靠、可持续”：像一个每天照料的小型数据花园，而不是企业后台，也不是 AI 聊天产品。
+
+应当表现：
+
+- 浅灰绿底色、白色工作面、薄荷绿行动色；
+- 大字号关键数字、舒展的行距、少量细线分隔；
+- 用留白表达层级，用边框表达边界，用阴影表达极少量浮层；
+- 图表和状态有自然的柔和感，但不使用大面积渐变或发光。
 
 禁止：
-- 大面积渐变；
-- 霓虹发光；
-- 高饱和紫蓝；
-- 玻璃拟态；
-- 过多边框；
-- 每张卡片都加阴影；
-- AI 产品常见的深色科技风。
 
-本系统是日常记录工具，视觉应该“安静”，而不是“炫技”。
+- 手机单列卡片在桌面端居中放大；
+- 每个指标一个小卡片、卡片套卡片；
+- 紫蓝科技风、霓虹、玻璃拟态、强渐变；
+- 只靠颜色区分成功、警告和错误；
+- 把 AI 估计值当成确定事实展示；
+- 同一页面出现两种以上 Primary action；
+- 为填空而添加与任务无关的图表、徽章或装饰插画。
 
----
+## 3. 产品壳层与信息架构
 
-# 2. 基准截图
+### 3.1 六个一级页面
 
-用户提供截图原始尺寸约：
+一级导航固定为：
 
 ```text
-930 × 2048 px
+今日  ·  饮食  ·  菜谱  ·  体重  ·  分析  ·  我的
 ```
 
-实际 UI 视觉可以按约 390 CSS px 宽手机进行还原。
+六项的顺序不因屏幕尺寸改变。桌面端显示图标 + 中文标签；移动端显示图标 + 短标签，但不删除页面。当前页面必须同时有：
 
-推荐移动端基准：
+- `aria-current="page"`；
+- 选中背景；
+- 选中颜色；
+- 页面标题或可见上下文。
 
-```text
-390 × 844 CSS px
-```
-
-同时测试：
-- 360 × 800
-- 393 × 852
-- 430 × 932
-
-截图中的核心特征：
-
-1. 背景是极浅蓝灰而不是纯白；
-2. 内容卡片纯白；
-3. 页面左右留白约 15–16 CSS px；
-4. 卡片大圆角约 22–26px；
-5. 几乎不使用投影；
-6. 绿色负责“状态”和“行动”，不负责所有文字；
-7. 数字字号明显大于说明文字；
-8. 食物列表行非常松；
-9. 底部快捷操作固定；
-10. 图标统一细线、圆角。
-
----
-
-# 3. Design Tokens
-
-建议全部写成 CSS variables。
-
-```css
-:root {
-  --bg-page: #F5F6FA;
-  --bg-surface: #FFFFFF;
-  --bg-soft: #F0FBF7;
-  --bg-selected: #C7F1E3;
-
-  --primary: #38CF85;
-  --primary-strong: #19B978;
-  --primary-muted: #A8E8D1;
-
-  --text-primary: #171A1F;
-  --text-secondary: #7C8495;
-  --text-tertiary: #AEB4C0;
-  --text-disabled: #C6CBD4;
-
-  --border-subtle: #EEF0F4;
-  --track: #F0F2F6;
-
-  --macro-carb: #8BD9BD;
-  --macro-protein: #F29A9E;
-  --macro-fat: #E7C85D;
-
-  --danger: #E86767;
-  --warning: #E9A94D;
-  --info: #6B9FE8;
-
-  --radius-card-mobile: 24px;
-  --radius-card-desktop: 22px;
-  --radius-button: 16px;
-  --radius-control: 14px;
-  --radius-chip: 999px;
-}
-```
-
-这些颜色是基于截图视觉抽取后整理出的工程 token；正式开发时可通过截图叠图继续微调。
-
----
-
-# 4. 字体
-
-优先使用系统字体，不在 Docker 中捆绑字体文件。
-
-```css
-font-family:
-  -apple-system,
-  BlinkMacSystemFont,
-  "PingFang SC",
-  "Noto Sans CJK SC",
-  "Microsoft YaHei",
-  "Segoe UI",
-  sans-serif;
-```
-
-### 字重
-
-```text
-400 regular
-500 medium
-600 semibold
-700 bold
-```
-
-避免 800/900 过重。
-
----
-
-# 5. Typography Scale
-
-移动端：
-
-| Token | 字号 | 行高 | 字重 | 用途 |
-|---|---:|---:|---:|---|
-| display-number | 34–38 | 1.05 | 700 | 剩余热量 |
-| h1 | 24 | 32 | 700 | 页面标题 |
-| h2 | 18 | 26 | 700 | 卡片标题 |
-| h3 | 16 | 24 | 600 | 食物名 |
-| body | 15 | 22 | 400 | 普通 |
-| body-sm | 14 | 20 | 400 | 数量 |
-| caption | 12 | 18 | 400 | 次级 |
-| micro | 11 | 16 | 500 | source chip |
-
-截图中的数字视觉非常重要：
-- `1545` 必须是主视觉；
-- `389`、`0` 是二级大数字；
-- “推荐预算1934”必须弱化。
-
----
-
-# 6. Spacing System
-
-使用 4px 基线：
-
-```text
-4
-8
-12
-16
-20
-24
-32
-40
-48
-```
-
-默认页面：
-
-```css
-padding-inline: 16px;
-```
-
-卡片之间：
-
-```text
-12px mobile
-16–20px desktop
-```
-
-卡片内部：
-
-```text
-16px compact
-20px normal
-24px large desktop
-```
-
----
-
-# 7. 手机总体布局
-
-```text
-┌──────────────────────────┐
-│ status / top safe area   │
-│ ←          今天       ⚙  │  56
-│ 日 一 二 三 四 五 六      │  52
-│                          │
-│ [ 今日热量卡 ]            │
-│                          │
-│ [ 早餐卡 ]                │
-│                          │
-│ [ 午餐卡 ]                │
-│                          │
-│ [ 晚餐卡 ]                │
-│                          │
-│ [ 加餐卡 ]                │
-│                          │
-├──────────────────────────┤
-│ +早餐 +午餐 +晚餐 +加餐 +运动 │ 72 + safe
-└──────────────────────────┘
-```
-
-底部 quick bar 固定，但正文需要：
-
-```css
-padding-bottom: calc(88px + env(safe-area-inset-bottom));
-```
-
----
-
-# 8. 顶部 Header
-
-移动端：
-
-```text
-height: 56px
-page padding: 16px
-```
-
-### 返回按钮
-- hit area 44×44
-- icon 24
-- stroke 2
-- 不加背景
-
-### “今天”胶囊
-截图中它是非常浅的灰色 pill：
-
-```text
-height 38px
-min-width 96px
-border-radius 19px
-background #F0F1F5
-font 16/600
-```
-
-### 右侧操作
-- 44×44 hit area
-- icon 22–24
-- 两按钮 gap 8
-
----
-
-# 9. 星期选择器
-
-高度：
-
-```text
-48–52px
-```
-
-7 等分。
-
-普通：
-
-```text
-font-size 15
-font-weight 600
-color primary text
-```
-
-当前日：
-
-```text
-44×44
-border-radius 14
-background #C7F1E3
-color #14B779
-```
-
-当前日期不使用实心深绿块，以保持截图的柔和感。
-
----
-
-# 10. 首页热量卡
-
-### Mobile
-
-```text
-width: calc(100vw - 32px)
-min-height: 270px
-border-radius: 24px
-padding: 18px 16px 20px
-background: white
-box-shadow: none
-```
-
-可用极弱 shadow：
-```css
-box-shadow: 0 1px 2px rgba(19, 25, 38, 0.02);
-```
-
-### 标题
-
-```text
-“热量摄入”
-font 18/700
-margin-bottom 10
-```
-
-### 三列区域
-
-```text
-grid-template-columns: 1fr 1.45fr 1fr
-align-items: center
-```
-
-左：
-```text
-饮食摄入
-389
-```
-
-右：
-```text
-运动消耗
-0
-```
-
-文字：
-- label 13–14/600/secondary
-- number 28/700/primary text
-
----
-
-# 11. 热量环
-
-移动端：
-
-```text
-diameter: 138px
-stroke-width: 8px
-```
-
-SVG 自绘，不使用第三方 chart。
-
-Track：
-```text
-#F2F3F6
-```
-
-Progress：
-```text
-#38CF85
-```
-
-stroke-linecap：
-```text
-round
-```
-
-环中央：
-
-```text
-还可以吃
-1545
-推荐预算 1934
-```
-
-层级：
-
-```text
-label       13/600 secondary
-main number 36/700 #171A1F
-budget      12/400 tertiary
-```
-
-进度：
-```text
-consumed / effectiveBudget
-```
-
-视觉环限制 0–100%；超标时环可变 danger，但数值仍显示负数 remaining。
-
----
-
-# 12. Macro 三列
-
-热量环下：
-
-```text
-display grid
-grid-template-columns repeat(3,1fr)
-gap 16
-margin-top 20
-```
-
-每项：
-
-```text
-label 14/600
-progress height 4px
-track radius 2
-value 12/400 tertiary
-```
-
-颜色：
-- 碳水：mint；
-- 蛋白质：soft coral；
-- 脂肪：warm yellow。
-
-示例：
-
-```text
-碳水化合物
-────
-62 / 271克
-```
-
----
-
-# 13. 今日饮食建议按钮
-
-截图中的按钮属于“soft action”，不使用实心绿。
-
-```text
-height: 48px
-margin-top: 18px
-border-radius: 16px
-border: 1px solid #B9E5D5
-background: #F0FBF7
-color: #1FB979
-font: 16px / 600
-```
-
-左右：
-```text
-padding 16px
-```
-
-icon 18。
-
-hover desktop：
-```text
-background #E9F9F3
-```
-
-active：
-```text
-transform: scale(.995)
-```
-
----
-
-# 14. 餐次卡
-
-Mobile：
-
-```text
-width 100%
-border-radius 24px
-background white
-padding 18px 16px 8px
-```
-
-### Header
-
-```text
-display flex
-align-items baseline
-height 34
-```
-
-左：
-
-```text
-早餐          建议484–677千卡
-```
-
-- 餐名 18/700
-- 建议 13/400 tertiary
-
-右：
-
-```text
-389 千卡 >
-```
-
-- kcal 14/500 primary green
-- unit secondary
-- chevron tertiary
-
----
-
-# 15. 食物 Row
-
-推荐：
-
-```text
-min-height: 78px
-display: grid
-grid-template-columns: 52px 1fr auto 20px
-column-gap: 12px
-align-items: center
-```
-
-### Thumbnail
-
-截图食物图很小且背景干净。
-
-```text
-44×44
-border-radius: 50% 或 12px
-object-fit: cover
-background: #FAFAFA
-```
-
-通用基础食材可使用圆形图；
-包装商品使用 rounded 12。
-
-### 名称
-
-```text
-food name: 16px / 600
-amount: 13px / 400 / tertiary
-gap: 2–4px
-```
-
-### kcal
-
-```text
-13px / 400 / tertiary
-```
-
-右箭头：
-```text
-18px
-stroke 2.2
-color #C4C9D2
-```
-
-不要给每行加分割线；用留白分隔更接近截图。
-
----
-
-# 16. 餐卡行数与折叠
-
-1–5 条：直接展示。
-
-> 5 条：
-- 默认展示前 5；
-- 底部“查看全部 N 项”。
-
-避免首页无限长。
-
----
-
-# 17. 固定底部 Quick Add
-
-截图中是五等分：
-
-```text
-+早餐
-+午餐
-+晚餐
-+加餐
-+运动
-```
-
-### 容器
-
-```text
-height: 72px + safe area
-background: rgba(255,255,255,.96)
-border-top: 1px solid #EFF1F4
-backdrop-filter: blur(12px)
-```
-
-每个 action：
-
-```text
-min-width 64
-icon 24
-label 12–13 / 500
-gap 4
-```
-
-点击：
-- mobile 打开 bottom sheet；
-- desktop 打开 modal/popover。
-
----
-
-# 18. Bottom Sheet
-
-手机添加食物的核心交互。
-
-```text
-width 100%
-max-height 88vh
-border-radius 24px 24px 0 0
-background white
-```
-
-Handle：
-
-```text
-36×4
-radius 2
-#D8DCE4
-margin 8 auto 10
-```
-
-Sheet Header：
-
-```text
-height 52
-padding 0 16
-```
-
----
-
-# 19. 食物搜索页
-
-顶部：
-
-```text
-Search Input 48px
-radius 16px
-background #F5F6F8
-```
-
-左 search icon。
-
-输入后 Tab：
-
-```text
-最近 | 常用 | 食物库 | 我的 | 外部
-```
-
-chip 高度：
-```text
-32
-```
-
-结果行：
-```text
-64–72px
-```
-
-右侧显示：
-```text
-xxx kcal / 100g
-```
-
-选择后进入 quantity sheet，而不是直接一键写入，以防误记录。
-
----
-
-# 20. 数量编辑器
-
-核心控制：
-
-```text
-[-]  75  [+]
-     克
-```
-
-数字：
-```text
-32/700
-```
-
-快捷 chip：
-
-```text
-50g
-75g
-100g
-1个中等
-```
-
-底部确认：
-
-```text
-height 52
-radius 16
-background #38CF85
-color white
-font 16/600
-```
-
-这是少数可以使用实心绿的大按钮。
-
----
-
-# 21. 食物详情
-
-信息顺序：
-
-1. 名称
-2. 来源 chip
-3. 每100g 热量 + P/F/C
-4. serving
-5. 完整营养表
-6. 数据质量
-7. 数据来源/version
-8. 编辑（自定义食物）
-
-不要一打开就显示几十个微量营养素。
-
----
-
-# 22. 体重页面
-
-手机：
-
-```text
-[ 当前体重卡 ]
-[ 30天趋势图 ]
-[ 周变化 / 月变化 ]
-[ 历史记录 ]
-```
-
-### 当前体重卡
-
-```text
-radius 24
-height ~150
-```
-
-主数字：
-```text
-55.0
-kg
-```
-
-### Chart
-- 主趋势绿色；
-- 原始点浅灰；
-- 不使用大片 gradient；
-- grid line 极淡。
-
----
-
-# 23. 分析页
-
-Tab：
-
-```text
-7天
-14天
-30天
-90天
-```
-
-卡片：
-- 平均摄入；
-- 目标命中；
-- 宏量；
-- 体重趋势；
-- Adaptive TDEE；
-- 记录完整度。
-
-避免一次展示 15 张 KPI 小卡片。
-
----
-
-# 24. AI 页面
-
-AI 视觉必须继续融入健康 App，而不是变成 ChatGPT clone。
-
-入口：
-
-```text
-今日饮食建议
-AI 助手
-```
-
-聊天容器：
-- 页面背景仍 #F5F6FA；
-- 用户消息浅薄荷；
-- AI 消息白卡；
-- 建议 action 使用 soft mint。
-
-### AI Proposal Card
-
-例如：
-
-```text
-识别到：
-馒头 约75g
-鸡蛋 约50g
-苹果 约80g
-
-[修改] [确认加入早餐]
-```
-
-确认前不得写入。
-
----
-
-# 25. Desktop Layout
-
-桌面不放大手机页面。
-
-### App Shell
-
->= 1024：
-
-```text
-sidebar: 220–232px
-main: minmax(0, 1fr)
-page max-width: 1240px
-outer padding: 24–32px
-```
-
-Sidebar：
-```text
-background white
-border-right #EEF0F4
-```
-
-Main：
-```text
-background #F5F6FA
-```
-
----
-
-# 26. Desktop Dashboard
-
-推荐：
-
-```text
-┌────────────────────────────────────┐
-│ 日期 / 今日                         │
-├───────────────────┬────────────────┤
-│ 今日热量大卡        │ 体重趋势        │
-│                   │                │
-├───────────────────┴────────────────┤
-│ 早餐       │ 午餐                    │
-├────────────┼────────────────────────┤
-│ 晚餐       │ 加餐                    │
-└────────────────────────────────────┘
-```
-
-CSS：
-
-```text
-top grid: 1.2fr 0.8fr
-meal grid: repeat(2, 1fr)
-gap: 20px
-```
-
-卡片 padding：
-```text
-24px
-```
-
----
-
-# 27. Desktop Card Size
-
-Dashboard：
-- calorie card min-height 300；
-- weight card min-height 300；
-- meal card min-height 240；
-- analysis card min-height 180。
-
-Desktop card radius：
-```text
-22px
-```
-
-不要使用 12px 企业后台式圆角。
-
----
-
-# 28. Desktop Sidebar
-
-宽：
-
-```text
-232px
-```
-
-logo/项目名区：
-```text
-height 72
-padding 20
-```
-
-nav row：
-```text
-height 44
-margin 4px 12px
-padding 0 12
-radius 12
-```
-
-selected：
-```text
-background #EAF9F3
-color #19B978
-```
-
-图标：
-```text
-20
-stroke 1.8
-```
-
----
-
-# 29. Dark Mode
-
-V1 可预留，非必做。
-
-如果实现，不要简单反色。
-
-```text
-page #111417
-surface #191D21
-surface2 #20252A
-primary #46D795
-text #F3F5F7
-secondary #A4ABB5
-```
-
-但首版优先把 light mode 做到精致。
-
----
-
-# 30. Motion
-
-整体极克制。
-
-```text
-hover 120ms
-sheet 220ms
-modal 180ms
-number update 150ms
-```
-
-Easing：
-
-```text
-cubic-bezier(.2,.8,.2,1)
-```
-
-禁止：
-- 弹簧过冲；
-- 发光；
-- 数字不停滚动；
-- 卡片浮动。
-
----
-
-# 31. Accessibility
-
-尽管追求视觉，必须：
-
-- interactive hit area >= 44×44；
-- 文字对比符合可读性；
-- 不能只靠颜色表达 macro 状态；
-- progress 有 aria；
-- keyboard desktop 可操作；
-- modal focus trap；
-- reduced-motion。
-
----
-
-# 32. Skeleton
-
-首次加载：
-- card skeleton；
-- 不使用旋转 loading 占满页面。
-
-Skeleton：
-```text
-#EEF0F3
-shimmer 可不做
-```
-
-网络异常：
-- 已缓存页面继续显示；
-- 顶部小型 offline banner。
-
----
-
-# 33. 空状态
-
-薄荷风格应轻：
-
-```text
-今天还没有记录早餐
-[ + 添加早餐 ]
-```
-
-不需要大型 AI 插图。
-
----
-
-# 34. 页面密度
-
-手机每屏只突出一个主任务。
-
-首页：
-- 热量；
-- 餐食。
-
-不要把：
-- BMI；
-- 水分；
-- 睡眠；
-- 运动；
-- AI；
-- 微量营养；
-全部塞进首屏。
-
----
-
-# 35. 组件清单
+### 3.2 统一页面骨架
 
-`packages/ui-tokens` + `apps/web/components`：
+每个一级页面都遵循相同的四层：
 
 ```text
 AppShell
-MobileTopBar
-DesktopSidebar
-WeekStrip
-Card
-CalorieRing
-MacroProgress
-MealCard
-FoodRow
-SoftActionButton
-PrimaryButton
-BottomQuickBar
-BottomSheet
-Modal
-SearchField
-SegmentedTabs
-MetricNumber
-SourceChip
-QualityChip
-AmountStepper
-FoodNutrientTable
-TrendChart
-EmptyState
-Toast
-InlineError
-AIProposalCard
+├── DesktopSidebar / MobileBottomNav
+├── PageHeader（日期或页面标题 + 页面 Primary action）
+├── MainWorkspace（主任务内容）
+└── ContextRail（仅在桌面显示；移动端移到正文末尾或改为 Sheet）
 ```
 
----
+页面不允许自定义第二套壳层。页面差异只能体现在 `MainWorkspace` 的内容和任务，不得改变导航、标题、按钮、错误和弹层的基本规则。
 
-# 36. CSS 约束
+### 3.3 桌面三栏布局（Data Garden 基线）
 
-所有页面禁止随意硬编码新颜色。
-
-只能通过：
-- token；
-- component variant。
-
-卡片 radius 只允许：
-```text
-16
-20
-22
-24
-```
-
-禁止不同页面随意出现：
-```text
-17px / 19px / 27px / 31px
-```
-
----
-
-# 37. Screenshot Regression
-
-UI 要接近截图，必须使用视觉回归。
-
-Playwright 固定 viewport：
+1440px 基准画布：
 
 ```text
-390×844
-430×932
-1024×768
-1440×900
+┌──────────────┬──────────────────────────────┬──────────────┐
+│ 216 sidebar  │ main workspace（自适应）      │ 288 rail     │
+│              │ min 0 / max 960               │              │
+└──────────────┴──────────────────────────────┴──────────────┘
 ```
 
-关键页面截图：
-- dashboard empty；
-- dashboard populated；
-- add food；
-- search；
-- quantity；
-- weight；
-- analytics；
-- AI proposal。
+规则：
 
-像素 diff 不要求 0%，但 layout shift 必须受控。
+- Sidebar：`216px`，固定在左侧，白色或 `#F8FBF9`，右边界为 1px 细线；
+- 主区与右栏之间：`24px`；
+- 主区：`minmax(0, 1fr)`，内容最大宽度不超过 `960px`；
+- ContextRail：`288px`，只放辅助决策和快速动作；
+- 页面外边距：宽屏 `32px`，桌面 `24px`；
+- 任何 grid 子项必须允许收缩，禁止自动最小宽度导致横向溢出；
+- 右栏不承载页面唯一入口，所有关键动作必须在主区也可找到。
 
----
+### 3.4 响应式断点
 
-# 38. 对薄荷健康的借鉴边界
+| 断点 | 壳层 | 内容重排 |
+|---|---|---|
+| `>= 1200px` | 三栏 | Sidebar + Main + ContextRail |
+| `900–1199px` | 两栏 | Sidebar + Main；ContextRail 变为主区末尾模块 |
+| `720–899px` | 紧凑两栏 | Sidebar 收窄至 72px 图标栏；右栏进入正文 |
+| `< 720px` | 单栏 | 隐藏 Sidebar，使用 MobileBottomNav；右栏进入正文或 Sheet |
+| `320–430px` | 手机 | 单列、无横向滚动、控件保持 44px 命中区 |
 
-自用场景可以非常接近：
-- 卡片比例；
-- 背景层级；
-- 热量环；
-- 星期条；
-- 食物列表；
-- 底部快捷栏；
-- 字号层级。
+响应式不是简单地把字体和卡片缩小：
 
-建议自建：
-- App 名称；
-- Logo；
-- 图标细节；
-- 食物缩略图；
-- AI 图标；
-- 桌面布局。
+- 桌面把相关内容并排，手机把同一内容改成上下阅读；
+- 桌面右栏是辅助信息，手机右栏必须在主动作之后出现；
+- 桌面新增/编辑使用 Modal 或右侧 Drawer，手机使用 Bottom Sheet；
+- 桌面表格可以保留列，手机转为字段分组的列表行；
+- 手机固定底栏的 `padding-bottom` 必须预留安全区，不能遮住最后一个按钮。
 
-这样既获得你喜欢的视觉体验，也避免未来维护被第三方素材绑住。
+## 4. 设计令牌（Design Tokens）
 
----
+所有页面只能使用令牌或组件变体，不得在组件内随意写新颜色、新圆角或新间距。
 
-# 39. 最终视觉验收
+### 4.1 颜色
 
-手机 Dashboard 满足以下标准才算通过：
+```css
+:root {
+  --color-page: #F4F7F6;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F0F8F4;
+  --color-surface-selected: #E2F5EB;
+  --color-surface-muted: #EEF3F1;
 
-1. 背景不是纯白；
-2. 白卡与背景只靠轻色差分层；
-3. 大圆角一致；
-4. 热量数字是第一视觉焦点；
-5. 绿色占比克制；
-6. 食物行没有厚分隔线；
-7. 底部快捷栏不遮正文；
-8. 390px 宽不横向溢出；
-9. 360px 宽仍可用；
-10. 1440px 桌面不是“巨大的手机页面”。
+  --color-primary: #35C887;
+  --color-primary-strong: #159B64;
+  --color-primary-pressed: #0F8253;
+  --color-primary-soft: #E8F7EF;
 
+  --color-text: #17372A;
+  --color-text-secondary: #5F786C;
+  --color-text-tertiary: #8EA198;
+  --color-text-disabled: #B8C5BF;
+  --color-on-primary: #FFFFFF;
+
+  --color-border: #E1EBE6;
+  --color-border-strong: #C8DCD2;
+  --color-track: #E7EFEB;
+
+  --color-macro-protein: #F39A92;
+  --color-macro-fat: #F1C45B;
+  --color-macro-carb: #35C887;
+  --color-info: #4E8ED4;
+  --color-warning: #C17A22;
+  --color-danger: #C95656;
+  --color-success: #168E5B;
+}
+```
+
+语义要求：
+
+- 主绿色只表示可执行、选中、进度和成功，不给普通说明文字整段上色；
+- 蛋白质固定 coral，脂肪固定 sunflower，碳水固定 mint；跨页面不可更换；
+- Warning 必须同时有图标和文字；Danger 不使用纯红色大面积填充；
+- 页面底色与白色工作面必须保持可感知的层次，但不能依赖阴影分隔；
+- 文本对比至少达到普通正文可读要求，辅助文字不能淡到看不见。
+
+### 4.2 字体和字号
+
+系统字体优先，不在 Docker 中捆绑字体：
+
+```css
+font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+  "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+```
+
+| 语义 | 桌面 | 手机 | 字重 | 用途 |
+|---|---:|---:|---:|---|
+| Display | 48/56 | 36/44 | 700 | 剩余热量、当前体重 |
+| Page title | 32/40 | 24/32 | 700 | 页面主标题 |
+| Section title | 20/28 | 18/26 | 700 | 主要区块 |
+| Body | 16/24 | 15/22 | 400 | 说明和正文 |
+| Label | 14/20 | 13/18 | 600 | 表单、餐次、图表标签 |
+| Caption | 12/18 | 12/18 | 400 | 来源、时间、版本 |
+| Button | 15/20 | 14/20 | 600 | 所有按钮 |
+| Numeric | tabular-nums | tabular-nums | 600–700 | 数字对齐 |
+
+规则：正文不小于 14px；数字使用等宽数字；标题最多两行；不要用 800/900 字重制造“吵闹”的视觉。
+
+### 4.3 间距和尺寸
+
+统一采用 4px 基线：`4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48`。
+
+```text
+page padding: 24px desktop / 16px mobile
+section gap: 24px desktop / 16px mobile
+surface padding: 24px desktop / 16px mobile
+control height: 44px minimum; input default 48px
+small control height: 36px，仅用于 chip 或次要筛选
+card radius: 20px 或 24px
+control radius: 12px 或 14px
+pill radius: 999px
+```
+
+不允许出现 17px、19px、27px 等脱离基线的局部值，除非组件规范明确要求。
+
+### 4.4 边框、阴影和层级
+
+- 默认 surface：白底 + `1px solid var(--color-border)`，无阴影；
+- 悬浮 surface：最多 `0 8px 24px rgba(23,55,42,.08)`；
+- Modal/Sheet：可以使用一层弱阴影，但不能用发光；
+- 分组内部优先使用间距和细线，不给每个列表项单独加卡片；
+- 同一层级的 surface 必须使用同一半径、同一边界色。
+
+## 5. 组件与按键统一性
+
+### 5.1 按钮层级
+
+一个页面只能有一个 Primary action，其他操作按以下语义选择：
+
+| 层级 | 外观 | 语义 | 示例 |
+|---|---|---|---|
+| Primary | 实心 `--color-primary`，白字 | 当前页面最重要的写入/确认 | 记录饮食、保存菜谱、记录体重 |
+| Secondary | 浅薄荷底，深绿字 | 同一任务的辅助动作 | 查看详情、复制、刷新原料 |
+| Tertiary | 透明，深绿字 | 导航或低风险辅助动作 | 查看全部、取消、返回 |
+| Destructive | 透明或浅红底，红字 | 删除、清空、撤销不可逆动作 | 删除菜谱、删除体重记录 |
+| Icon | 无底色，44px 命中区 | 单一图标动作 | 返回、关闭、更多、日期切换 |
+
+不允许用 Primary 颜色表示“只是可点击”；按钮文案必须说明动作，不写“确定”以外的空泛词。
+
+### 5.2 按钮状态
+
+每个可交互控件都必须实现：
+
+```text
+default → hover → focus-visible → pressed → disabled → loading → success/error
+```
+
+- `hover`：只改变背景或边框，不移动布局；
+- `focus-visible`：3px 高对比轮廓，不能只依赖浏览器默认淡蓝线；
+- `pressed`：颜色加深或轻微缩放，不使用弹簧过冲；
+- `disabled`：降低对比度并保留可读文字，不仅设置 opacity；
+- `loading`：保留按钮宽度，显示“保存中…”并禁止重复提交；
+- `success/error`：使用 inline 状态或 toast，同时保留文字；
+- 所有按钮最小高度 44px，图标与文字垂直居中。
+
+### 5.3 表单、搜索和选择
+
+- label 永远显示在输入框上方，不用 placeholder 代替 label；
+- placeholder 只描述格式或示例，不承载必填规则；
+- 错误显示在字段下方，包含“问题 + 修正动作”；
+- 搜索输入 48px，高度在各页面一致；
+- 结果行点击区域覆盖整行，不能只有右侧文字可点；
+- 数量编辑统一使用 `− 数值 +`，步长、单位和当前值同一视觉组；
+- 日期选择统一使用前后箭头 + 当前日期/月份，不在各页面发明新日期控件；
+- 分段控件用于互斥范围（7/14/30 天、总览/详情），单选项不使用 checkbox 伪装。
+
+### 5.4 状态组件
+
+| 状态 | 必须显示 | 禁止做法 |
+|---|---|---|
+| Loading | skeleton 或“正在加载…” | 空白等待、全屏旋转圈 |
+| Empty | 当前没有什么 + 下一步动作 | 只写“暂无数据” |
+| Error | 发生什么 + 重试/返回动作 | 只显示错误码 |
+| Offline | 已缓存内容 + 当前不可同步提示 | 阻断本地记录 |
+| Conflict | 草稿仍保留 + 重新加载/覆盖选择 | 静默覆盖用户输入 |
+| Success | 完成结果 + 后续可选动作 | 只闪一下颜色 |
+| Warning | 影响范围 + 处理建议 | 用黄色但不解释 |
+
+## 6. 统一的页面交互逻辑
+
+每个页面都按同一逻辑排列：
+
+```text
+进入页面
+  ↓
+看到当前状态和页面目的
+  ↓
+执行一个 Primary action
+  ↓
+在表单/选择器中确认输入
+  ↓
+显示计算或保存结果
+  ↓
+提供可逆的编辑、复制、重试或返回
+```
+
+涉及写入时：
+
+- 客户端不自行重算确定性营养值；
+- 服务端返回的 snapshot、coverage、trace、estimated、unknown 必须保留；
+- AI 只能生成候选，不得绕过用户确认直接写入；
+- 失败时保留用户输入；
+- 版本冲突时显示“数据已变化，请重新加载后再保存”，不能静默覆盖。
+
+## 7. 六个页面的规范
+
+下面每页都写清楚“用户目标、主视觉、布局、按钮、状态和移动端重排”。页面之间只改变内容，不改变操作逻辑。
+
+### 7.1 今日（首页基线）
+
+**用户目标：** 5 秒内知道今天还剩多少预算，并能立即记录一餐、体重或菜谱。
+
+**桌面布局：**
+
+1. PageHeader：日期切换、问候语、Primary“记录饮食”；
+2. Hero：左侧热量环，中心“还可以吃 1545 kcal”，右侧今日摄入、预算、完成度；
+3. Macro：蛋白质、脂肪、碳水三个水平进度条，固定颜色；
+4. Meal grid：早餐/午餐两列，晚餐/加餐两列；
+5. Weekly overview：一张轻量 7 日摄入趋势图；
+6. ContextRail：快速记录、今日数据质量提示。
+
+**按钮：** Primary“记录饮食”；Secondary“添加食物”“记录体重”“添加菜谱”；Tertiary“查看详情”。
+
+**空状态：** “今天还没有记录早餐” + “添加早餐”，不显示大型插画。
+
+**移动端：** 热量环和宏量上下排列；餐次变为单列；周图移到餐次之后；快速记录进入固定底栏或 Bottom Sheet；底部导航不遮最后一个餐次。
+
+### 7.2 饮食
+
+**用户目标：** 用最少步骤找到食物、确认份量、选择餐次并写入日记。
+
+**桌面布局：**
+
+1. PageHeader：标题“饮食” + 当前日期切换；
+2. Main workspace：搜索框、最近/常用/食物库/我的分段控件、结果列表；
+3. 右侧或 Drawer：数量、单位、餐次确认；
+4. 下方：当天四个餐次的记录摘要和每餐 kcal。
+
+**搜索结果行：** 食物名、来源/质量标记、每 100g kcal、右侧“选择”或整行点击；不把未知营养显示成 0。
+
+**数量确认：**
+
+```text
+馒头
+[ − ] 75 [ + ]   g
+快捷值：50g  ·  75g  ·  100g
+餐次：早餐 ▾
+[确认加入早餐]
+```
+
+**按钮：** Primary“加入早餐/加入午餐…”；Secondary“查看营养详情”；Tertiary“取消”。添加成功后回到当前餐次，并刷新日记汇总。
+
+**状态：** 空结果必须说明当前只搜索本地食物目录，并提供导入说明入口；网络不可用时本地搜索和已缓存记录仍可使用。
+
+**移动端：** 搜索框固定在页面顶部；结果列表全宽；数量编辑使用 Bottom Sheet；餐次选择使用可读的 Radio list，不用窄下拉框；确认按钮固定在 Sheet 底部。
+
+### 7.3 菜谱
+
+**用户目标：** 把多个本地食物组合成可复用菜谱，并明确总营养、每 100g、每份营养。
+
+**桌面布局：**
+
+1. 左侧主区：菜谱列表、名称、份数/成品重量摘要、warnings 数；
+2. 中央编辑区：名称、成品重量、份数、原料行；
+3. 右栏结果区：总营养、每 100g、每份、coverage 和数据质量；
+4. 详情动作区：编辑、复制、显式刷新原料、加入日记、删除。
+
+**原料行统一结构：** 食物搜索输入 → 食物名 → 克数输入 → 结果 kcal → 删除图标。原料搜索只查询本地目录；已有原料编辑时必须保留当前可见名称。
+
+**计算规则显示：**
+
+- 只有成品重量：显示总营养 + 每 100g；
+- 只有份数：显示总营养 + 每份；
+- 两者都有：三种结果同时显示；
+- 两者都没有：显示总营养，并给出“填写成品重量/份数后可查看分配值”；
+- unknown、trace、estimated 和 coverage 必须以文字或标签表达。
+
+**按钮：** Primary“保存菜谱”；Secondary“刷新原料”“复制菜谱”“加入日记”；Destructive“删除菜谱”；Tertiary“取消/返回”。保存时锁定草稿控件，保留“保存中…”状态。
+
+**移动端：** 菜谱列表与编辑器分两步进入；原料行改为纵向字段组；结果区置于保存按钮之后；删除使用确认对话框；不把多列营养网格硬塞入 360px。
+
+### 7.4 体重
+
+**用户目标：** 快速记录一次体重，并看清趋势而不是被单日波动误导。
+
+**桌面布局：**
+
+1. PageHeader：标题“体重” + Primary“记录体重”；
+2. Hero：当前体重、相对上次变化、记录时间；
+3. Trend：7 日/30 日分段控件 + 趋势图；
+4. Summary：周变化、月变化、BMI（仅信息展示）；
+5. ContextRail：最近记录列表和记录说明。
+
+**记录表单：** 日期、时间、体重值、可选备注；单位在页面范围内统一为 kg；日期遵循用户时区。
+
+**图表：** 原始点与趋势线区分；缺失日期不补成 0；数据不足时显示“还需要 X 天记录才能形成趋势”，不伪造趋势。
+
+**按钮：** Primary“保存体重”；Secondary“编辑”；Destructive“删除记录”；Tertiary“切换 7/30 天”。删除前明确告知会影响趋势汇总。
+
+**移动端：** 记录表单使用全宽输入；趋势图允许在容器内横向阅读但页面本身不得横向滚动；摘要从三列改为两行列表。
+
+### 7.5 分析
+
+**用户目标：** 看长期变化、目标差异和数据可信度，避免把短期噪声当结论。
+
+**桌面布局：**
+
+1. PageHeader：标题“分析” + 7/14/30 天分段控件；
+2. Main hero：平均摄入、目标差异、记录覆盖度；
+3. Trend：体重趋势与摄入趋势使用两个独立但对齐的图表；
+4. Adaptive TDEE：估算值、置信度、数据门槛、最近更新时间；
+5. ContextRail：解释文字和数据来源，不放新的 KPI 集群。
+
+**分析文案：** 必须区分“事实”“估算”“数据不足”。例如：
+
+- 事实：“过去 7 天已记录 5 天”；
+- 估算：“基于已记录数据的 Adaptive TDEE”；
+- 不足：“记录天数不足，暂不估算”。
+
+**按钮：** Primary“查看数据明细”；Secondary“切换周期”；Tertiary“查看计算说明”；不提供未经用户确认的自动改目标按钮。
+
+**移动端：** 先结论后图表；图表卡片单列；图例不放在图表内部遮挡数据；数据说明折叠在每个结果下方。
+
+### 7.6 我的
+
+**用户目标：** 管理个人资料、目标、单位、时区、数据备份和可选集成，不误触高风险操作。
+
+**桌面布局：**
+
+1. PageHeader：标题“我的”；
+2. Profile surface：昵称、时区、资料完成度；
+3. Settings list：目标与单位、数据与备份、AI/集成、应用偏好；
+4. Danger zone：退出、清空或恢复等高风险动作与普通设置隔离。
+
+**设置行统一结构：** 左侧标题 + 一行说明，右侧当前值/箭头；整行 44px 以上可点击；进入二级页面后使用统一 PageHeader 和返回按钮。
+
+**按钮：** Primary“保存设置”；Secondary“导出数据”“创建备份”；Tertiary“查看说明”；Destructive“删除本地数据/恢复备份”必须二次确认并显示影响范围。
+
+**安全文案：** 不在页面、日志或截图中显示真实密码、API key、Cookie 或完整 Authorization；敏感配置使用遮罩和“已配置”状态。
+
+**移动端：** 设置行单列；危险区放在页面末尾并有明确分隔；不使用桌面三列表单；二级设置页面保持相同返回和保存位置。
+
+## 8. 图标、插画和数据可视化
+
+### 8.1 图标
+
+- 统一使用 20px 线性图标，笔画 1.8–2px，圆角端点；
+- 导航图标必须一一对应且不改变语义；
+- 图标按钮必须有可见 tooltip 或 `aria-label`；
+- 禁止同一动作在不同页面使用不同图标；
+- 装饰图标不应比动作文字更抢眼。
+
+### 8.2 数据图表
+
+- 图表颜色继承语义令牌，不使用彩虹色；
+- 图表必须有标题、单位、时间范围和空数据说明；
+- 颜色不是唯一编码，必须同时使用标签、数值或纹理/点型；
+- 轴、网格和辅助线使用低对比度；
+- 不能把缺失日期画成零值；
+- 图表只回答一个问题，不能把多个指标叠成难读的综合图。
+
+### 8.3 插画
+
+花园/叶片意象只用于品牌和轻量空状态，不能用大插画替代错误解释或主要行动。插画不承载数据语义。
+
+## 9. 动效和反馈
+
+```text
+hover / focus: 120ms
+button pressed: 100ms
+drawer / sheet: 220ms
+toast: 180ms
+number refresh: 150ms
+easing: cubic-bezier(.2,.8,.2,1)
+```
+
+动效只说明“发生了什么”，不制造注意力：
+
+- 保存后局部更新，不整页闪烁；
+- 页面切换不使用大幅滑入；
+- `prefers-reduced-motion: reduce` 时关闭非必要过渡；
+- 错误出现时保持原输入和滚动位置；
+- Toast 不能是唯一反馈，重要结果要有页面内文字。
+
+## 10. 无障碍与键盘规则
+
+- 所有按钮、输入、导航项最小命中区 44×44px；
+- 键盘 Tab 顺序与视觉顺序一致；
+- `focus-visible` 轮廓清晰，不移除默认焦点而不补替代样式；
+- Modal/Sheet 打开后焦点进入标题或第一个输入，关闭后回到触发按钮；
+- 所有图表、进度条和状态标签提供可读文本；
+- 必填、错误、警告不能只靠颜色；
+- 页面标题唯一，导航当前项有 `aria-current`；
+- 表单错误通过 `aria-describedby` 关联到字段；
+- 动态保存结果用 `aria-live="polite"`，错误用 `aria-live="assertive"`；
+- 文本放大到 200% 时不出现内容截断或横向滚动。
+
+## 11. 内容和文案规范
+
+### 11.1 按钮文案
+
+动词开头、说明结果：
+
+```text
+记录饮食 / 加入早餐 / 保存菜谱 / 刷新原料 / 复制菜谱
+记录体重 / 查看数据明细 / 重试 / 删除菜谱
+```
+
+避免：`开始`、`处理`、`继续`、`确定一下`、`操作`。
+
+### 11.2 数字文案
+
+- 数字和单位之间保留可读间距：`1545 kcal`、`62.3 kg`；
+- 不把“未知”写成 0；
+- 估算值标记“估算”，原始值和快照值标记“记录时保存”；
+- 变化量带方向和周期：`较上周 -0.8 kg`；
+- 不用过多小数，精度服从领域规范，不为视觉制造假精确。
+
+### 11.3 错误文案
+
+错误必须回答：发生了什么、用户怎么办。例如：
+
+```text
+请求未完成。请检查服务状态后重试。
+菜谱缺少成品重量。请先填写成品重量，再查看每 100g 营养。
+数据已被其他操作更新。你的修改仍保留，请重新加载后再保存。
+当前只搜索本地食物目录；如果没有结果，请先完成受控离线导入。
+```
+
+不能直接把 `RECIPE_COOKED_WEIGHT_REQUIRED`、HTTP 状态码或数据库错误展示给用户。
+
+## 12. 工程落地边界
+
+UI 只负责表达和收集输入，不改变事实边界：
+
+- 食物搜索只访问本地目录；没有本地结果时不自动请求外部食品库；
+- 营养结果来自服务端确定性计算；客户端不复制计算逻辑；
+- 菜谱原料营养使用 ingredient snapshot，显式刷新才替换快照；
+- 加入日记后只依赖 diary nutrition snapshot，食物或菜谱变化不漂移历史；
+- 体重趋势和分析在数据不足时返回“不足”，不补 0、不伪造结论；
+- AI 只生成候选和解释，写入始终需要用户确认；
+- 本地、离线和错误状态必须保留已缓存数据，不因为网络失败清空当前视图。
+
+## 13. 视觉验收清单
+
+### 13.1 桌面
+
+在 `1440×900` 和 `1024×768` 验收：
+
+- [ ] Sidebar 宽度稳定，导航项不换行；
+- [ ] 主区和右栏有明确职责，右栏不抢主任务；
+- [ ] 任意页面不出现横向滚动条；
+- [ ] 每页只有一个 Primary action；
+- [ ] 卡片不出现卡片套卡片；
+- [ ] 关键数字在 5 秒内可定位；
+- [ ] 图表有标题、单位、周期和空数据说明；
+- [ ] 所有按钮、输入、图标按钮达到 44px 命中区；
+- [ ] 键盘焦点可见，Tab 顺序合理。
+
+### 13.2 移动端
+
+在 `360×800`、`390×844`、`430×932` 验收：
+
+- [ ] `document.scrollWidth <= window.innerWidth`；
+- [ ] BottomNav 不遮挡正文最后一个可操作元素；
+- [ ] 文字、按钮、输入不被截断；
+- [ ] 多列桌面内容按任务顺序重排为单列；
+- [ ] 复杂编辑器使用 Sheet 或分步页面，不强行压缩；
+- [ ] 图表能读出结论，必要时允许容器内部滚动；
+- [ ] 空、错、离线和保存中状态仍然可操作；
+- [ ] 页面切换和返回位置符合用户预期。
+
+### 13.3 一致性
+
+- [ ] 六个一级页面使用同一 AppShell、PageHeader、导航和按钮层级；
+- [ ] 同一动作的文案、图标、颜色、位置一致；
+- [ ] 蛋白质/脂肪/碳水颜色全站一致；
+- [ ] 删除、冲突、错误和成功反馈遵循同一状态模式；
+- [ ] 所有页面都能说明数据来源、估算或不足；
+- [ ] 文档、UI、API contract 没有互相矛盾的字段或动作名称。
+
+## 14. 后续实施顺序
+
+规范落地不一次性重写所有页面，按风险和复用价值拆分：
+
+1. 建立 tokens、AppShell、Sidebar、MobileBottomNav、PageHeader 和 Button；
+2. 先重构今日页，验证桌面三栏与移动重排；
+3. 复用同一壳层重构饮食搜索/数量确认；
+4. 重构菜谱编辑器和结果面板，保留 snapshot、刷新、冲突边界；
+5. 重构体重趋势和记录表单；
+6. 重构分析页面的数据不足和解释层级；
+7. 重构我的页面和危险操作区；
+8. 最后补齐 1440/1024/430/390/360 的视觉回归与键盘验收。
+
+每一步都必须先写对应任务的验收命令，再修改实现；新发现但不属于当前页面的缺陷登记到 `DEVELOPMENT_PROGRESS.md`，不得在本任务中顺手扩大范围。
