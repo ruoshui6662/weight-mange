@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 22:50 +08:00
+> 最后更新：2026-09-10 23:20 +08:00
 
 ## 1. 当前快照
 
@@ -13,10 +13,10 @@
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M3 — 菜谱、运动与预算策略 |
 | 当前焦点 | M3-004 MET/运动计算准备 |
-| 下一步 | 先阅读运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
+| 下一步 | 读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-011、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要已完成 |
-| Git | M1-011 与 M3-009 已提交 `7623e01`，待推送 `main` |
+| 业务代码 | M1-001 至 M1-011、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要、M3-010 今日页体重趋势摘要已完成 |
+| Git | M3-010 已本地提交；当前 `main` 工作区干净，尚未推送远端 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 10/10 | 饮食记录闭环、远程测试目录 bootstrap 与本地导入验证通过 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 6/9 | M3-003、M3-007、M3-008、M3-009 与 DOC-005 已完成；下一步进入 M3-004 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 7/10 | M3-003、M3-007、M3-008、M3-009、M3-010 与 DOC-005 已完成；下一步 M3-004 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -394,6 +394,20 @@
 - 阻塞/风险：无；不新增 API、数据库或营养计算逻辑。
 - 下一步：推送 `main`。
 
+### M3-010 — 今日页体重趋势摘要
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 23:05 +08:00
+- 完成时间：2026-09-10 23:20 +08:00
+- 操作者：Codex
+- 依赖：M2-002、M2-003、M3-007、UI_DESIGN_SYSTEM.md §7.1
+- 计划变更：在今日页常态化展示最近一周体重趋势；查询范围为今天往前 7 天至今天；仅当范围内存在真实记录时渲染卡片，否则完全隐藏；复用服务端趋势值，不新增 API 或数据库迁移。
+- 变更文件：`apps/web/src/App.tsx`、`apps/web/src/ui/TodayPage.tsx`、`apps/web/src/ui/WeightPage.tsx`、`apps/web/src/ui/WeightTrendChart.tsx`、`apps/web/src/styles.css`、`apps/web/test/today-page.test.tsx`、`UI_DESIGN_SYSTEM.md`
+- 计划验收：先观察 TodayPage 无记录/单点/多点测试 RED；再运行 focused Web tests、全量 `pnpm test`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`。
+- 验收结果：EVD-M3-010-A；先观察趋势卡契约缺失 RED，再 GREEN；focused Today/Weight 14 tests、全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0。
+- 阻塞/风险：无；今日页趋势请求失败不得阻塞热量和饮食主流程。
+- 下一步：进入 M3-004 MET/运动计算准备。
+
 ### M3-007 — Data Garden 全站 UI 重构
 
 - 状态：`DONE`
@@ -420,6 +434,7 @@
 | M3-007 | Data Garden 全站 UI 重构 | `DONE` | Codex | Task 1–8 代码与独立复审完成；全量 E2E 在 workers=1 下 2 tests passed，证据见 `task-8-report.md` |
 | M3-008 | 饮食分餐快捷添加 | `DONE` | Codex | 四餐快捷入口、目标餐次预选、搜索框聚焦与响应式 44px 命中区已完成；见 EVD-M3-008-A |
 | M3-009 | 今日热量摘要 | `DONE` | Codex | 空日显示 0 摄入与剩余预算，超预算钳制显示并解释超出量，无目标保持暂不可用；见 EVD-M3-009-A |
+| M3-010 | 今日页体重趋势摘要 | `DONE` | Codex | 最近 7 天真实记录趋势卡；无近期记录隐藏；共享趋势图与移动端样式；见 EVD-M3-010-A |
 | M1-010 | 测试期远程食物目录导入 | `DONE` | Codex | 61 个 JSON/1677 条食物真实拉取并导入；重复启动幂等；见 EVD-M1-010-A |
 
 ## 5. M0 待办队列
@@ -548,6 +563,7 @@ result: 42 passed, 0 failed
 | EVD-M1-010-A | M1-010 | 2026-09-10 20:40 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts tools/food-import/test/remote-food.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm test:e2e`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 真实 `node scripts/food-remote-import.mjs` 临时 SQLite 两次 | RED 先暴露远程模块缺失、`899*` footnote 和 `un` unknown marker；GREEN 聚焦 2 files/12 tests、全量 183 files/1067 tests；真实远程 61 files/1677 foods 首次 `promoted`、二次 `already_promoted`，checksum `76b5f360c3286e1a14c9e1c586335f3cae06ea9afed6acdce198998cda643ea2`；lint/typecheck/build/integration/API smoke/E2E 2/diff check exit 0；docker smoke exit 0 但 Docker CLI 不可用 |
 | EVD-M1-011-A | M1-011 | 2026-09-10 11:50 +08:00 | `pnpm vitest run apps/web/test/api.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现 `crypto.randomUUID is not a function`；GREEN 新增非安全局域网 HTTP 幂等键回退；focused 1 file/6 tests、全量 183 files/1068 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0 |
 | EVD-M3-009-A | M3-009 | 2026-09-10 22:50 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现超预算负数展示；GREEN 完成“今日热量”卡、空日 `0 kcal`/完整剩余预算、超预算 `0 kcal`/超出说明和无目标不可用语义；focused 6 tests、全量 183 files/1070 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0 |
+| EVD-M3-010-A | M3-010 | 2026-09-10 23:20 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx apps/web/test/weight-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现趋势卡缺失；GREEN 完成最近 7 天真实记录门禁、最新体重/变化摘要、服务端趋势共享图表和移动端样式；focused 2 files/14 tests、全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；趋势请求失败时隐藏可选摘要，不阻塞今日主流程 |
 
 ## 9. 问题队列
 
@@ -693,10 +709,12 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 
 | 2026-09-10 22:40 +08:00 | Codex | 开始 M3-009 今日热量摘要 | 用户确认按设计执行；先补空日与超预算 RED 测试，目标是显示 0 摄入/剩余预算并保持无目标不可用事实边界 |
 | 2026-09-10 22:50 +08:00 | Codex | 完成 M3-009 今日热量摘要 | 今日热量卡已完成；单独重跑全量测试通过（183 files/1070 tests），lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；并行首次全量测试因资源争用超时，未作为验收证据；下一步 M3-004 |
+| 2026-09-10 23:05 +08:00 | Codex | 开始 M3-010 今日页体重趋势摘要 | 用户确认开始执行；先补无记录/近期记录 RED 测试，范围固定为今天往前 7 天至今天，复用服务端趋势且不改 API/DB |
+| 2026-09-10 23:20 +08:00 | Codex | 完成 M3-010 今日页体重趋势摘要 | 今日页接入可选最近 7 天体重趋势卡；旧记录/无记录完全隐藏，变化值与图表使用真实服务端点；抽取共享 WeightTrendChart，补响应式样式与 14 个 focused tests；全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；下一步 M3-004 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加与 M3-009 今日热量摘要已完成。后续接手者应：
+M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要与 M3-010 今日页体重趋势摘要已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；

@@ -43,6 +43,22 @@ const props = {
   busyEntry: null,
 };
 
+const recentWeightRecords = [
+  { id: "w1", measuredAt: "2026-09-09T00:00:00.000Z", localDate: "2026-09-09", weightKg: 62.7, source: "manual", note: null, version: 0 },
+  { id: "w2", measuredAt: "2026-09-10T00:00:00.000Z", localDate: "2026-09-10", weightKg: 62.3, source: "manual", note: null, version: 0 },
+];
+const recentWeightTrend = {
+  methodVersion: "weight_trend_v1",
+  windowDays: 7,
+  method: "ewma",
+  alpha: 0.25,
+  observedDays: 2,
+  points: [
+    { localDate: "2026-09-09", weightKg: 62.7, trendWeightKg: 62.7 },
+    { localDate: "2026-09-10", weightKg: 62.3, trendWeightKg: 62.3 },
+  ],
+};
+
 describe("TodayPage", () => {
   it("shows zero intake and the full remaining budget on an unmarked day", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, {
@@ -55,6 +71,38 @@ describe("TodayPage", () => {
     expect(html).toContain("还可以吃");
     expect(html).toContain("1800 kcal");
     expect(html).toContain("已完成 0%");
+  });
+
+  it("shows a recent weight trend card when the last week has records", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      weightRecords: recentWeightRecords,
+      weightTrend: recentWeightTrend,
+    }));
+    expect(html).toContain('data-today-weight-trend="visible"');
+    expect(html).toContain("体重趋势");
+    expect(html).toContain("62.3 kg");
+    expect(html).toContain("↓ 0.4 kg");
+    expect(html).toContain('data-trend-point="2026-09-10"');
+  });
+
+  it("does not render a weight trend card without recent records", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      weightRecords: [],
+      weightTrend: recentWeightTrend,
+    }));
+    expect(html).not.toContain("data-today-weight-trend");
+    expect(html).not.toContain("体重趋势");
+  });
+
+  it("hides the trend when records exist only before the seven-day window", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      weightRecords: [{ ...recentWeightRecords[0], localDate: "2026-09-02", measuredAt: "2026-09-02T00:00:00.000Z" }],
+      weightTrend: recentWeightTrend,
+    }));
+    expect(html).not.toContain('data-today-weight-trend="visible"');
   });
 
   it("clamps the remaining display at zero and explains an over-budget day", () => {

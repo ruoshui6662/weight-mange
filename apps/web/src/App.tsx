@@ -103,6 +103,8 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   const [showImportGuide, setShowImportGuide] = useState(false);
   const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [weightTrend, setWeightTrend] = useState<WeightTrend | null>(null);
+  const [todayWeightRecords, setTodayWeightRecords] = useState<WeightRecord[]>([]);
+  const [todayWeightTrend, setTodayWeightTrend] = useState<WeightTrend | null>(null);
   const [analyticsOverview, setAnalyticsOverview] = useState<AnalyticsOverview | null>(null);
   const [tdee, setTdee] = useState<TdeeEstimate | null>(null);
   const [analyticsPeriod, setAnalyticsPeriod] = useState<7 | 30 | 90>(30);
@@ -180,17 +182,30 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
     try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
   }, [today]);
 
+  const loadTodayWeightTrend = useCallback(async () => {
+    try {
+      const from = daysAgo(today, 7);
+      const [nextRecords, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(7)]);
+      setTodayWeightRecords(nextRecords);
+      setTodayWeightTrend(nextTrend);
+    } catch {
+      // The trend is an optional enrichment for Today; it must not block diary or calorie data.
+      setTodayWeightRecords([]);
+      setTodayWeightTrend(null);
+    }
+  }, [today]);
+
   const loadAnalyticsPanel = useCallback(async (periodDays = analyticsPeriod) => {
     setM2Loading(true); setM2Error("");
     try { const from = daysAgo(today, periodDays - 1); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
   }, [analyticsPeriod, today]);
 
-  useEffect(() => { if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadWeightPanel]);
+  useEffect(() => { if (activeTab === "today") void loadTodayWeightTrend(); if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadTodayWeightTrend, loadWeightPanel]);
 
   const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
   const startMealAdd = (mealSlotId: string) => { setMeal(mealSlotId); setSelected(null); setAmount("100"); props.setError(""); };
   return <AppShell activeTab={activeTab} onNavigate={(tab) => { props.setError(""); setActiveTab(tab); }} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void props.onLogout()}>退出</button>}>
-    {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} onAddFood={searchCard} onCopyDay={copyDay} onCopyMeal={copyMeal} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
+    {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} weightRecords={todayWeightRecords} weightTrend={todayWeightTrend} onAddFood={searchCard} onCopyDay={copyDay} onCopyMeal={copyMeal} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
     {activeTab === "diary" ? <DiaryPage today={today} dashboard={props.dashboard} diary={props.diary} query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} searchError={searchStatus === "error" ? props.error : undefined} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} onStartMealAdd={startMealAdd} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyDay={copyDay} onCopyMeal={copyMeal} /> : null}
     {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => { props.setError(""); setActiveTab("diary"); }} /> : null}
     {activeTab === "profile" ? <ProfilePage profile={props.profile} showImportGuide={showImportGuide} onToggleImportGuide={() => setShowImportGuide(!showImportGuide)} onOpenSetup={props.onOpenSetup} onLogout={() => void props.onLogout()} /> : null}

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import type { Dashboard, Diary, Profile } from "../api";
+import type { Dashboard, Diary, Profile, WeightRecord, WeightTrend } from "../api";
+import { daysAgo } from "../date";
 import { Button, Metric, StatusMessage, Surface } from "./Primitives";
+import { WeightTrendChart } from "./WeightTrendChart";
 
 type EditableEntry = { id: string; displayName: string; amount: number; unit: string; mealSlotId: string; version: number };
 type MealKey = "breakfast" | "lunch" | "dinner" | "snack";
@@ -19,6 +21,8 @@ export type TodayPageProps = {
   onCancelEdit: () => void;
   editingEntry?: EditableEntry | null;
   busyEntry?: string | null;
+  weightRecords?: WeightRecord[];
+  weightTrend?: WeightTrend | null;
 };
 
 const meals: Array<{ key: MealKey; label: string }> = [
@@ -39,12 +43,36 @@ export function TodayPage(props: TodayPageProps) {
     <div className="today-page-main">
       {dashboard ? <CalorieHero remaining={remaining} intake={intake} goal={goal} progress={progress} /> : <StatusMessage kind="empty" title="今日数据暂不可用" description="服务还没有返回今天的预算和摄入。你仍然可以先记录一餐，稍后再刷新。" action={<a className="dg-button dg-button-secondary" href="#today-quick-record">先记录一餐</a>} />}
       {dashboard ? <MacroOverview dashboard={dashboard} /> : null}
+      <TodayWeightTrend today={props.today} records={props.weightRecords} trend={props.weightTrend} />
       <MealGrid {...props} />
       <Surface className="today-weekly-summary"><div className="today-section-heading"><div><span className="today-kicker">趋势提示</span><h2>本周概览</h2></div><span className="today-muted">记录后逐步形成</span></div><p className="today-muted">本周的连续记录、摄入趋势和目标完成度会在数据足够后显示。当前不使用缺失日期填充为 0。</p></Surface>
       <section className="today-quick-record" id="today-quick-record"><div className="today-section-heading"><div><span className="today-kicker">行动</span><h2>记录今天的饮食</h2></div><span className="today-muted">本地目录</span></div><p className="today-muted">选择食物、确认份量，再加入对应餐次。历史营养会按记录时快照保存。</p>{props.onAddFood}</section>
     </div>
     <aside className="today-context-rail" aria-label="今日辅助信息"><Surface className="today-rail-card"><span className="today-kicker">QUICK RECORD</span><h2>快速记录</h2><p className="today-muted">不必先理解全部数据。先完成一笔真实记录，页面会逐步补齐你的花园。</p><a className="dg-button dg-button-secondary" href="#today-quick-record">前往记录区</a></Surface><Surface className="today-rail-card"><span className="today-kicker">DATA QUALITY</span><h2>数据说明</h2><p className="today-muted">没有饮食记录时，已摄入显示为 0；没有热量目标时，剩余预算显示为“暂不可用”。</p></Surface></aside>
   </div>;
+}
+
+function TodayWeightTrend(props: { today: string; records: WeightRecord[] | undefined; trend: WeightTrend | null | undefined }) {
+  const startDate = daysAgo(props.today, 7);
+  const recentRecords = (props.records ?? [])
+    .filter((record) => record.localDate >= startDate && record.localDate <= props.today)
+    .sort((a, b) => a.localDate.localeCompare(b.localDate) || a.measuredAt.localeCompare(b.measuredAt));
+  const points = (props.trend?.points ?? []).filter((point) => point.localDate >= startDate && point.localDate <= props.today);
+  if (recentRecords.length === 0 || points.length === 0) return null;
+
+  const latestRecord = recentRecords.at(-1)!;
+  const firstPoint = points[0]!;
+  const latestPoint = points.at(-1)!;
+  const delta = points.length > 1 ? latestPoint.trendWeightKg - firstPoint.trendWeightKg : null;
+  const deltaText = delta === null ? null : delta < 0 ? `↓ ${Math.abs(delta).toFixed(1)} kg` : delta > 0 ? `↑ ${delta.toFixed(1)} kg` : "→ 0.0 kg";
+
+  return <Surface className="today-weight-trend" data-today-weight-trend="visible">
+    <div className="today-weight-trend-heading">
+      <div><span className="today-kicker">BODY · LAST 7 DAYS</span><h2>体重趋势</h2><p className="today-muted">从一周前开始，只展示真实记录，不用缺失日期补零。</p></div>
+      <div className="today-weight-summary"><strong>{latestRecord.weightKg.toFixed(1)} kg</strong>{deltaText ? <span className={delta !== null && delta < 0 ? "today-weight-delta-down" : "today-weight-delta"}>{deltaText}</span> : <span className="today-muted">记录 1 天</span>}<small>最新记录 · {latestRecord.localDate}</small></div>
+    </div>
+    <WeightTrendChart points={points} rangeDays={7} ariaLabel="最近 7 天体重趋势图" />
+  </Surface>;
 }
 
 function CalorieHero(props: { remaining: number | null | undefined; intake: number | undefined; goal: number | undefined; progress: number | null }) {

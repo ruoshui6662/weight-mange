@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { WeightRecord, WeightTrend } from "../api";
 import { Button, Metric, StatusMessage, Surface } from "./Primitives";
+import { WeightTrendChart } from "./WeightTrendChart";
 
 export type WeightPageProps = {
   today?: string;
@@ -65,18 +66,11 @@ export function WeightPage(props: WeightPageProps) {
         {props.loading ? <StatusMessage kind="loading" title="正在加载体重趋势" /> : null}
         {props.error ? <StatusMessage kind="error" title="体重服务暂时不可用" description={props.error} action={<Button variant="secondary" onClick={() => void props.onRetry()}>重试</Button>} /> : null}
         {!props.loading && !props.error && points.length === 0 ? <StatusMessage kind="empty" title="数据不足" description="当前范围内尚无足够记录。先记录体重，趋势会随着真实数据逐步形成。" action={<a className="dg-button dg-button-secondary" href="#record-weight">记录体重</a>} /> : null}
-        {!props.loading && !props.error && points.length > 0 ? <TrendChart points={points} range={range} /> : null}
+        {!props.loading && !props.error && points.length > 0 ? <WeightTrendChart points={points} rangeDays={range} /> : null}
       </Surface>
       <div className="weight-summary-grid" aria-label="体重摘要">{currentWeight !== undefined ? <Metric label="最新记录" value={currentWeight.toFixed(1)} unit="kg" /> : <Metric label="最新记录" value="—" />}<Metric label={`${range} 天记录`} value={points.length} unit="次" />{trendDelta === null ? <Metric label={`${range} 天变化`} value="—" /> : <Metric label={`${range} 天变化`} value={`${trendDelta > 0 ? "+" : ""}${trendDelta.toFixed(1)}`} unit="kg" />}</div>
       <Surface className="weight-records"><div className="weight-section-heading"><div><span className="dg-eyebrow">RECENT RECORDS</span><h2>最近记录</h2></div><span className="dg-status-chip">{orderedRecords.length} 条</span></div>{orderedRecords.length === 0 ? <p className="dg-muted">记录后会在这里保留历史事实。</p> : <div className="weight-record-list">{orderedRecords.slice(0, 8).map((record) => <div className="weight-record-row" key={record.id}><span><strong>{record.localDate}</strong><small>{record.note || (record.source === "manual" ? "手动记录" : record.source)}</small></span><strong>记录 {record.weightKg.toFixed(1)} kg</strong></div>)}</div>}</Surface>
     </div>
     <aside className="weight-context-rail" aria-label="体重辅助信息"><Surface className="weight-record-form" id="record-weight"><span className="dg-eyebrow">QUICK RECORD</span><h2>记录体重</h2><p className="dg-muted">记录真实测量值，系统会保留日期和来源。</p><form onSubmit={(event) => void submit(event)}><label className="field"><span>日期</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label><label className="field"><span>体重（kg）</span><input name="weightKg" type="number" min="0.1" step="0.1" inputMode="decimal" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="例如 68.4" required /></label><label className="field"><span>备注（可选）</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="例如：晨起、运动后" /></label>{formError ? <p className="error" role="alert">{formError}</p> : null}{formSuccess ? <p className="success" role="status" aria-live="polite">{formSuccess}</p> : null}<Button type="submit" variant="primary" aria-label="添加体重" busy={busy}>记录体重</Button></form></Surface><Surface className="weight-context-note"><span className="dg-eyebrow">DATA QUALITY</span><h2>数据说明</h2><p className="dg-muted">趋势值由服务端计算；数据不足时保持空状态，不用估算或零点填充。</p></Surface></aside>
   </div>;
-}
-
-function TrendChart({ points, range }: { points: WeightTrend["points"]; range: Range }) {
-  const values = points.map((point) => point.trendWeightKg);
-  const min = Math.min(...values); const max = Math.max(...values); const spread = Math.max(max - min, 0.1);
-  const line = points.map((point, index) => `${(index / Math.max(points.length - 1, 1)) * 100},${100 - ((point.trendWeightKg - min) / spread) * 72 - 14}`).join(" ");
-  return <div className="weight-chart" aria-label={`${range} 天体重趋势图`}><div className="weight-chart-scale"><span>最高 {max.toFixed(1)} kg</span><span>最低 {min.toFixed(1)} kg</span></div><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`${range} 天趋势，${points.length} 个真实记录点`}><polyline points={line} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />{points.map((point, index) => <circle key={`${point.localDate}-${index}`} data-trend-point={point.localDate} cx={(index / Math.max(points.length - 1, 1)) * 100} cy={100 - ((point.trendWeightKg - min) / spread) * 72 - 14} r="2" fill="currentColor"><title>{`${point.localDate}: ${point.trendWeightKg.toFixed(1)} kg`}</title></circle>)}</svg><div className="weight-chart-dates"><span>{points[0]!.localDate}</span><span>{points.at(-1)!.localDate}</span></div><p className="dg-muted">趋势方法：{points.length > 0 ? "服务端平滑值" : "—"} · 观察到 {points.length} 个记录点</p></div>;
 }
