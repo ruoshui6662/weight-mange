@@ -62,7 +62,7 @@ describe("DiaryPage", () => {
     expect(html).toContain('data-diary-layout="workspace"');
     expect(html).toContain("本地食物目录");
     expect(html).toContain('data-food-result="food-1"');
-    expect(html).toContain('aria-label="选择燕麦"');
+    expect(html).toContain('aria-label="选择燕麦 · 389 kcal"');
     expect(html).toContain("今日摘要");
   });
 
@@ -96,5 +96,20 @@ describe("DiaryPage", () => {
     expect(html).toContain("移动端将在搜索后显示今日摘要");
     expect(html).toContain("正在搜索本地食物目录");
     expect(html).toContain("请求未完成，请稍后重试。");
+  });
+
+  it("keeps diary entries as one readable name-and-amount label with named edit actions", () => {
+    const html = renderToStaticMarkup(React.createElement(DiaryPage, {
+      ...props,
+      mealEntries: new Map([["breakfast", {
+        mealSlot: { key: "breakfast", displayName: "早餐" },
+        entries: [{ id: "entry-1", displayName: "馒头菜谱（副本）", amount: 100, unit: "g", mealSlotId: "breakfast", version: 0 }],
+      }]]),
+      editingEntry: { id: "entry-1", displayName: "馒头菜谱（副本）", amount: 100, unit: "g", mealSlotId: "breakfast", version: 0 },
+    }));
+    expect(html).toContain("馒头菜谱（副本） · 100g");
+    expect(html).toContain('aria-label="编辑馒头菜谱（副本）"');
+    expect(html).toContain('aria-label="删除馒头菜谱（副本）"');
+    expect(html).toContain('name="edit-amount-entry-1"');
   });
 });
