@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { WeightRecord, WeightTrend } from "../src/api";
-import { WeightPage } from "../src/ui/WeightPage";
+import { persistWeightRecord, weightSaveErrorMessage, weightSaveSuccessMessage, WeightPage } from "../src/ui/WeightPage";
 
 const noopAsync = async () => undefined;
 
@@ -45,5 +45,21 @@ describe("WeightPage", () => {
     expect(loadingHtml).toContain("正在加载体重趋势");
     expect(errorHtml).toContain("体重服务暂时不可用");
     expect(errorHtml).toContain("重试");
+  });
+
+  it("propagates failed saves so the page can keep form values and show recovery copy", async () => {
+    const onAdd = vi.fn(async () => { throw new Error("service unavailable"); });
+
+    await expect(persistWeightRecord(onAdd, { measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4, note: "晨起" })).rejects.toThrow("service unavailable");
+    expect(onAdd).toHaveBeenCalledWith({ measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4, note: "晨起" });
+    expect(weightSaveErrorMessage).toContain("保存未完成");
+    expect(weightSaveErrorMessage).toContain("输入内容已保留");
+  });
+
+  it("exposes explicit success feedback copy after a successful save path", async () => {
+    const onAdd = vi.fn(async () => undefined);
+
+    await expect(persistWeightRecord(onAdd, { measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4 })).resolves.toBeUndefined();
+    expect(weightSaveSuccessMessage).toContain("保存成功：已记录这次体重");
   });
 });

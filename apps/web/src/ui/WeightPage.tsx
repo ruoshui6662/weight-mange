@@ -12,6 +12,14 @@ export type WeightPageProps = {
   onAdd: (input: { measuredAt: string; weightKg: number; note?: string }) => Promise<void>;
 };
 
+export type WeightInput = { measuredAt: string; weightKg: number; note?: string };
+export const weightSaveErrorMessage = "保存未完成，请检查服务状态后重试。输入内容已保留。";
+export const weightSaveSuccessMessage = "保存成功：已记录这次体重。";
+
+export async function persistWeightRecord(onAdd: (input: WeightInput) => Promise<void>, input: WeightInput) {
+  await onAdd(input);
+}
+
 type Range = 7 | 30;
 
 export function WeightPage(props: WeightPageProps) {
@@ -21,6 +29,7 @@ export function WeightPage(props: WeightPageProps) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
   const orderedRecords = useMemo(() => props.records.slice().sort((a, b) => b.measuredAt.localeCompare(a.measuredAt)), [props.records]);
   const latest = orderedRecords[0];
   const points = props.trend?.points.slice(-range) ?? [];
@@ -30,14 +39,17 @@ export function WeightPage(props: WeightPageProps) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
+    setFormSuccess("");
     const parsed = Number(weight);
     if (!date) { setFormError("请选择记录日期。"); return; }
     if (!Number.isFinite(parsed) || parsed <= 0) { setFormError("请输入大于 0 的体重。"); return; }
     setBusy(true);
     try {
       const input = { measuredAt: new Date(`${date}T12:00:00`).toISOString(), weightKg: parsed, ...(note.trim() ? { note: note.trim() } : {}) };
-      await props.onAdd(input);
-      setWeight(""); setNote("");
+      await persistWeightRecord(props.onAdd, input);
+      setWeight(""); setNote(""); setFormSuccess(weightSaveSuccessMessage);
+    } catch {
+      setFormError(weightSaveErrorMessage);
     } finally { setBusy(false); }
   }
 
@@ -57,7 +69,7 @@ export function WeightPage(props: WeightPageProps) {
       <div className="weight-summary-grid" aria-label="体重摘要">{latest ? <Metric label="最新记录" value={latest.weightKg.toFixed(1)} unit="kg" /> : <Metric label="最新记录" value="—" />}<Metric label={`${range} 天记录`} value={points.length} unit="次" />{trendDelta === null ? <Metric label={`${range} 天变化`} value="—" /> : <Metric label={`${range} 天变化`} value={`${trendDelta > 0 ? "+" : ""}${trendDelta.toFixed(1)}`} unit="kg" />}</div>
       <Surface className="weight-records"><div className="weight-section-heading"><div><span className="dg-eyebrow">RECENT RECORDS</span><h2>最近记录</h2></div><span className="dg-status-chip">{orderedRecords.length} 条</span></div>{orderedRecords.length === 0 ? <p className="dg-muted">记录后会在这里保留历史事实。</p> : <div className="weight-record-list">{orderedRecords.slice(0, 8).map((record) => <div className="weight-record-row" key={record.id}><span><strong>{record.localDate}</strong><small>{record.note || (record.source === "manual" ? "手动记录" : record.source)}</small></span><strong>{record.weightKg.toFixed(1)} kg</strong></div>)}</div>}</Surface>
     </div>
-    <aside className="weight-context-rail" aria-label="体重辅助信息"><Surface className="weight-record-form" id="record-weight"><span className="dg-eyebrow">QUICK RECORD</span><h2>记录体重</h2><p className="dg-muted">记录真实测量值，系统会保留日期和来源。</p><form onSubmit={(event) => void submit(event)}><label className="field"><span>日期</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label><label className="field"><span>体重（kg）</span><input type="number" min="0.1" step="0.1" inputMode="decimal" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="例如 68.4" required /></label><label className="field"><span>备注（可选）</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="例如：晨起、运动后" /></label>{formError ? <p className="error" role="alert">{formError}</p> : null}<Button type="submit" variant="primary" busy={busy}>记录体重</Button></form></Surface><Surface className="weight-context-note"><span className="dg-eyebrow">DATA QUALITY</span><h2>数据说明</h2><p className="dg-muted">趋势值由服务端计算；数据不足时保持空状态，不用估算或零点填充。</p></Surface></aside>
+    <aside className="weight-context-rail" aria-label="体重辅助信息"><Surface className="weight-record-form" id="record-weight"><span className="dg-eyebrow">QUICK RECORD</span><h2>记录体重</h2><p className="dg-muted">记录真实测量值，系统会保留日期和来源。</p><form onSubmit={(event) => void submit(event)}><label className="field"><span>日期</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required /></label><label className="field"><span>体重（kg）</span><input type="number" min="0.1" step="0.1" inputMode="decimal" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="例如 68.4" required /></label><label className="field"><span>备注（可选）</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="例如：晨起、运动后" /></label>{formError ? <p className="error" role="alert">{formError}</p> : null}{formSuccess ? <p className="success" role="status" aria-live="polite">{formSuccess}</p> : null}<Button type="submit" variant="primary" busy={busy}>记录体重</Button></form></Surface><Surface className="weight-context-note"><span className="dg-eyebrow">DATA QUALITY</span><h2>数据说明</h2><p className="dg-muted">趋势值由服务端计算；数据不足时保持空状态，不用估算或零点填充。</p></Surface></aside>
   </div>;
 }
 

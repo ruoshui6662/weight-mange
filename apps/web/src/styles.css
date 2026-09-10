@@ -267,7 +267,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .weight-hero-badge span { display: block; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; }
 .weight-trend-surface, .weight-records, .weight-record-form, .weight-context-note { padding: 22px; }
 .weight-section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-.weight-range-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--color-surface-subtle); }
+.weight-range-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--color-surface-soft); }
 .weight-range-tabs button { min-height: 44px; border: 0; border-radius: 9px; padding: 0 12px; color: var(--color-text-secondary); background: transparent; font-weight: 700; cursor: pointer; }
 .weight-range-tabs button.active { color: var(--color-primary-strong); background: #fff; box-shadow: 0 1px 4px rgb(20 71 48 / 8%); }
 .weight-chart { min-height: 250px; padding: 20px 12px 10px 58px; border: 1px solid var(--color-border); border-radius: 16px; background: #fbfdfc; }
@@ -282,6 +282,6 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .weight-record-form form { display: grid; gap: 14px; margin-top: 18px; }
 .weight-record-form textarea { width: 100%; resize: vertical; }
 .weight-record-form .dg-button { width: 100%; }
-.weight-context-note { background: var(--color-surface-subtle); }
+.weight-context-note { background: var(--color-surface-soft); }
 @media (max-width: 899px) { .weight-page { grid-template-columns: 1fr; } .weight-context-rail { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (max-width: 599px) { .weight-hero { align-items: flex-start; padding: 20px; } .weight-hero-badge { width: 88px; height: 88px; flex: 0 0 88px; border-width: 8px; font-size: 15px; } .weight-section-heading { display: grid; } .weight-range-tabs { width: 100%; } .weight-range-tabs button { flex: 1; } .weight-summary-grid { grid-template-columns: 1fr; } .weight-context-rail { grid-template-columns: 1fr; } .weight-trend-surface, .weight-records, .weight-record-form, .weight-context-note { padding: 18px; } }
