@@ -17,6 +17,9 @@ describe("Data Garden application shell", () => {
     expect(html.indexOf("分析")).toBeLessThan(html.indexOf("我的"));
     expect(html).toContain("data-shell-sidebar");
     expect(html).toContain("data-shell-bottom-nav");
+    expect(html).toContain('class="dg-nav" aria-label="主导航"');
+    expect(html).toContain('data-nav-icon="today"');
+    expect(html).toContain('aria-hidden="true"');
   });
 
   it("exposes one primary action and keeps context rail optional", () => {
@@ -55,5 +58,12 @@ describe("Data Garden application shell", () => {
     expect(DATA_GARDEN_TOKENS.color.page).toBe("#F4F7F6");
     expect(DATA_GARDEN_TOKENS.color.primary).toBe("#35C887");
     expect(DATA_GARDEN_TOKENS.layout.sidebar).toBe("216px");
+  });
+
+  it("keeps compact sidebar labels accessible while the visual label collapses", () => {
+    const html = renderToStaticMarkup(<AppShell activeTab="today" onNavigate={vi.fn()} title="今日"><p>内容</p></AppShell>);
+    expect(html).toContain('class="dg-nav-label"');
+    expect(html).toContain('aria-label="今日"');
+    expect(html).toContain("dg-sidebar");
   });
 });
