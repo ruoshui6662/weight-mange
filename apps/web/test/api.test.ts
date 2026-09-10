@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../src/api";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("web API client", () => {
   it("includes credentials and encodes dashboard dates", async () => {
@@ -32,5 +32,15 @@ describe("web API client", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/recipes/r%2F1/copy", expect.objectContaining({ method: "POST", credentials: "include" }));
     await api.refreshRecipeIngredients("r/1", ["i/1"]);
     expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/recipes/r%2F1/refresh-ingredients", expect.objectContaining({ method: "POST", credentials: "include" }));
+  });
+
+  it("creates diary entries when randomUUID is unavailable on an insecure LAN origin", async () => {
+    vi.stubGlobal("crypto", {});
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ data: { id: "entry-1" } }), { status: 201 }));
+
+    await api.createDiaryEntry("2026-09-09", { mealSlotId: "breakfast", foodId: "food-1", amount: 50, unit: "g", source: "manual" });
+
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect((init?.headers as Record<string, string>)['idempotency-key']).toMatch(/^diary-/);
   });
 });

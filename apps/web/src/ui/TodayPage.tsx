@@ -33,7 +33,7 @@ export function TodayPage(props: TodayPageProps) {
   const remaining = dashboard?.remainingKcal;
   const intake = dashboard?.intake.kcal;
   const goal = dashboard?.goal?.kcal;
-  const progress = intake !== undefined && goal && goal > 0 ? Math.min(100, Math.round((intake / goal) * 100)) : null;
+  const progress = intake !== undefined && goal && goal > 0 ? Math.max(0, Math.min(100, Math.round((intake / goal) * 100))) : null;
 
   return <div className="today-page" data-today-layout="dashboard">
     <div className="today-page-main">
@@ -43,15 +43,17 @@ export function TodayPage(props: TodayPageProps) {
       <Surface className="today-weekly-summary"><div className="today-section-heading"><div><span className="today-kicker">趋势提示</span><h2>本周概览</h2></div><span className="today-muted">记录后逐步形成</span></div><p className="today-muted">本周的连续记录、摄入趋势和目标完成度会在数据足够后显示。当前不使用缺失日期填充为 0。</p></Surface>
       <section className="today-quick-record" id="today-quick-record"><div className="today-section-heading"><div><span className="today-kicker">行动</span><h2>记录今天的饮食</h2></div><span className="today-muted">本地目录</span></div><p className="today-muted">选择食物、确认份量，再加入对应餐次。历史营养会按记录时快照保存。</p>{props.onAddFood}</section>
     </div>
-    <aside className="today-context-rail" aria-label="今日辅助信息"><Surface className="today-rail-card"><span className="today-kicker">QUICK RECORD</span><h2>快速记录</h2><p className="today-muted">不必先理解全部数据。先完成一笔真实记录，页面会逐步补齐你的花园。</p><a className="dg-button dg-button-secondary" href="#today-quick-record">前往记录区</a></Surface><Surface className="today-rail-card"><span className="today-kicker">DATA QUALITY</span><h2>数据说明</h2><p className="today-muted">缺失的目标、快照或历史数据会明确标记为“暂不可用”，不会伪装成零。</p></Surface></aside>
+    <aside className="today-context-rail" aria-label="今日辅助信息"><Surface className="today-rail-card"><span className="today-kicker">QUICK RECORD</span><h2>快速记录</h2><p className="today-muted">不必先理解全部数据。先完成一笔真实记录，页面会逐步补齐你的花园。</p><a className="dg-button dg-button-secondary" href="#today-quick-record">前往记录区</a></Surface><Surface className="today-rail-card"><span className="today-kicker">DATA QUALITY</span><h2>数据说明</h2><p className="today-muted">没有饮食记录时，已摄入显示为 0；没有热量目标时，剩余预算显示为“暂不可用”。</p></Surface></aside>
   </div>;
 }
 
 function CalorieHero(props: { remaining: number | null | undefined; intake: number | undefined; goal: number | undefined; progress: number | null }) {
-  const remainingText = props.remaining === null || props.remaining === undefined ? "暂不可用" : `${Math.round(props.remaining)} kcal`;
+  const remainingValue = typeof props.remaining === "number" ? Math.round(props.remaining) : null;
+  const overBudget = remainingValue !== null && remainingValue < 0;
+  const remainingText = remainingValue === null ? "暂不可用" : `${Math.max(0, remainingValue)} kcal`;
   const intakeText = props.intake === undefined ? "暂不可用" : `${Math.round(props.intake)} kcal`;
   const goalText = props.goal === undefined ? "暂不可用" : `${Math.round(props.goal)} kcal`;
-  return <Surface className="today-calorie-hero"><div className="today-hero-copy"><span className="today-kicker">TODAY · ENERGY BUDGET</span><h2>还可以吃</h2><strong className="today-remaining-value">{remainingText}</strong><p className="today-muted">剩余预算 · 基于今天已记录的摄入</p><div className="today-budget-context"><span>已摄入 <b>{intakeText}</b></span><span>目标 <b>{goalText}</b></span></div>{props.progress === null ? <p className="today-muted">目标数据暂不可用，暂不展示完成比例。</p> : <><div className="today-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={props.progress} aria-label={`今日热量完成 ${props.progress}%`}><span style={{ width: `${props.progress}%` }} /></div><span className="today-progress-label">已完成 {props.progress}%</span></>}</div><div className="today-hero-ring" aria-hidden="true"><span>{props.progress === null ? "—" : `${props.progress}%`}</span></div></Surface>;
+  return <Surface className="today-calorie-hero"><div className="today-hero-copy"><span className="today-kicker">TODAY · ENERGY BUDGET</span><h2>今日热量</h2><p className="today-remaining-label">还可以吃</p><strong className="today-remaining-value">{remainingText}</strong><p className="today-muted">{overBudget ? `已超出预算 ${Math.abs(remainingValue!)} kcal` : "剩余预算 · 基于今天已记录的摄入"}</p><div className="today-budget-context"><span>已摄入 <b>{intakeText}</b></span><span>目标 <b>{goalText}</b></span></div>{props.progress === null ? <p className="today-muted">目标数据暂不可用，暂不展示完成比例。</p> : <><div className="today-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={props.progress} aria-label={`今日热量完成 ${props.progress}%`}><span style={{ width: `${props.progress}%` }} /></div><span className="today-progress-label">已完成 {props.progress}%</span></>}</div><div className="today-hero-ring" aria-hidden="true"><span>{props.progress === null ? "—" : `${props.progress}%`}</span></div></Surface>;
 }
 
 function MacroOverview({ dashboard }: { dashboard: Dashboard }) {

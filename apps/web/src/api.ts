@@ -30,6 +30,12 @@ export type RecipeClient = {
   searchFoods: (query: string) => Promise<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>;
 };
 
+export function createIdempotencyKey() {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  if (typeof randomUUID === "function") return randomUUID.call(globalThis.crypto);
+  return `diary-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(path, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) } });
   if (response.status === 204) return undefined as T;
@@ -59,7 +65,7 @@ export const api = {
   refreshRecipeIngredients: (recipeId: string, ingredientIds?: string[]) => request<Recipe>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/refresh-ingredients`, { method: "POST", body: JSON.stringify(ingredientIds === undefined ? {} : { ingredientIds }) }),
   addRecipeToDiary: (recipeId: string, input: { date: string; mealSlotId: string; amount: number; unit: "g"; note?: string | null }) => request<Record<string, unknown>>(`/api/v1/recipes/${encodeURIComponent(recipeId)}/add-to-diary`, { method: "POST", body: JSON.stringify(input) }),
   searchFoods: (query: string) => request<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>(`/api/v1/foods/search?q=${encodeURIComponent(query)}&limit=10`),
-  createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": crypto.randomUUID() }, body: JSON.stringify(input) }),
+  createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": createIdempotencyKey() }, body: JSON.stringify(input) }),
   updateDiaryEntry: (date: string, entryId: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: JSON.stringify(input) }),
   deleteDiaryEntry: (date: string, entryId: string) => request<{ ok: boolean }>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "DELETE" }),
   copyDiaryMeal: (date: string, input: { fromDate: string; fromMealSlotId: string; toMealSlotId: string }) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-meal`, { method: "POST", body: JSON.stringify(input) }),

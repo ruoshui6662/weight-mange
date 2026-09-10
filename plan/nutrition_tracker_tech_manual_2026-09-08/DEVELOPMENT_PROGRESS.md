@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-10 20:40 +08:00
+> 最后更新：2026-09-10 22:50 +08:00
 
 ## 1. 当前快照
 
@@ -15,8 +15,8 @@
 | 当前焦点 | M3-004 MET/运动计算准备 |
 | 下一步 | 先阅读运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | M1-001 至 M1-010、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 饮食分餐快捷添加已完成 |
-| Git | M1-010 远程导入改动已完成，待提交到本地 `main`；远程发布不在本任务范围 |
+| 业务代码 | M1-001 至 M1-011、M2-001 至 M2-006、M3-001 至 M3-003、M3-007 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要已完成 |
+| Git | M1-011 与 M3-009 已提交 `7623e01`，待推送 `main` |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -28,7 +28,7 @@
 | M0 | 可验证基础 | `DONE` | 7/7 | 初始化、鉴权、迁移、备份恢复、容器 smoke 与多架构构建全部通过 |
 | M1 | 饮食记录纵向切片 | `DONE` | 10/10 | 饮食记录闭环、远程测试目录 bootstrap 与本地导入验证通过 |
 | M2 | 目标、体重与基础分析 | `DONE` | 6/6 | 趋势/TDEE 确定性且历史目标不漂移 |
-| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 5/8 | M3-003、M3-007、M3-008 与 DOC-005 已完成；下一步进入 M3-004 |
+| M3 | 菜谱、运动与预算策略 | `IN_PROGRESS` | 6/9 | M3-003、M3-007、M3-008、M3-009 与 DOC-005 已完成；下一步进入 M3-004 |
 | M4 | 可选 AI | `PLANNED` | 0/6 | AI 失败不影响核心，写入始终需确认 |
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
@@ -223,6 +223,20 @@
 - 验收结果：EVD-M1-010-A；远程真实拉取 61 个文件/1677 条食物首次 `promoted`，checksum `76b5f360c3286e1a14c9e1c586335f3cae06ea9afed6acdce198998cda643ea2`，第二次 `already_promoted`；全量 183 files/1067 tests、lint/typecheck/build/API smoke/integration/E2E 2 passed/diff check 均 exit 0；docker smoke exit 0 但本机 Docker CLI 不可用。
 - 下一步：进入 M3-004 MET/运动计算准备。
 
+### M1-011 — 局域网 HTTP 下饮食记录幂等键兼容
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 11:37 +08:00
+- 操作者：Codex
+- 依赖：M1-005、M1-007、API_SPEC.md 修改请求需幂等键约束
+- 计划变更：修复局域网非 HTTPS 地址上 `crypto.randomUUID()` 不可用导致“加入记录”请求尚未发出即失败的问题；保留 HTTPS 下优先使用原生 UUID，非安全上下文使用本地幂等键回退。
+- 计划验收：先观察 `randomUUID` 缺失回归测试 RED；再运行 focused Web tests、全量 `pnpm test`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test:e2e`、`git diff --check`。
+- 完成时间：2026-09-10 11:50 +08:00
+- 当前进展：新增 `createIdempotencyKey`；HTTPS/安全上下文优先使用原生 UUID，局域网 HTTP 缺失 `randomUUID` 时回退到带 `diary-` 前缀的本地幂等键，加入记录请求可正常发出。
+- 验收结果：EVD-M1-011-A；先观察 `crypto.randomUUID is not a function` RED，再 GREEN；focused 1 file/6 tests、全量 183 files/1068 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0。
+- 阻塞/风险：无；本机 Docker CLI 缺失，只能依赖 CI buildx 完成镜像验证。
+- 下一步：提交并推送 `main`，通知飞牛强制 pull/recreate。
+
 ### M2-001 — Profile 与目标版本
 
 - 状态：`DONE`
@@ -366,6 +380,20 @@
 - 验收结果：EVD-M3-008-A；聚焦 2 files/11 tests、全量 182 files/1063 tests、lint/typecheck/build/diff check、Playwright 2 tests 均 exit 0；四餐按钮、目标餐次上下文、搜索框焦点、360/390/430/1024/1440 视口无回归。
 - 下一步：进入 M3-004 MET/运动计算准备。
 
+### M3-009 — 今日热量摘要
+
+- 状态：`DONE`
+- 开始时间：2026-09-10 22:40 +08:00
+- 操作者：Codex
+- 依赖：M1-006 Dashboard read model、M3-007 Data Garden UI、UI_DESIGN_SYSTEM.md §7.1
+- 计划变更：完善今日页首屏热量卡；无饮食记录时明确显示已摄入 `0 kcal` 和完整剩余预算；有记录时显示已摄入/目标/剩余；超预算时剩余不显示负数并解释超出量；无目标时保持“暂不可用”事实边界。
+- 计划验收：先观察空日与超预算测试 RED；再运行 TodayPage focused tests、全量 `pnpm test`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`。
+- 完成时间：2026-09-10 22:50 +08:00
+- 当前进展：今日热量卡已显示标题、还可以吃、已摄入/目标；无记录时使用真实的 `0 kcal` 和完整剩余预算；超预算时将剩余钳制为 `0 kcal` 并显示超出量；无目标仍明确显示暂不可用。
+- 验收结果：EVD-M3-009-A；先观察空日/超预算 RED，再 GREEN；focused TodayPage 6 tests、全量 183 files/1070 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0。
+- 阻塞/风险：无；不新增 API、数据库或营养计算逻辑。
+- 下一步：推送 `main`。
+
 ### M3-007 — Data Garden 全站 UI 重构
 
 - 状态：`DONE`
@@ -391,6 +419,7 @@
 | DOC-005 | 按第三套方案重写统一 UI 设计规范手册 | `DONE` | Codex | `UI_DESIGN_SYSTEM.md` v2.0；覆盖桌面/移动端、六页、组件状态、交互一致性、无障碍和视觉验收；EVD-DOC-005 |
 | M3-007 | Data Garden 全站 UI 重构 | `DONE` | Codex | Task 1–8 代码与独立复审完成；全量 E2E 在 workers=1 下 2 tests passed，证据见 `task-8-report.md` |
 | M3-008 | 饮食分餐快捷添加 | `DONE` | Codex | 四餐快捷入口、目标餐次预选、搜索框聚焦与响应式 44px 命中区已完成；见 EVD-M3-008-A |
+| M3-009 | 今日热量摘要 | `DONE` | Codex | 空日显示 0 摄入与剩余预算，超预算钳制显示并解释超出量，无目标保持暂不可用；见 EVD-M3-009-A |
 | M1-010 | 测试期远程食物目录导入 | `DONE` | Codex | 61 个 JSON/1677 条食物真实拉取并导入；重复启动幂等；见 EVD-M1-010-A |
 
 ## 5. M0 待办队列
@@ -517,6 +546,8 @@ result: 42 passed, 0 failed
 | EVD-M3-003-B | M3-003 | 2026-09-10 08:08 +08:00 | `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | 全部 exit 0；全量 176 files/1031 tests passed；integration 无匹配测试文件并正常 exit 0；build 成功；API smoke 的 home/health/ready 均 200；Playwright 1 passed（7.1s），覆盖菜谱创建/搜索/计算结果/warning/复制/编辑/刷新/删除/加入日记 snapshot 稳定性，以及 360/390/430 viewport 无溢出和 44px 命中区；本机 Docker CLI 缺失，未宣称本地容器验证；修复提交 `85aa305`、`65e1029`、`450cc46`、`1bd4267`、`0514e52`、`8cf3d48`、`1916a57`、`26ab2d0`、`96d7367`、`fe5228f`、`09583eb`、`9738704` |
 | EVD-M3-008-A | M3-008 | 2026-09-10 20:10 +08:00 | `pnpm vitest run apps/web/test/diary-page.test.tsx apps/web/test/dashboard-view.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm exec playwright test e2e/ui-regression.spec.ts`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先验证四餐入口契约缺失；GREEN 聚焦 2 files/11 tests；全量 182 files/1063 tests；lint/typecheck/build/diff check exit 0；单文件 Playwright 1 passed、全量 E2E 2 passed（workers=1），覆盖四餐按钮、目标餐次预选、搜索框焦点、44px 命中区和 360/390/430/1024/1440 视口；本机 Docker CLI 缺失，仅未执行容器实测 |
 | EVD-M1-010-A | M1-010 | 2026-09-10 20:40 +08:00 | `pnpm vitest run tools/food-import/test/food-import.test.ts tools/food-import/test/remote-food.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm test:integration`; `pnpm api:smoke`; `pnpm test:e2e`; `pnpm docker:smoke`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; 真实 `node scripts/food-remote-import.mjs` 临时 SQLite 两次 | RED 先暴露远程模块缺失、`899*` footnote 和 `un` unknown marker；GREEN 聚焦 2 files/12 tests、全量 183 files/1067 tests；真实远程 61 files/1677 foods 首次 `promoted`、二次 `already_promoted`，checksum `76b5f360c3286e1a14c9e1c586335f3cae06ea9afed6acdce198998cda643ea2`；lint/typecheck/build/integration/API smoke/E2E 2/diff check exit 0；docker smoke exit 0 但 Docker CLI 不可用 |
+| EVD-M1-011-A | M1-011 | 2026-09-10 11:50 +08:00 | `pnpm vitest run apps/web/test/api.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现 `crypto.randomUUID is not a function`；GREEN 新增非安全局域网 HTTP 幂等键回退；focused 1 file/6 tests、全量 183 files/1068 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0 |
+| EVD-M3-009-A | M3-009 | 2026-09-10 22:50 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现超预算负数展示；GREEN 完成“今日热量”卡、空日 `0 kcal`/完整剩余预算、超预算 `0 kcal`/超出说明和无目标不可用语义；focused 6 tests、全量 183 files/1070 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0 |
 
 ## 9. 问题队列
 
@@ -540,6 +571,8 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 `ISSUE-116 | 2026-09-10 00:45 +08:00 | M1-007 | P1 | Dashboard 底部导航按钮没有动作；本地食物目录为空时搜索只返回空数组且没有空状态/导入入口 | 接入导航状态与页面、增加食物目录导入或明确空状态引导，并补 UI/E2E 验收 | RESOLVED，见 EVD-M1-009-A`
 
 `ISSUE-117 | 2026-09-10 04:45 +08:00 | M3-002 | P1 | 浏览器 UTC 日期与用户时区 localDate 不一致，且日期加载回调捕获初始日期，导致体重/饮食新增后列表为空但趋势可见 | 使用 profile timezone 计算本地日期，补依赖与回归测试，并重建 E2E dist | RESOLVED，见 EVD-M3-002-F`
+
+`ISSUE-118 | 2026-09-10 11:37 +08:00 | M1-011 | P1 | 飞牛以局域网 HTTP 地址访问时，饮食加入动作调用不可用的 `crypto.randomUUID()`，请求未发出即显示“网络连接失败” | 增加非安全上下文幂等键回退并补回归测试；发布新镜像后强制 pull/recreate | RESOLVED，见 EVD-M1-011-A`
 
 ## 10. 活动日志
 
@@ -655,10 +688,15 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 20:10 +08:00 | Codex | 完成 M3-008 饮食分餐快捷添加 | RED 先失败后 GREEN；四餐摘要增加快捷添加、目标餐次预选、统一搜索框聚焦与响应式 44px 命中区；聚焦 2 files/11 tests、全量 182 files/1063 tests、lint/typecheck/build/diff check、Playwright 2 tests 均 exit 0；下一步进入 M3-004 MET/运动计算准备 |
 | 2026-09-10 20:20 +08:00 | Codex | 开始 M1-010 测试期远程食物目录导入 | 用户确认测试阶段直接拉取 `ruoshui6662/china-food-composition-data`；已确认 fixed-en 目录存在 61 个合并 JSON 文件及全量 CSV；计划先补远程目录合并与 checksum 的 RED 测试 |
 | 2026-09-10 20:40 +08:00 | Codex | 完成 M1-010 测试期远程食物目录导入 | 新增远程目录合并、checksum、启动前导入脚本与 Compose 配置；兼容上游 `899*` footnote 和 `un` unknown marker；真实 fork 61 files/1677 foods 首次 promoted、二次 already_promoted；全量 183 files/1067 tests、lint/typecheck/build/API smoke/E2E/diff check 通过；下一步进入 M3-004 MET/运动计算准备 |
+| 2026-09-10 11:37 +08:00 | Codex | 开始 M1-011 局域网 HTTP 下饮食记录幂等键兼容 | 截图复现为 `crypto.randomUUID is not a function`：`http://192.168.x.x` 非安全上下文使加入记录在 fetch 前失败；先补回归测试并观察 RED，再实现最小回退 |
+| 2026-09-10 11:50 +08:00 | Codex | 完成 M1-011 局域网 HTTP 下饮食记录幂等键兼容 | `createIdempotencyKey` 回退已通过 focused/full tests、lint/typecheck/build/API smoke/E2E/diff check；随后与 M3-009 一并提交，飞牛需强制 pull/recreate |
+
+| 2026-09-10 22:40 +08:00 | Codex | 开始 M3-009 今日热量摘要 | 用户确认按设计执行；先补空日与超预算 RED 测试，目标是显示 0 摄入/剩余预算并保持无目标不可用事实边界 |
+| 2026-09-10 22:50 +08:00 | Codex | 完成 M3-009 今日热量摘要 | 今日热量卡已完成；单独重跑全量测试通过（183 files/1070 tests），lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；并行首次全量测试因资源争用超时，未作为验收证据；下一步 M3-004 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构与 M3-008 分餐快捷添加已完成。后续接手者应：
+M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加与 M3-009 今日热量摘要已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；

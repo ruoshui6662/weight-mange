@@ -44,6 +44,30 @@ const props = {
 };
 
 describe("TodayPage", () => {
+  it("shows zero intake and the full remaining budget on an unmarked day", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      dashboard: { ...dashboard, intake: { kcal: 0, proteinG: 0, fatG: 0, carbG: 0 }, remainingKcal: 1800, meals: dashboard.meals.map((meal) => ({ ...meal, totals: { kcal: 0 } })) },
+      diary: { ...diary, entries: [] },
+    }));
+    expect(html).toContain("今日热量");
+    expect(html).toContain("已摄入 <b>0 kcal</b>");
+    expect(html).toContain("还可以吃");
+    expect(html).toContain("1800 kcal");
+    expect(html).toContain("已完成 0%");
+  });
+
+  it("clamps the remaining display at zero and explains an over-budget day", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      dashboard: { ...dashboard, intake: { ...dashboard.intake, kcal: 2000 }, remainingKcal: -200 },
+    }));
+    expect(html).toContain("还可以吃");
+    expect(html).toContain("0 kcal");
+    expect(html).toContain("已超出预算 200 kcal");
+    expect(html).not.toContain("-200 kcal");
+  });
+
   it("answers remaining calories with a readable hero and macro semantics", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, props));
     expect(html).toContain("还可以吃");
