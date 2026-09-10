@@ -6,6 +6,7 @@ import { searchStatusForResults, type FoodSearchStatus } from "./search-state";
 import { daysAgo, localDateNow } from "./date";
 import { RecipePanel } from "./RecipePanel";
 import { AppShell } from "./ui/AppShell";
+import { TodayPage } from "./ui/TodayPage";
 
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
 
@@ -104,9 +105,6 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState<string | null>(null);
   const today = props.today;
-  const kcalGoal = props.dashboard?.goal?.kcal ?? 0;
-  const intake = props.dashboard?.intake.kcal ?? 0;
-  const progress = kcalGoal > 0 ? Math.min(100, Math.round((intake / kcalGoal) * 100)) : 0;
   const mealEntries = useMemo(() => new Map((props.diary?.mealSlots ?? []).map((slot) => [slot.key, {
     mealSlot: { key: slot.key, displayName: slot.displayName },
     entries: (props.diary?.entries ?? []).filter((entry) => entry.mealSlotId === slot.id).map((entry) => ({ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit, mealSlotId: slot.key, version: entry.version })),
@@ -185,7 +183,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
 
   const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
   return <AppShell activeTab={activeTab} onNavigate={(tab) => { props.setError(""); setActiveTab(tab); }} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void props.onLogout()}>退出</button>}>
-    {activeTab === "today" ? <><section className="hero-card card"><div><p className="muted">今日热量</p><strong className="calorie-number">{Math.round(intake)}<small> / {kcalGoal || "—"} kcal</small></strong><div className="progress" aria-label={`今日热量完成 ${progress}%`}><span style={{ width: `${progress}%` }} /></div><p className="muted">剩余 {props.dashboard?.remainingKcal === null || props.dashboard?.remainingKcal === undefined ? "—" : Math.round(props.dashboard.remainingKcal)} kcal</p></div></section><section className="macro-grid" aria-label="营养概览"><Metric label="蛋白质" value={props.dashboard?.intake.proteinG ?? 0} unit="g" /><Metric label="脂肪" value={props.dashboard?.intake.fatG ?? 0} unit="g" /><Metric label="碳水" value={props.dashboard?.intake.carbG ?? 0} unit="g" /></section><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyMeal={copyMeal} /><section className="card add-card"><div className="section-heading"><h2>快速添加</h2><span className="muted">3 步完成记录</span></div>{searchCard}</section></> : null}
+    {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} onAddFood={searchCard} onCopyDay={copyDay} onCopyMeal={copyMeal} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
     {activeTab === "diary" ? <><section className="card add-card"><div className="section-heading"><h2>饮食记录</h2><div className="diary-actions"><span className="status-chip">本地记录</span><button type="button" className="soft-button" disabled={entryBusy === "copy-day"} onClick={() => void copyDay()}>{entryBusy === "copy-day" ? "复制中…" : "复制昨日整天"}</button></div></div><p className="muted">搜索食物并添加到今天的餐次，历史营养以记录时快照保存。</p><MealSummary dashboard={props.dashboard} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyMeal={copyMeal} />{searchCard}</section></> : null}
     {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => { props.setError(""); setActiveTab("diary"); }} /> : null}
     {activeTab === "profile" ? <ProfilePanel profile={props.profile} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} /> : null}
