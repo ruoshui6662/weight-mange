@@ -42,6 +42,12 @@ describe("RecipePanel", () => {
   it("shows completion feedback when a food search returns no matches", () => {
     const html = renderToStaticMarkup(React.createElement(RecipeFoodSearchStatus, { searched: true, resultCount: 0 }));
     expect(html).toContain("没有找到匹配原料");
+    expect(html).toContain("当前只搜索本地食物目录");
+    expect(html).toContain("查看导入说明");
+  });
+
+  it("maps missing cooked weight to actionable diary guidance", () => {
+    expect(recipeErrorText(new ApiError("RECIPE_COOKED_WEIGHT_REQUIRED", 400))).toContain("请先编辑菜谱并填写成品重量");
   });
 
   it("clears completion feedback after a successful food selection", () => {

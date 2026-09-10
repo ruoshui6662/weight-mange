@@ -28,6 +28,7 @@ const displayError = (error: unknown) => {
   if (!(error instanceof ApiError)) return "请求未完成，请检查服务状态后重试。";
   if (error.code === "RECIPE_VERSION_CONFLICT") return "菜谱已被更新，请重新加载后再编辑。";
   if (["RECIPE_NOT_FOUND", "RECIPE_FOOD_NOT_FOUND", "RECIPE_INGREDIENT_NOT_FOUND"].includes(error.code)) return "菜谱或原料已不可用，请返回菜谱列表。";
+  if (error.code === "RECIPE_COOKED_WEIGHT_REQUIRED") return "请先编辑菜谱并填写成品重量。";
   return error.message || error.code;
 };
 
@@ -35,7 +36,7 @@ export const recipeErrorText = displayError;
 
 export function RecipeFoodSearchStatus(props: { searched: boolean; resultCount: number }): ReactElement | null {
   if (!props.searched || props.resultCount > 0) return null;
-  return <p className="muted" role="status">没有找到匹配原料</p>;
+  return <div className="empty-state" role="status"><strong>没有找到匹配原料</strong><p>当前只搜索本地食物目录。如果目录尚未导入，请先完成受控离线导入。</p><p>查看导入说明：请在服务端使用仓库中的 <code>tools/food-import</code> 导入受控 JSON 数据，然后重新搜索；浏览器不会连接外部食品库。</p></div>;
 }
 
 export function clearFoodSearchResults(current: Record<string, FoodResult[]>, rowKey: string): Record<string, FoodResult[]> {
