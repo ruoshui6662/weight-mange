@@ -185,6 +185,12 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .today-weight-delta-down { color: var(--color-primary-strong); }
 .today-weight-trend .weight-chart { min-height: 196px; padding-top: 16px; }
 .today-weight-trend .weight-chart svg { height: 136px; }
+.today-meal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.today-meal-actions .dg-button { min-height: 44px; padding: 0 10px; font-size: 12px; }
+.today-empty-record { display: grid; justify-items: center; gap: 8px; margin-top: 16px; padding: 22px; border: 1px dashed #cfe3d8; border-radius: 16px; color: var(--color-text-secondary); background: #fbfdfc; text-align: center; }
+.today-empty-record strong { color: var(--color-text); }
+.today-empty-record p { margin: 0; font-size: 13px; }
+.today-active-meal { margin: 0 0 12px; color: var(--color-primary-strong); font-size: 13px; font-weight: 700; }
 .today-meals, .today-quick-record { padding: 24px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
 .today-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .today-section-heading h2 { margin: 0; color: var(--color-text); font-size: 20px; }
@@ -211,7 +217,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .today-rail-card p { margin: 0; }
 .today-rail-card .dg-button { justify-self: start; text-decoration: none; }
 @media (max-width: 1199px) { .today-page { grid-template-columns: minmax(0, 1fr); } .today-context-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 719px) { .dg-workspace-single { grid-template-columns: minmax(0, 1fr); } .today-calorie-hero { min-height: 0; padding: 24px; } .today-hero-ring { flex-basis: 92px; width: 92px; height: 92px; border-width: 9px; font-size: 16px; } .today-remaining-value { font-size: 48px; } .today-macro-overview, .today-meal-grid, .today-context-rail { grid-template-columns: minmax(0, 1fr); } .today-meals, .today-quick-record { padding: 18px; } .today-section-heading { align-items: flex-start; flex-direction: column; } .today-section-heading > .dg-button { align-self: stretch; } }
+@media (max-width: 719px) { .dg-workspace-single { grid-template-columns: minmax(0, 1fr); } .today-calorie-hero { min-height: 0; padding: 24px; } .today-hero-ring { flex-basis: 92px; width: 92px; height: 92px; border-width: 9px; font-size: 16px; } .today-remaining-value { font-size: 48px; } .today-macro-overview, .today-meal-grid, .today-context-rail { grid-template-columns: minmax(0, 1fr); } .today-meals, .today-quick-record { padding: 18px; } .today-section-heading { align-items: flex-start; flex-direction: column; } .today-section-heading > .dg-button { align-self: stretch; } .today-meal-actions { width: 100%; justify-content: stretch; } .today-meal-actions .dg-button { flex: 1; } }
 @media (max-width: 719px) { .today-weight-trend { padding: 18px; } .today-weight-trend-heading { display: grid; gap: 16px; } .today-weight-summary { justify-items: start; text-align: left; } }
 @media (max-width: 1199px) { .dg-workspace { grid-template-columns: minmax(0, 1fr); } .dg-context-rail { order: 2; } }
 @media (min-width: 720px) and (max-width: 899px) { .dg-shell { grid-template-columns: 72px minmax(0, 1fr); } .dg-sidebar { padding: 28px 12px; } .dg-brand > span:last-child, .dg-sidebar .dg-nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .dg-sidebar nav button { justify-content: center; padding: 0; } }

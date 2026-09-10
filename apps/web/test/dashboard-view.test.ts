@@ -51,6 +51,28 @@ describe("dashboard interaction feedback", () => {
     expect(html).toContain("tools/food-import");
   });
 
+  it("maps the selected meal to the active label and submit action", () => {
+    const html = renderToStaticMarkup(React.createElement(FoodSearchCard, {
+      query: "鸡蛋",
+      setQuery: vi.fn(),
+      results: [{ id: "food-1", name: "鸡蛋", summary: { energyKcal: 139 } }],
+      selected: "food-1",
+      setSelected: vi.fn(),
+      amount: "50",
+      setAmount: vi.fn(),
+      meal: "dinner",
+      setMeal: vi.fn(),
+      busy: false,
+      searchStatus: "success",
+      showImportGuide: false,
+      setShowImportGuide: vi.fn(),
+      onSearch: noopAsync,
+      onAddEntry: noopAsync,
+    }));
+    expect(html).toContain("当前添加到：晚餐");
+    expect(html).toContain("加入晚餐");
+  });
+
   it("renders explicit empty and insufficient-data states for M2 panels", () => {
     const weightHtml = renderToStaticMarkup(React.createElement(WeightPanel, { records: [], trend: null, loading: false, error: "", onRetry: noopAsync, onAdd: noopAsync }));
     expect(weightHtml).toContain("暂无体重记录");

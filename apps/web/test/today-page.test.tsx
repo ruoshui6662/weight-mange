@@ -34,6 +34,7 @@ const props = {
   onAddFood: <button type="button">记录饮食</button>,
   onCopyDay: vi.fn(async () => undefined),
   onCopyMeal: vi.fn(async () => undefined),
+  onStartMealAdd: vi.fn(),
   onEdit: vi.fn(),
   onDelete: vi.fn(async () => undefined),
   onSave: vi.fn(async () => undefined),
@@ -140,6 +141,27 @@ describe("TodayPage", () => {
     expect(html).toContain("记录饮食");
     expect(html).toContain("本周概览");
     expect(html).toContain('data-today-layout="dashboard"');
+  });
+
+  it("renders an actionable today food record card with four meal add buttons", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, { ...props, diary: { ...diary, entries: [] } }));
+    expect(html).toContain("今日饮食记录");
+    expect(html).toContain("记录饮食");
+    expect(html).toContain('data-meal-add="breakfast"');
+    expect(html).toContain('data-meal-add="lunch"');
+    expect(html).toContain('data-meal-add="dinner"');
+    expect(html).toContain('data-meal-add="snack"');
+    expect(html).toContain('data-today-empty-state="visible"');
+  });
+
+  it("removes the empty state once any meal has a diary entry", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, { ...props, diary: { ...diary, entries: [] } }));
+    const filled = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      diary: { ...diary, entries: [...diary.entries, { id: "entry-2", mealSlotId: "u:lunch", displayNameSnapshot: "鸡蛋", amount: 50, unit: "g", version: 0 }] },
+    }));
+    expect(html).toContain('data-today-empty-state="visible"');
+    expect(filled).not.toContain('data-today-empty-state="visible"');
   });
 
   it("keeps missing data explicit instead of silently showing zero", () => {

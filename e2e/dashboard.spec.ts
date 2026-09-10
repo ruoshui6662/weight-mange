@@ -127,6 +127,13 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await page.getByRole("button", { name: /馒头.*223 kcal/ }).click();
   await page.getByRole("button", { name: "加入记录" }).click();
   await page.getByRole("button", { name: "今日" }).click();
+  await expect(page.getByRole("heading", { name: "今日饮食记录", exact: true })).toBeVisible();
+  for (const mealLabel of ["早餐", "午餐", "晚餐", "加餐"]) {
+    await expect(page.getByRole("button", { name: `添加${mealLabel}食物`, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "添加午餐食物", exact: true }).click();
+  await expect(page.locator('[data-active-meal="lunch"]')).toContainText("当前添加到：午餐");
+  await expect(page.getByLabel("搜索食物")).toBeFocused();
   await expect(page.getByText("馒头 · 100g", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "编辑馒头", exact: true }).click();

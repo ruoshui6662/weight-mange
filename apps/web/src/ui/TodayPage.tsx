@@ -13,6 +13,7 @@ export type TodayPageProps = {
   diary: Diary | null;
   profile: Profile | null;
   onAddFood: ReactNode;
+  onStartMealAdd: (mealSlotId: string) => void;
   onCopyDay: () => Promise<void>;
   onCopyMeal: (mealSlotId: string) => Promise<void>;
   onEdit: (entry: EditableEntry) => void;
@@ -46,7 +47,7 @@ export function TodayPage(props: TodayPageProps) {
       <TodayWeightTrend today={props.today} records={props.weightRecords} trend={props.weightTrend} />
       <MealGrid {...props} />
       <Surface className="today-weekly-summary"><div className="today-section-heading"><div><span className="today-kicker">趋势提示</span><h2>本周概览</h2></div><span className="today-muted">记录后逐步形成</span></div><p className="today-muted">本周的连续记录、摄入趋势和目标完成度会在数据足够后显示。当前不使用缺失日期填充为 0。</p></Surface>
-      <section className="today-quick-record" id="today-quick-record"><div className="today-section-heading"><div><span className="today-kicker">行动</span><h2>记录今天的饮食</h2></div><span className="today-muted">本地目录</span></div><p className="today-muted">选择食物、确认份量，再加入对应餐次。历史营养会按记录时快照保存。</p>{props.onAddFood}</section>
+      <section className="today-quick-record" id="today-quick-record"><div className="today-section-heading"><div><span className="today-kicker">QUICK RECORD</span><h2>记录饮食</h2></div><span className="today-muted">本地目录</span></div><p className="today-muted">选择食物、确认份量，再加入对应餐次。历史营养会按记录时快照保存。</p>{props.onAddFood}</section>
     </div>
     <aside className="today-context-rail" aria-label="今日辅助信息"><Surface className="today-rail-card"><span className="today-kicker">QUICK RECORD</span><h2>快速记录</h2><p className="today-muted">不必先理解全部数据。先完成一笔真实记录，页面会逐步补齐你的花园。</p><a className="dg-button dg-button-secondary" href="#today-quick-record">前往记录区</a></Surface><Surface className="today-rail-card"><span className="today-kicker">DATA QUALITY</span><h2>数据说明</h2><p className="today-muted">没有饮食记录时，已摄入显示为 0；没有热量目标时，剩余预算显示为“暂不可用”。</p></Surface></aside>
   </div>;
@@ -94,14 +95,19 @@ function MacroOverview({ dashboard }: { dashboard: Dashboard }) {
 }
 
 function MealGrid(props: TodayPageProps) {
-  return <section className="today-meals" aria-labelledby="today-meals-title"><div className="today-section-heading"><div><span className="today-kicker">MEAL PLAN</span><h2 id="today-meals-title">今天吃了什么</h2></div><Button variant="secondary" onClick={() => void props.onCopyDay()} busy={props.busyEntry === "copy-day"}>复制昨天整天</Button></div><div className="today-meal-grid">{meals.map((meal) => <MealGroup key={meal.key} {...props} meal={meal} />)}</div></section>;
+  const hasEntries = (props.diary?.entries.length ?? 0) > 0;
+  return <section className="today-meals" aria-labelledby="today-meals-title">
+    <div className="today-section-heading"><div><span className="today-kicker">MEAL PLAN</span><h2 id="today-meals-title">今日饮食记录</h2><p className="today-muted">记录每一餐，了解自己的饮食习惯。</p></div><div className="today-meal-actions"><Button variant="primary" type="button" aria-label="记录一餐" onClick={() => props.onStartMealAdd("breakfast")}>＋ 记录饮食</Button><Button variant="tertiary" type="button" onClick={() => void props.onCopyDay()} busy={props.busyEntry === "copy-day"}>复制昨日整天</Button></div></div>
+    <div className="today-meal-grid">{meals.map((meal) => <MealGroup key={meal.key} {...props} meal={meal} />)}</div>
+    {!hasEntries ? <div className="today-empty-record" data-today-empty-state="visible"><strong>今天还没有记录任何食物</strong><p>点击“记录饮食”开始记录，或直接为某一餐添加。</p><Button variant="secondary" type="button" onClick={() => props.onStartMealAdd("breakfast")}>记录饮食</Button></div> : null}
+  </section>;
 }
 
 function MealGroup(props: TodayPageProps & { meal: { key: MealKey; label: string } }) {
   const slot = props.diary?.mealSlots.find((item) => item.key === props.meal.key);
   const entries = props.diary?.entries.filter((entry) => entry.mealSlotId === slot?.id) ?? [];
   const kcal = props.dashboard?.meals.find((item) => item.key === props.meal.key)?.totals.kcal;
-  return <article className="today-meal-group"><div className="today-meal-heading"><div><h3>{props.meal.label}</h3><span className="today-muted">{kcal === undefined ? "暂无数据" : `${Math.round(kcal)} kcal`}</span></div><Button variant="tertiary" onClick={() => void props.onCopyMeal(slot?.key ?? props.meal.key)} busy={props.busyEntry === `copy-meal:${slot?.key ?? props.meal.key}`}>复制昨日{props.meal.label}</Button></div>{entries.length === 0 ? <p className="today-empty-meal">还没有记录 · 从下方快速添加一项</p> : <div className="today-entry-list">{entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={{ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit, mealSlotId: props.meal.key, version: entry.version }} />)}</div>}</article>;
+  return <article className="today-meal-group"><div className="today-meal-heading"><div><h3>{props.meal.label}</h3><span className="today-muted">{kcal === undefined ? "暂无数据" : `${Math.round(kcal)} kcal`}</span></div><div className="today-meal-actions"><Button variant="secondary" type="button" data-meal-add={props.meal.key} aria-label={`添加${props.meal.label}食物`} onClick={() => props.onStartMealAdd(props.meal.key)}>＋ 添加</Button><Button variant="tertiary" type="button" onClick={() => void props.onCopyMeal(slot?.key ?? props.meal.key)} busy={props.busyEntry === `copy-meal:${slot?.key ?? props.meal.key}`}>复制昨日{props.meal.label}</Button></div></div>{entries.length === 0 ? <p className="today-empty-meal">还没有记录 · 从下方快速添加一项</p> : <div className="today-entry-list">{entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={{ id: entry.id, displayName: entry.displayNameSnapshot, amount: entry.amount, unit: entry.unit, mealSlotId: props.meal.key, version: entry.version }} />)}</div>}</article>;
 }
 
 function DiaryEntry(props: TodayPageProps & { entry: EditableEntry }) {
