@@ -216,3 +216,38 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .diary-page-error { margin-top: 16px; color: var(--color-danger); }
 @media (max-width: 1199px) { .diary-workspace { grid-template-columns: minmax(0, 1fr); } .diary-summary { position: static; } .diary-mobile-sheet-hint { display: block; margin: 8px 0 0; } }
 @media (max-width: 719px) { .diary-workspace { display: flex; flex-direction: column; gap: 16px; } .diary-search-panel, .diary-summary { padding: 18px; } .diary-panel-heading, .diary-summary-heading { align-items: flex-start; flex-direction: column; } .diary-panel-heading .dg-status-chip { order: -1; } .diary-search-form, .diary-confirmation-grid, .diary-edit-form { grid-template-columns: minmax(0, 1fr); } .diary-search-form > .dg-button, .diary-confirmation > .dg-button { width: 100%; } .diary-edit-form > div { grid-column: auto; } .diary-edit-form > div .dg-button { flex: 1; } .diary-result-row { padding: 12px; } }
+
+/* Data Garden recipe workspace: library, editor, and result hierarchy. */
+.recipe-page { min-width: 0; }
+.recipe-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+.recipe-zone { min-width: 0; }
+.recipe-page-heading, .recipe-subheading, .recipe-ingredient-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.recipe-page-heading h2, .recipe-form-intro h3, .recipe-subheading h3 { margin: 4px 0 8px; font-size: 22px; }
+.recipe-page-heading p, .recipe-form-intro p { margin: 0; }
+.recipe-list-zone, .recipe-editor-zone, .recipe-detail-zone { display: grid; gap: 20px; }
+.recipe-list { display: grid; gap: 12px; }
+.recipe-list-item { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-width: 0; padding: 18px 0; border-top: 1px solid var(--color-border); }
+.recipe-list-copy { min-width: 0; }
+.recipe-list-copy h3 { margin: 4px 0; overflow-wrap: anywhere; }
+.recipe-list-copy p { margin: 0; }
+.recipe-form { padding: 0; }
+.recipe-form-intro { padding-bottom: 4px; }
+.recipe-field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.recipe-ingredients { display: grid; gap: 12px; }
+.recipe-ingredient { display: grid; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface-soft); }
+.recipe-ingredient-heading { align-items: center; }
+.recipe-inline-actions { align-items: end; }
+.recipe-inline-actions > .dg-button { flex: 0 0 auto; }
+.recipe-amount-field { flex: 1; min-width: 140px; }
+.recipe-form-actions { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px; border-top: 1px solid var(--color-border); }
+.recipe-detail-actions { padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+.recipe-results { display: grid; gap: 12px; }
+.recipe-results > .card { margin: 0; padding: 20px; box-shadow: none; }
+.recipe-results > .card h3 { margin-top: 0; }
+.recipe-warnings { padding: 16px; border: 1px solid #E8D3AD; border-radius: 16px; color: var(--color-warning); background: #FFF9ED; }
+.recipe-warnings h3 { margin: 0 0 8px; color: var(--color-text); }
+.recipe-warnings ul { margin: 0; padding-left: 20px; }
+.recipe-diary-zone { display: grid; gap: 16px; padding: 20px; background: var(--color-surface-soft); }
+.recipe-diary-zone .add-form { margin-top: 0; }
+@media (min-width: 1200px) { .recipe-editor-workspace { grid-template-columns: minmax(0, 1fr) 300px; } .recipe-editor-workspace::after { content: "编辑后保存，营养结果会以服务端快照为准。"; display: block; align-self: start; padding: 20px; border: 1px solid var(--color-border); border-radius: 16px; color: var(--color-text-secondary); background: var(--color-surface-soft); font-size: 13px; line-height: 1.6; } .recipe-detail-workspace { grid-template-columns: minmax(0, 1fr) 300px; } .recipe-detail-zone { grid-column: 1 / -1; } }
+@media (max-width: 719px) { .recipe-page-heading, .recipe-subheading, .recipe-list-item, .recipe-ingredient-heading { align-items: flex-start; flex-direction: column; } .recipe-page-heading > .dg-button, .recipe-list-item .entry-actions { width: 100%; } .recipe-list-item .entry-actions { justify-content: stretch; } .recipe-list-item .entry-actions > .dg-button { flex: 1; } .recipe-field-grid { grid-template-columns: minmax(0, 1fr); } .recipe-inline-actions { align-items: stretch; flex-direction: column; } .recipe-inline-actions > .dg-button { width: 100%; } .recipe-amount-field { width: 100%; } .recipe-form-actions > .dg-button { flex: 1; } .recipe-detail-actions { flex-wrap: wrap; } .recipe-detail-actions > .dg-button { flex: 1; } }

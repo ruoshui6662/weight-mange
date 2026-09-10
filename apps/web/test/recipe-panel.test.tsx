@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, recipeSearchQuery, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
+import { addRecipeToDiaryAction, clearFoodSearchResults, clearRecipeSearchPending, copyRecipeAction, createIngredientRowKey, deleteRecipeAction, RecipeFoodSearchStatus, RecipeListStatus, RecipePanel, RecipeNutrientResults, recipeDraftControlsDisabled, recipeDraftFromRecipe, recipeErrorText, recipeSearchQuery, refreshRecipeAction, reloadRecipeAction, updateRecipeAction } from "../src/RecipePanel";
 import { ApiError, type Recipe, type RecipeClient } from "../src/api";
 
 const client = {
@@ -192,6 +192,20 @@ describe("RecipePanel", () => {
     }));
 
     expect(html).toContain("新建菜谱");
+    expect(html).toContain('data-recipe-zone="list"');
+    expect(html).toContain('data-button-variant="secondary"');
+  });
+
+  it("exposes nutrition results in total, per-100g, per-serving order", () => {
+    const html = renderToStaticMarkup(React.createElement(RecipeNutrientResults, {
+      total: { energy_kcal: { amountNumeric: 900, displayAmount: "900", unit: "kcal", status: "known", coverage: 1, hasTrace: false, hasEstimated: false } },
+      per100g: { energy_kcal: { amountNumeric: 450, displayAmount: "450", unit: "kcal", status: "known", coverage: 1, hasTrace: false, hasEstimated: false } },
+      perServing: { energy_kcal: { amountNumeric: 300, displayAmount: "300", unit: "kcal", status: "known", coverage: 1, hasTrace: false, hasEstimated: false } },
+      warnings: [],
+    }));
+    expect(html).toContain('data-recipe-zone="results"');
+    expect(html.indexOf("总营养")).toBeLessThan(html.indexOf("每100克营养"));
+    expect(html.indexOf("每100克营养")).toBeLessThan(html.indexOf("每份营养"));
   });
 
   it("keeps existing recipes visible when a reload fails", () => {
