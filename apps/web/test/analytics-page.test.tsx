@@ -31,6 +31,9 @@ describe("AnalyticsPage", () => {
     expect(html).toContain("服务端估算");
     expect(html).toContain("2,087 kcal");
     expect(html).toContain("只读");
+    expect(html).toContain('data-analytics-trend="weight"');
+    expect(html).toContain("体重趋势");
+    expect(html).toContain("30 天");
     expect(html).not.toContain("更新目标");
     expect(html).not.toContain("设置为每日目标");
   });
@@ -50,6 +53,19 @@ describe("AnalyticsPage", () => {
     expect(html).toContain("不会伪造估算");
     expect(html).toContain("未记录");
     expect(html).not.toMatch(/>0 kcal</);
+  });
+
+  it("separates throttled service state from insufficient data", () => {
+    const html = renderToStaticMarkup(<AnalyticsPage overview={overview} tdee={{ ...tdee, status: "throttled", estimatedTdeeKcal: null, reason: "throttled" }} periodDays={30} onPeriodChange={vi.fn()} loading={false} error="" onRetry={vi.fn()} />);
+    expect(html).toContain("服务暂时不可用");
+    expect(html).toContain("重试");
+    expect(html).not.toContain("当前周期暂不能生成 Adaptive TDEE");
+  });
+
+  it("shows an explicit trend empty state when no observed endpoints exist", () => {
+    const html = renderToStaticMarkup(<AnalyticsPage overview={{ ...overview, weight: { observedDays: 0, startKg: null, endKg: null, deltaKg: null } }} tdee={null} periodDays={30} onPeriodChange={vi.fn()} loading={false} error="" onRetry={vi.fn()} />);
+    expect(html).toContain("体重趋势数据不足");
+    expect(html).toContain("不会用零值填充");
   });
 
   it("renders localized loading and error states", () => {
