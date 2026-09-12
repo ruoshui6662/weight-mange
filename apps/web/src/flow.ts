@@ -1,4 +1,4 @@
-export type Screen = "loading" | "bootstrap" | "login" | "setup" | "dashboard";
+export type Screen = "loading" | "load-error" | "bootstrap" | "login" | "setup" | "dashboard";
 
 export type DashboardTab = "today" | "diary" | "recipe" | "weight" | "analytics" | "profile";
 

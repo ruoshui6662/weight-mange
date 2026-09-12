@@ -22,6 +22,8 @@
 13. [M3-002 recipe calculation/API implementation plan](../../docs/superpowers/plans/2026-09-09-recipe-calculation-api.md)：任务拆分、接口和验收命令。
 14. [M3-003 recipe UI/E2E design](../../docs/superpowers/specs/2026-09-10-recipe-ui-e2e-design.md)：菜谱前端流程、状态、事实边界和浏览器验收设计。
 
+15. [FUNCTION_AUDIT_AND_REMEDIATION.md](./FUNCTION_AUDIT_AND_REMEDIATION.md)：2026-09-12 功能与操作逻辑源码审核、风险排序及独立修正任务。最新建议先补记录可靠性，再扩展运动功能；顶部旧阶段摘要待 DOC-007 统一校正。
+
 ## 2. 文档职责与优先级
 
 当文档出现冲突时，按以下顺序处理：

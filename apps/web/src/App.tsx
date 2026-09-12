@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, api, type AnalyticsOverview, type Dashboard, type Diary, type Profile, type TdeeEstimate, type WeightRecord, type WeightTrend } from "./api";
 import { bootstrapError, validateBootstrapInput, BOOTSTRAP_PASSWORD_MIN_LENGTH } from "./bootstrap-validation";
 import { nextScreen, offlineLabel, type DashboardTab, type Screen } from "./flow";
@@ -14,6 +14,8 @@ import { AuthShell } from "./ui/AuthShell";
 import { ProfilePage } from "./ui/ProfilePage";
 
 const errorText = (error: unknown) => error instanceof ApiError ? (error.code === "AUTH_INVALID_CREDENTIALS" ? "密码不正确，请重试。" : error.code === "AUTH_REQUIRED" ? "登录已失效，请重新登录。" : bootstrapError(error.code) ?? "请求未完成，请检查服务状态后重试。") : "网络连接失败，请稍后重试。";
+const isUnauthorized = (error: unknown) => error instanceof ApiError && error.status === 401;
+const readDashboard = (date: string) => Promise.all([api.getDashboard(date), api.getDiary(date)]);
 
 function Field(props: { label: string; name: string; value: string; type?: string; onChange: (value: string) => void; min?: string; minLength?: number; step?: string }) {
   return <label className="field"><span>{props.label}</span><input name={props.name} type={props.type ?? "text"} value={props.value} min={props.min} minLength={props.minLength} step={props.step} onChange={(event) => props.onChange(event.target.value)} required /></label>;
@@ -30,6 +32,8 @@ export function App() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [diary, setDiary] = useState<Diary | null>(null);
   const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  const sessionRequest = useRef(0);
+  const dashboardRequest = useRef(0);
   const today = localDateNow(profile?.timezone ?? "UTC");
 
   useEffect(() => {
@@ -40,34 +44,82 @@ export function App() {
     return () => { window.removeEventListener("online", online); window.removeEventListener("offline", offlineEvent); };
   }, []);
 
+  const expireSession = useCallback(() => {
+    ++sessionRequest.current; ++dashboardRequest.current;
+    setProfile(null); setDashboard(null); setDiary(null);
+    setError("登录已失效，请重新登录。"); setScreen("login");
+  }, []);
+
+  // All entry paths read the current profile before deciding readiness and local date.
+  const restoreSession = useCallback(async () => {
+    const request = ++sessionRequest.current;
+    ++dashboardRequest.current;
+    const active = () => request === sessionRequest.current;
+    setScreen("loading"); setError("");
+    try {
+      const status = await api.getStatus();
+      if (!active()) return;
+      if (!status.initialized) { setScreen("bootstrap"); return; }
+      const session = await api.getSession();
+      if (!active()) return;
+      if (!session.authenticated || session.user === null) {
+        setProfile(null); setDashboard(null); setDiary(null); setScreen("login"); return;
+      }
+      const [currentProfile, goals] = await Promise.all([api.getProfile(), api.getGoals()]);
+      if (!active()) return;
+      setProfile(currentProfile);
+      const destination = nextScreen("login", { type: "session", authenticated: true, profileReady: currentProfile.body !== null, goalReady: goals.length > 0 });
+      if (destination === "setup") { setScreen("setup"); return; }
+      const [nextDashboard, nextDiary] = await readDashboard(localDateNow(currentProfile.timezone));
+      if (!active()) return;
+      setDashboard(nextDashboard); setDiary(nextDiary); setScreen("dashboard");
+    } catch (caught) {
+      if (!active()) return;
+      if (isUnauthorized(caught)) expireSession();
+      else { setError(errorText(caught)); setScreen("load-error"); }
+    }
+  }, [expireSession]);
+
   const loadDashboard = useCallback(async (date = today) => {
-    const [nextDashboard, nextDiary] = await Promise.all([api.getDashboard(date), api.getDiary(date)]);
-    setDashboard(nextDashboard); setDiary(nextDiary);
-  }, [today]);
+    const request = ++dashboardRequest.current;
+    const session = sessionRequest.current;
+    const active = () => request === dashboardRequest.current && session === sessionRequest.current;
+    try {
+      const [nextDashboard, nextDiary] = await readDashboard(date);
+      if (active()) { setDashboard(nextDashboard); setDiary(nextDiary); }
+    } catch (caught) {
+      if (!active()) return;
+      if (isUnauthorized(caught)) expireSession();
+      else throw caught;
+    }
+  }, [today, expireSession]);
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const status = await api.getStatus();
-        if (!active) return;
-        if (!status.initialized) { setScreen(nextScreen("loading", { type: "status", initialized: false })); return; }
-        const session = await api.getSession();
-        if (!session.authenticated || session.user === null) { setScreen("login"); return; }
-        const [currentProfile, goals] = await Promise.all([api.getProfile(), api.getGoals()]);
-        setProfile(currentProfile);
-        setScreen(nextScreen("login", { type: "session", authenticated: true, profileReady: currentProfile.body !== null, goalReady: goals.length > 0 }));
-      } catch (caught) { if (active) { setError(errorText(caught)); setScreen("login"); } }
-    })();
-    return () => { active = false; };
-  }, []);
+    void restoreSession();
+    return () => { ++sessionRequest.current; ++dashboardRequest.current; };
+  }, [restoreSession]);
+
+  const logout = useCallback(async () => {
+    const request = ++sessionRequest.current;
+    ++dashboardRequest.current;
+    try {
+      await api.logout();
+      if (request !== sessionRequest.current) return;
+      setProfile(null); setDashboard(null); setDiary(null); setError(""); setScreen("login");
+    } catch (caught) {
+      if (request !== sessionRequest.current) return;
+      if (isUnauthorized(caught)) expireSession();
+      else setError(errorText(caught));
+    }
+  }, [expireSession]);
 
   let content: React.ReactNode;
   if (screen === "loading") content = <Shell title="正在准备你的空间" subtitle="只需要几秒钟。"><div className="card loading" role="status">正在连接本地服务…</div></Shell>;
+  else if (screen === "load-error") content = <AuthShell eyebrow="CONNECTION" title="暂时无法加载你的空间" subtitle="服务连接或数据读取未完成，无需重新输入密码。" error={error}><button type="button" className="dg-button dg-button-primary" onClick={() => void restoreSession()}>重新加载</button></AuthShell>;
   else if (screen === "bootstrap") content = <Bootstrap onDone={(user) => { setProfile(user); setScreen("setup"); }} error={error} setError={setError} />;
-  else if (screen === "login") content = <Login onDone={async () => { const currentProfile = await api.getProfile(); const goals = await api.getGoals(); setProfile(currentProfile); if (currentProfile.body !== null && goals.length > 0) { await loadDashboard(); setScreen("dashboard"); } else setScreen("setup"); }} error={error} setError={setError} />;
-  else if (screen === "setup") content = <Setup today={today} profile={profile} onDone={async () => { setScreen("dashboard"); await loadDashboard(); }} error={error} setError={setError} />;
-  else content = <DashboardView today={today} dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={async () => { await api.logout(); setScreen("login"); setDashboard(null); setDiary(null); }} onOpenSetup={() => setScreen("setup")} error={error} setError={setError} />;
+  else if (screen === "login") content = <Login onDone={restoreSession} error={error} setError={setError} />;
+  else if (screen === "setup") content = <Setup today={today} profile={profile} onDone={restoreSession} error={error} setError={setError} />;
+  else content = <DashboardView today={today} dashboard={dashboard} diary={diary} profile={profile} loadDashboard={loadDashboard} onLogout={logout} onAuthExpired={expireSession} onOpenSetup={() => { ++dashboardRequest.current; setScreen("setup"); }} error={error} setError={setError} />;
   return <><OfflineNotice offline={offline} /><div aria-live="polite" className="sr-only">{offlineLabel(!offline)}</div>{content}</>;
 }
 
@@ -91,7 +143,7 @@ function Setup(props: { today: string; profile: Profile | null; onDone: () => Pr
   return <AuthShell eyebrow="YOUR STARTING POINT" title={`完善 ${props.profile?.displayName ?? "你的"} 的目标`} subtitle="这些信息只用于计算每日预算，你可以随时调整。" error={props.error} busy={busy}><form className="dg-auth-form" onSubmit={submit}><Field label="身高（cm）" name="heightCm" type="number" min="1" step="0.1" value={height} onChange={setHeight} /><label className="field"><span>公式性别</span><select value={sex} onChange={(event) => setSex(event.target.value)}><option value="none">不指定</option><option value="female">女性</option><option value="male">男性</option></select></label><label className="field"><span>活动水平</span><select value={activity} onChange={(event) => setActivity(event.target.value)}><option value="sedentary">久坐</option><option value="light">轻度活动</option><option value="moderate">中度活动</option><option value="high">高活动</option><option value="very_high">极高活动</option></select></label><label className="field"><span>当前目标</span><select value={goalType} onChange={(event) => setGoalType(event.target.value)}><option value="loss">减脂</option><option value="maintain">维持</option><option value="gain">增重</option></select></label><Field label="每日热量目标（kcal）" name="calorieTargetKcal" type="number" min="1" step="1" value={calories} onChange={setCalories} /><button className="dg-button dg-button-primary" disabled={busy} aria-busy={busy || undefined}>{busy ? "正在保存…" : "完成设置"}</button></form></AuthShell>;
 }
 
-export function DashboardView(props: { today: string; dashboard: Dashboard | null; diary: Diary | null; profile: Profile | null; loadDashboard: (date?: string) => Promise<void>; onLogout: () => Promise<void>; onOpenSetup?: () => void; error: string; setError: (value: string) => void }) {
+export function DashboardView(props: { today: string; dashboard: Dashboard | null; diary: Diary | null; profile: Profile | null; loadDashboard: (date?: string) => Promise<void>; onLogout: () => Promise<void>; onAuthExpired?: () => void; onOpenSetup?: () => void; error: string; setError: (value: string) => void }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("today");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Array<{ id: string; name: string; summary: { energyKcal: number | null } }>>([]);
@@ -112,6 +164,11 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   const [m2Error, setM2Error] = useState("");
   const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState<string | null>(null);
+  const panelEpoch = useRef(0);
+  const todayRequest = useRef(0);
+  const weightRequest = useRef(0);
+  const analyticsRequest = useRef(0);
+  const onAuthExpired = props.onAuthExpired;
   const today = props.today;
   const mealEntries = useMemo(() => new Map((props.diary?.mealSlots ?? []).map((slot) => [slot.key, {
     mealSlot: { key: slot.key, displayName: slot.displayName },
@@ -178,29 +235,65 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   }
 
   const loadWeightPanel = useCallback(async () => {
+    const epoch = panelEpoch.current;
+    const request = ++weightRequest.current;
+    const active = () => epoch === panelEpoch.current && request === weightRequest.current;
     setM2Loading(true); setM2Error("");
-    try { const from = daysAgo(today, 89); const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]); setWeights(nextWeights); setWeightTrend(nextTrend); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
-  }, [today]);
+    try {
+      const from = daysAgo(today, 89);
+      const [nextWeights, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(90)]);
+      if (active()) { setWeights(nextWeights); setWeightTrend(nextTrend); }
+    } catch (caught) {
+      if (!active()) return;
+      if (isUnauthorized(caught) && onAuthExpired) onAuthExpired();
+      else setM2Error(errorText(caught));
+    } finally { if (active()) setM2Loading(false); }
+  }, [today, onAuthExpired]);
 
   const loadTodayWeightTrend = useCallback(async () => {
+    const epoch = panelEpoch.current;
+    const request = ++todayRequest.current;
+    const active = () => epoch === panelEpoch.current && request === todayRequest.current;
     try {
       const from = daysAgo(today, 7);
       const [nextRecords, nextTrend] = await Promise.all([api.getWeights(from, today), api.getWeightTrend(7)]);
-      setTodayWeightRecords(nextRecords);
-      setTodayWeightTrend(nextTrend);
-    } catch {
+      if (active()) { setTodayWeightRecords(nextRecords); setTodayWeightTrend(nextTrend); }
+    } catch (caught) {
+      if (!active()) return;
+      if (isUnauthorized(caught) && onAuthExpired) { onAuthExpired(); return; }
       // The trend is an optional enrichment for Today; it must not block diary or calorie data.
-      setTodayWeightRecords([]);
-      setTodayWeightTrend(null);
+      // Keep the last successful snapshot when a refresh fails.
     }
-  }, [today]);
+  }, [today, onAuthExpired]);
 
   const loadAnalyticsPanel = useCallback(async (periodDays = analyticsPeriod) => {
+    const epoch = panelEpoch.current;
+    const request = ++analyticsRequest.current;
+    const active = () => epoch === panelEpoch.current && request === analyticsRequest.current;
     setM2Loading(true); setM2Error("");
-    try { const from = daysAgo(today, periodDays - 1); const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]); setAnalyticsOverview(nextOverview); setTdee(nextTdee); } catch (caught) { setM2Error(errorText(caught)); } finally { setM2Loading(false); }
-  }, [analyticsPeriod, today]);
+    try {
+      const from = daysAgo(today, periodDays - 1);
+      const [nextOverview, nextTdee] = await Promise.all([api.getAnalyticsOverview(from, today), api.getTdee(from, today)]);
+      if (active()) { setAnalyticsOverview(nextOverview); setTdee(nextTdee); }
+    } catch (caught) {
+      if (!active()) return;
+      if (isUnauthorized(caught) && onAuthExpired) onAuthExpired();
+      else setM2Error(errorText(caught));
+    } finally { if (active()) setM2Loading(false); }
+  }, [analyticsPeriod, today, onAuthExpired]);
 
-  useEffect(() => { if (activeTab === "today") void loadTodayWeightTrend(); if (activeTab === "weight") void loadWeightPanel(); if (activeTab === "analytics") void loadAnalyticsPanel(); }, [activeTab, loadAnalyticsPanel, loadTodayWeightTrend, loadWeightPanel]);
+  useEffect(() => {
+    if (activeTab === "today") void loadTodayWeightTrend();
+    if (activeTab === "weight") void loadWeightPanel();
+    if (activeTab === "analytics") void loadAnalyticsPanel();
+    return () => { ++panelEpoch.current; };
+  }, [activeTab, loadAnalyticsPanel, loadTodayWeightTrend, loadWeightPanel]);
+
+  const navigate = (tab: DashboardTab) => {
+    if (tab !== activeTab) ++panelEpoch.current;
+    props.setError(""); setActiveTab(tab);
+  };
+  const logout = async () => { await props.onLogout(); };
 
   const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
   const startMealAdd = (mealSlotId: string) => {
@@ -210,13 +303,13 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
       document.getElementById("today-food-search")?.focus();
     });
   };
-  return <AppShell activeTab={activeTab} onNavigate={(tab) => { props.setError(""); setActiveTab(tab); }} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void props.onLogout()}>退出</button>}>
+  return <AppShell activeTab={activeTab} onNavigate={navigate} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void logout()}>退出</button>}>
     {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} weightRecords={todayWeightRecords} weightTrend={todayWeightTrend} onAddFood={searchCard} onStartMealAdd={startMealAdd} onCopyDay={copyDay} onCopyMeal={copyMeal} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
     {activeTab === "diary" ? <DiaryPage today={today} dashboard={props.dashboard} diary={props.diary} query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} searchError={searchStatus === "error" ? props.error : undefined} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} onStartMealAdd={startMealAdd} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyDay={copyDay} onCopyMeal={copyMeal} /> : null}
-    {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => { props.setError(""); setActiveTab("diary"); }} /> : null}
-    {activeTab === "profile" ? <ProfilePage profile={props.profile} showImportGuide={showImportGuide} onToggleImportGuide={() => setShowImportGuide(!showImportGuide)} onOpenSetup={props.onOpenSetup} onLogout={() => void props.onLogout()} /> : null}
-    {activeTab === "weight" ? <WeightPage today={today} records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { await api.createWeight(input); await loadWeightPanel(); }} /> : null}
-    {activeTab === "analytics" ? <AnalyticsPage overview={analyticsOverview} tdee={tdee} periodDays={analyticsPeriod} onPeriodChange={(periodDays) => { setAnalyticsPeriod(periodDays); void loadAnalyticsPanel(periodDays); }} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
+    {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => navigate("diary")} /> : null}
+    {activeTab === "profile" ? <ProfilePage profile={props.profile} showImportGuide={showImportGuide} onToggleImportGuide={() => setShowImportGuide(!showImportGuide)} onOpenSetup={props.onOpenSetup} onLogout={() => void logout()} /> : null}
+    {activeTab === "weight" ? <WeightPage today={today} records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { const epoch = panelEpoch.current; await api.createWeight(input); if (epoch === panelEpoch.current) await loadWeightPanel(); }} /> : null}
+    {activeTab === "analytics" ? <AnalyticsPage overview={analyticsOverview} tdee={tdee} periodDays={analyticsPeriod} onPeriodChange={(periodDays) => { if (periodDays !== analyticsPeriod) { ++panelEpoch.current; setAnalyticsPeriod(periodDays); } }} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
     {props.error ? <p className="error page-error" role="alert">{props.error}</p> : null}
   </AppShell>;
 }
