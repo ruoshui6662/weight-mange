@@ -161,9 +161,11 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
 
   await page.getByRole("button", { name: "体重" }).click();
   await expect(page.getByText("暂无体重记录")).toBeVisible();
+  const selectedWeightDate = await page.getByLabel("日期", { exact: true }).inputValue();
   await page.locator('input[name="weightKg"]').fill("70");
   await page.getByRole("button", { name: "添加体重" }).click();
   await expect(page.getByText("70.0 kg", { exact: true })).toBeVisible();
+  await expect(page.locator(".weight-record-row").filter({ hasText: selectedWeightDate })).toBeVisible();
 
   await page.getByRole("button", { name: "分析" }).click();
   await expect(page.getByText("数据不足", { exact: true })).toBeVisible();

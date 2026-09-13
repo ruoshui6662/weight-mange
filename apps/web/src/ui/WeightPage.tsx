@@ -10,12 +10,16 @@ export type WeightPageProps = {
   loading: boolean;
   error: string;
   onRetry: () => Promise<void>;
-  onAdd: (input: { measuredAt: string; weightKg: number; note?: string }) => Promise<void>;
+  onAdd: (input: { localDate: string; weightKg: number; note?: string }) => Promise<void>;
 };
 
-export type WeightInput = { measuredAt: string; weightKg: number; note?: string };
+export type WeightInput = { localDate: string; weightKg: number; note?: string };
 export const weightSaveErrorMessage = "保存未完成，请检查服务状态后重试。输入内容已保留。";
 export const weightSaveSuccessMessage = "保存成功：已记录这次体重。";
+
+export function buildManualWeightInput(localDate: string, weightKg: number, note: string): WeightInput {
+  return { localDate, weightKg, ...(note.trim() ? { note: note.trim() } : {}) };
+}
 
 export async function persistWeightRecord(onAdd: (input: WeightInput) => Promise<void>, input: WeightInput) {
   await onAdd(input);
@@ -47,7 +51,7 @@ export function WeightPage(props: WeightPageProps) {
     if (!Number.isFinite(parsed) || parsed <= 0) { setFormError("请输入大于 0 的体重。"); return; }
     setBusy(true);
     try {
-      const input = { measuredAt: new Date(`${date}T12:00:00`).toISOString(), weightKg: parsed, ...(note.trim() ? { note: note.trim() } : {}) };
+      const input = buildManualWeightInput(date, parsed, note);
       await persistWeightRecord(props.onAdd, input);
       setWeight(""); setNote(""); setFormSuccess(weightSaveSuccessMessage);
     } catch {

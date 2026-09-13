@@ -70,7 +70,7 @@ export const api = {
   deleteDiaryEntry: (date: string, entryId: string) => request<{ ok: boolean }>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "DELETE" }),
   copyDiaryDay: (date: string, fromDate: string) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-day`, { method: "POST", body: JSON.stringify({ fromDate }) }),
   getWeights: (from: string, to: string) => request<WeightRecord[]>(`/api/v1/body/weights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-  createWeight: (input: { measuredAt: string; weightKg: number; note?: string }) => request<WeightRecord>("/api/v1/body/weights", { method: "POST", body: JSON.stringify(input) }),
+  createWeight: (input: { localDate: string; weightKg: number; note?: string }) => request<WeightRecord>("/api/v1/body/weights", { method: "POST", body: JSON.stringify(input) }),
   getWeightTrend: (days = 30) => request<WeightTrend>(`/api/v1/body/weight-trend?days=${days}&method=ewma&sampling=last`),
   getAnalyticsOverview: (from: string, to: string) => request<AnalyticsOverview>(`/api/v1/analytics/overview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getTdee: (from: string, to: string) => request<TdeeEstimate>(`/api/v1/analytics/tdee?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),

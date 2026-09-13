@@ -88,6 +88,15 @@ describe("TodayPage", () => {
     expect(html).toContain('data-trend-point="2026-09-10"');
   });
 
+  it("keeps the meal action surface before the optional trend surface", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, {
+      ...props,
+      weightRecords: recentWeightRecords,
+      weightTrend: recentWeightTrend,
+    }));
+    expect(html.indexOf("今日饮食记录")).toBeLessThan(html.indexOf("体重趋势"));
+  });
+
   it("does not render a weight trend card without recent records", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, {
       ...props,

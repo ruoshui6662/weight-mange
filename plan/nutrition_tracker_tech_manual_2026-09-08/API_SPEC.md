@@ -535,11 +535,15 @@ limit
 
 ```json
 {
-  "measuredAt": "2026-09-08T06:20:00+08:00",
+  "localDate": "2026-09-08",
   "weightKg": 55.0,
   "note": ""
 }
 ```
+
+手工表单提交 `localDate`，它表示用户资料时区中的日历日，是历史补录的权威业务日期；客户端不得先按浏览器时区把它转换成 ISO 时间。服务端校验真实 `YYYY-MM-DD`，并以该日 UTC 中午作为日期型记录的稳定排序时间哨兵。
+
+带真实测量时间的导入或兼容客户端可以改为提交带 `Z`/offset 的 `measuredAt`，服务端按当前 profile timezone 派生 `localDate`。`localDate` 与 `measuredAt` 必须且只能提交一个；同时提交、同时缺失或非法日历日均返回 `400 BODY_INVALID_INPUT`。
 
 `unit` v1 仅允许 `g`，服务端使用当前 recipe 的 `per100g` 结果写入 diary nutrition snapshot；没有 `cookedWeightG` 返回 `400 RECIPE_COOKED_WEIGHT_REQUIRED`。加入成功返回 `201` 的 diary entry，后续 recipe/food 修改不得改变该 entry。
 
@@ -547,7 +551,7 @@ limit
 
 加入日记只通过 application service 写入 diary nutrition snapshot；后续 recipe 或 food 更新不得改变该日记历史值。
 
-创建成功返回 `201` 和记录对象，记录包含服务端规范化的 UTC `measuredAt`、按当前 profile timezone 计算的 `localDate`、`source` 和 `version`。
+创建成功返回 `201` 和记录对象，记录包含服务端规范化的 UTC `measuredAt`、权威 `localDate`、`source` 和 `version`。日期型手工记录返回 UTC 中午哨兵；带真实时间戳的调用返回其规范化 UTC 时间。
 同一 `localDate` 允许多条记录。
 
 ## PATCH /api/v1/body/weights/:id

@@ -41,8 +41,8 @@ export function TodayPage(props: TodayPageProps) {
   return <div className="today-page" data-today-layout="dashboard">
     <div className="today-page-main">
       {dashboard ? <CalorieHero dashboard={dashboard} remaining={remaining} intake={intake} goal={goal} progress={progress} /> : <StatusMessage kind="empty" title="今日数据暂不可用" description="服务还没有返回今天的预算和摄入。你仍然可以先记录一餐，稍后再刷新。" />}
-      <TodayWeightTrend today={props.today} records={props.weightRecords} trend={props.weightTrend} />
       <MealGrid {...props} />
+      <TodayWeightTrend today={props.today} records={props.weightRecords} trend={props.weightTrend} />
       <Surface className="today-weekly-summary"><div className="today-section-heading"><div><span className="today-kicker">趋势提示</span><h2>本周概览</h2></div><span className="today-muted">记录后逐步形成</span></div><p className="today-muted">本周的连续记录、摄入趋势和目标完成度会在数据足够后显示。当前不使用缺失日期填充为 0。</p></Surface>
     </div>
     <aside className="today-context-rail" aria-label="今日辅助信息"><Surface className="today-rail-card"><span className="today-kicker">DATA QUALITY</span><h2>数据说明</h2><p className="today-muted">没有饮食记录时，已摄入显示为 0；没有热量目标时，剩余预算显示为“暂不可用”。点击每餐的“添加”即可打开记录窗口。</p></Surface></aside>

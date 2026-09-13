@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-13 10:02 +08:00
+> 最后更新：2026-09-13 12:03 +08:00
 
 ## 1. 当前快照
 
@@ -12,11 +12,11 @@
 | 项目阶段 | M3 菜谱、运动与预算策略实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M3 — 菜谱、运动与预算策略 |
-| 当前焦点 | DOC-010、M3-026、M3-027 今日页 P1 修复（已完成） |
-| 下一步 | 独立进入 M3-014；P2 选择结果聚焦、无结果恢复和移动端餐次控件优化留在审计队列 |
-| 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
+| 当前焦点 | M3-029 今日首屏信息密度修正、M3-014 日期选择与时区（均已完成） |
+| 下一步 | 独立进入 M3-013 写入状态与幂等重试；继续保留 Docker CLI 缺失为环境备注 |
+| 当前阻塞 | 无业务阻塞；本机 Docker CLI 仍缺失，仅影响本地容器 smoke，远程多架构构建已有历史证据 |
 | 业务代码 | M3-025 已移除首页重复“记录饮食”区并把各餐添加统一为弹窗流程；DOC-010、M3-026、M3-027 已完成今日页 P1 修复；M3-024、M3-012、M3-021、M3-023 已完成；M3-013～020、M3-022 为审核修正队列 |
-| Git | `main` 已提交并推送至 `origin/main`，当前提交 `038ae00` |
+| Git | `main` 当前提交 `038ae00`；DOC-011 与 M3-014 改动尚未提交/推送 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -67,7 +67,7 @@
 |---|---|---|
 | M3-012 | `DONE` | 会话恢复与统一加载 |
 | M3-013 | `PLANNED` | 写入状态与幂等重试 |
-| M3-014 | `PLANNED` | 日期选择、历史补录与时区 |
+| M3-014 | `DONE` | 日期选择、历史补录与时区 |
 | M3-015 | `PLANNED` | 资料与目标编辑 |
 | M3-016 | `PLANNED` | 趋势窗口与查询正确性 |
 | M3-017 | `PLANNED` | 统一分餐添加组件与错误恢复 |
@@ -86,6 +86,43 @@
 | DOC-010 | `DONE` | 今日页空餐引导文案修正 |
 | M3-026 | `DONE` | 饮食添加弹窗焦点隔离与键盘闭环 |
 | M3-027 | `DONE` | 今日页首屏餐次入口可见性 |
+| DOC-011 | `DONE` | 全产品细节体验审核与优化规划 |
+| M3-028 | `PLANNED` | 页面定向与导航状态统一 |
+| M3-029 | `DONE` | 今日首屏信息密度修正 |
+| M3-030 | `PLANNED` | 菜谱编辑器持续操作条与选择反馈 |
+| M3-031 | `PLANNED` | 六页空状态与动作词典统一 |
+| DOC-012 | `PLANNED` | 移动端视觉与触控专项审核 |
+
+### M3-014 — 日期选择、历史补录与时区
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 10:44 +08:00
+- 操作者：Codex
+- 依赖：DOC-008、DOC-011、M2-002、M2-003
+- 根因：Web 把日期字符串拼成浏览器本地时间后调用 `toISOString()`，API/Body 再按资料时区派生 `localDate`；浏览器为洛杉矶、资料为上海时，本地中午已换算到上海次日。
+- 决策：手工日期录入以用户选择的 `YYYY-MM-DD localDate` 为业务事实，由 API/Body 直接校验并持久化；`measuredAt` 继续保留给带真实时间戳的导入/兼容调用。两者必须互斥，避免冲突来源。日期型录入使用稳定 UTC 中午作为排序时间哨兵，不把浏览器时区带入服务端。
+- 变更范围：Body input/校验、body weights API、Web API/WeightPage、API/产品/数据库规范、单元/API/Web/E2E 回归与本文件；不实现体重编辑删除 UI（M3-018），不修改分析算法或视觉布局。
+- 计划验收：先补 Web 发送 `localDate`、API 跨时区历史补录、Body 两种输入互斥/非法日历日 RED 测试；再运行 focused tests、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；浏览器复核所选日、近期列表、趋势与分析同日。
+- 当前进展：最小复现确认洛杉矶浏览器把 2026-09-13 提交为 `2026-09-13T19:00:00Z`，上海侧派生为 2026-09-14；Body/API/Web 5 项 RED 已观察，最小实现后 3 files/15 tests、typecheck 与专项真实浏览器 E2E 已 GREEN。API/产品/数据库规范已同步；全量 183 files/1088 tests、lint/typecheck/integration/build/API smoke 通过。
+- 验收结果（EVD-M3-014-B）：M3-029 修复后重新运行完整 `pnpm test:e2e` 11/11；全量 `pnpm test` 183 files/1089 tests、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test:integration`、`pnpm api:smoke`、`git diff --check` 均退出码 0。日期专项与跨时区回归保持通过；`pnpm docker:smoke` 正确报告本机无 Docker CLI。
+- 完成时间：2026-09-13 12:03 +08:00
+- 阻塞/风险：无。BLK-008 已由 M3-029 解除；当前工作区仍包含 DOC-011 与 M3-014/M3-029 的未提交改动。
+- 下一步：独立进入 M3-013 写入状态与幂等重试；不在本任务顺带实现体重编辑删除 UI。
+
+### M3-029 — 今日首屏信息密度修正
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 11:55 +08:00
+- 操作者：Codex
+- 依赖：M3-024、M3-010、DOC-011；承接 BLK-008
+- 范围：只调整今日页首屏信息层级与布局顺序，确保存在可选体重趋势卡时，今日饮食记录及首餐“添加”入口仍在 1280×720 首屏可见；不改 API、数据库、日期 contract 或营养计算。
+- 决策：首屏优先级遵循“今日热量 → 今日饮食记录 → 可选趋势/说明”。体重趋势是辅助信息，不能挤出当日核心记录动作；通过结构顺序修复，避免继续压缩字号和点击区域。
+- 计划验收：先用有体重趋势的真实页面状态固定 E2E RED；实现后运行 TodayPage focused tests、`pnpm exec playwright test e2e/ui-regression.spec.ts --workers=1`，再运行 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；确认 1440/1024/430/390/360 无横向溢出与 44px 命中区。
+- 当前进展：已确认趋势卡当前位于饮食记录之前；先补结构顺序回归并观察 15/16 focused RED，再将可选趋势卡移动到今日饮食记录之后，保持核心记录动作优先，不压缩 44px 点击区。
+- 验收结果（EVD-M3-029-A）：`pnpm exec vitest run apps/web/test/today-page.test.tsx` 16/16；`pnpm exec playwright test e2e/ui-regression.spec.ts --workers=1` 1/1；完整 `pnpm test:e2e` 11/11；`pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1089 tests）、`pnpm build`、`pnpm test:integration`、`pnpm api:smoke`、`git diff --check` 均退出码 0。`pnpm docker:smoke` 退出码 0 但记录 Docker CLI 缺失。
+- 完成时间：2026-09-13 12:03 +08:00
+- 阻塞/风险：无；在 1440/1024/430/390/360 视口复用现有无横向溢出与 44px 命中区门禁。
+- 下一步：独立进入 M3-013；后续视觉优化不与写入可靠性混批。
 
 ### M3-024 — 今日热量与宏量营养卡合并
 
@@ -129,6 +166,19 @@
 - 验收结果（EVD-DOC-009）：当前 In-app Browser 捕获 6 个关键状态截图并逐一检查 AX 树；今日热量 0 值、四餐入口映射、弹窗默认餐次、搜索结果/无结果、写入刷新和 Esc/关闭焦点恢复均有现场证据。报告列出步骤、优点、P1/P2 问题、修复映射与证据限制；`git diff --check` 通过（仅 CRLF 转换警告）。
 - 阻塞/风险：当前浏览器运行时无法切换 viewport 或导出截图文件；移动端不能声称完整视觉审计，控制台日志需后续 E2E/API 证据补充。
 - 下一步：按报告优先级独立执行 DOC-010 或 M3-026；不在本审计任务内直接修改业务代码。
+
+### DOC-011 — 全产品细节体验审核与优化规划
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 10:10 +08:00
+- 操作者：Codex
+- 范围：以产品经理视角动态审核登录、首次设置、今日、饮食、菜谱、体重、分析、我的和全局导航；从数据可信度、核心任务效率、反馈恢复、一致性、无障碍和视觉层级形成优化方案。本任务只修改审核/进度文档，不修改业务代码。
+- 计划验收：关键流程当前运行截图与 AX 证据；每一步记录健康度；问题按 P0/P1/P2 分级并映射稳定任务 ID；报告必需章节、任务 ID 唯一性、README 链接和 `git diff --check` 通过。
+- 完成时间：2026-09-13 10:13 +08:00
+- 当前进展：已完成桌面关键流程实测；确认 M3-014 日期偏移仍是发布阻断项，并发现目标编辑、低覆盖分析、写入反馈、菜谱持续操作、页面定向和空状态一致性问题；报告已生成并链接 README，既有问题映射 M3-013/014/015/017/020/022，新问题拆分为 M3-028～031 与 DOC-012。
+- 验收结果（EVD-DOC-011-A）：当前 In-app Browser 覆盖登录、首次设置、今日、饮食、菜谱、体重、分析、我的及导航并捕获截图/AX；报告 8 个必需章节、6 个新任务登记和 README 链接检查通过；敏感占位符扫描无结果；`git diff --check` 退出码 0（仅 CRLF 转换警告）。
+- 阻塞/风险：当前 CUA 运行时不能切换 viewport 或读取控制台日志；移动端实景和弱网状态转入 DOC-012，不在本任务中宣称完成。
+- 下一步：业务修复从 M3-014 开始独立执行，不与视觉优化混批。
 
 ### DOC-010 — 今日页空餐引导文案修正
 
@@ -658,7 +708,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 
 ## 6. 阻塞项
 
-当前有一个环境阻塞。以下决策会阻塞对应任务，但不阻止已可独立验证的本地工作：
+当前有一个验收阻塞；本机 Docker CLI 限制仍作为环境备注保留。以下决策会阻塞对应任务，但不阻止已可独立验证的本地工作：
 
 | Blocker | 影响任务 | 解除条件 | 状态 |
 |---|---|---|---|
@@ -669,6 +719,7 @@ M1–M5 的完整任务和退出门槛见 `IMPLEMENTATION_ROADMAP.md`。只有�
 | BLK-005 Docker CLI 未安装 | M0-002 完整技术门、M0-007 | 已由 GitHub Actions buildx 完成 linux/amd64、linux/arm64 构建；本机 CLI 仍可后续安装 | `RESOLVED` |
 | BLK-006 远程 verify 的重复 Docker smoke 失败 | main 合并后的 GHCR 发布 | 已将 `pnpm docker:smoke` 从 verify 移出，由 `docker` job 直接执行 build-push；后续 run `34342506965` 成功并更新 GHCR `latest` | `RESOLVED` |
 | BLK-007 IAB 本地 API/viewport 能力受限 | M1-007 动态搜索与 390/430 视觉验收 | 浏览器客户端访问本地 `/api/v1/foods/search` 被 `ERR_BLOCKED_BY_CLIENT` 拦截；viewport override 在 IAB 不生效；已由本地 Chromium Playwright + CI job 覆盖，保留 IAB 限制作为环境备注 | `RESOLVED` |
+| BLK-008 有体重趋势时今日首餐入口低于 1280×720 首屏 | M3-014 完整 E2E 门禁、M3-029 | 已将可选体重趋势卡置于今日饮食记录之后；完整 `pnpm test:e2e` 11/11，见 EVD-M3-029-A/EVD-M3-014-B | `RESOLVED` |
 
 ## 7. 决策记录
 
@@ -771,6 +822,11 @@ result: 42 passed, 0 failed
 | EVD-M3-010-A | M3-010 | 2026-09-10 23:20 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx apps/web/test/weight-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现趋势卡缺失；GREEN 完成最近 7 天真实记录门禁、最新体重/变化摘要、服务端趋势共享图表和移动端样式；focused 2 files/14 tests、全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；趋势请求失败时隐藏可选摘要，不阻塞今日主流程 |
 | EVD-M3-011-A | M3-011 | 2026-09-10 23:45 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx apps/web/test/dashboard-view.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现今日页缺少饮食卡/四餐入口/空状态；GREEN 完成四餐“＋ 添加”、总入口、无记录空状态、目标餐次映射、搜索面板聚焦和动态“加入餐次”按钮；focused 2 files/17 tests、全量 183 files/1076 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed（含首页按钮与午餐聚焦回归）、diff check 均 exit 0 |
 | EVD-M3-024-A | M3-024 | 2026-09-12 17:23 +08:00 | `pnpm exec vitest run apps/web/test/today-page.test.tsx`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; IAB 截图/控制台/布局测量；`design-qa.md` | focused 14/14、全量 183 files/1080 tests、E2E 11/11 和其余门禁均 exit 0；1440/1024/430/390/360 均保持 3 个宏量计算列且无横向溢出；IAB 桌面卡无内部溢出、控制台日志 0；参考图与实现组合对比复核后 Design QA `passed` |
+| EVD-M3-014-A | M3-014 | 2026-09-13 10:53 +08:00 | 时区最小复现；3-file focused RED/GREEN；`pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm test:integration`; `pnpm build`; `pnpm api:smoke`; `pnpm docker:smoke`; scoped/full Playwright | 根因复现为所选 9/13 → ISO 9/13 19:00Z → 上海 9/14；5 项 RED 后 3 files/15 tests GREEN；全量 183 files/1088 tests、lint/typecheck/build/API smoke 通过，专项 E2E 通过；完整 E2E 连续两次 10/11，稳定失败为 BLK-008，因此证据为部分通过且任务保持 BLOCKED |
+| EVD-M3-029-A | M3-029 | 2026-09-13 12:03 +08:00 | TodayPage 顺序回归先 RED（15/16），调整可选趋势卡顺序后 `pnpm exec vitest run apps/web/test/today-page.test.tsx`、`pnpm exec playwright test e2e/ui-regression.spec.ts --workers=1`、完整 `pnpm test:e2e`；再运行 lint/typecheck/test/build/integration/API smoke/diff check | 趋势存在时今日饮食记录及首餐入口优先；focused 16/16、专项 Playwright 1/1、完整 E2E 11/11；全量 183 files/1089 tests，其余代码门禁全部 exit 0；Docker smoke 仅因本机无 Docker CLI 保留环境备注 |
+| EVD-M3-014-B | M3-014 | 2026-09-13 12:03 +08:00 | M3-029 完成后重跑 M3-014 完整验收：日期专项 Playwright、完整 `pnpm test:e2e`、`pnpm test`、lint/typecheck/build/integration/API smoke/diff check | 日期 localDate contract、跨时区历史补录与完整 E2E 均通过；BLK-008 解除，ISSUE-120 关闭；Docker smoke 正确报告本机无 Docker CLI |
+
+| EVD-DOC-011-A | DOC-011 | 2026-09-13 10:13 +08:00 | In-app Browser 当前运行截图/AX；PowerShell 章节、任务登记、README 链接、敏感占位符检查；`git -c safe.directory='D:/AI编程/体重管理' diff --check` | 登录至“我的”11 步实测完成；报告 8/8 必需章节、6/6 新任务登记和 README 链接通过；敏感占位符扫描无结果；diff check exit 0，仅 CRLF 转换警告；未修改业务代码 |
 
 ## 9. 问题队列
 
@@ -799,7 +855,7 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 
 `ISSUE-119 | 2026-09-12 16:38 +08:00 | M3-021 | P0 | 浏览器实测午餐已有 268 kcal 记录、全天汇总也为 268 kcal，但首页与饮食页全部餐次仍显示“暂无数据”；Dashboard 透传 nutrient snapshot，Web 错读 totals.kcal | 在 Dashboard 边界输出稳定 totals.kcal 页面模型，同步 Web 类型并补真实 API/E2E contract 回归 | RESOLVED，见 EVD-M3-021-A`
 
-`ISSUE-120 | 2026-09-12 16:39 +08:00 | M3-014 | P0 | 浏览器选择 2026-09-12 记录体重，用户时区 Asia/Shanghai 下落为 2026-09-13，导致近期列表和截至 9/12 的分析缺失 | 禁止以浏览器时区解释业务日期，按资料时区构造或由 API 接收 localDate，补跨时区/夏令时/历史补录回归 | OPEN`
+`ISSUE-120 | 2026-09-12 16:39 +08:00 | M3-014 | P0 | 浏览器选择 2026-09-12 记录体重，用户时区 Asia/Shanghai 下落为 2026-09-13，导致近期列表和截至 9/12 的分析缺失 | 禁止以浏览器时区解释业务日期，按资料时区构造或由 API 接收 localDate，补跨时区/夏令时/历史补录回归 | RESOLVED，见 EVD-M3-014-B`
 
 ## 10. 活动日志
 
@@ -939,15 +995,21 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-13 09:42 +08:00 | Codex | 开始 DOC-010、M3-026、M3-027 | 按 DOC-009 P1 顺序执行；分别记录空餐文案、弹窗焦点隔离和 1280×720 首屏可见性验收，均先补 RED 再实现 |
 | 2026-09-13 09:48 +08:00 | Codex | 完成 DOC-010、M3-026、M3-027 | 文案、inert/aria-hidden 焦点循环与桌面紧凑布局完成；全量 183 files/1082 tests、lint/typecheck/build/API smoke/E2E 11/11/diff check 全部通过；下一步 M3-014，P2 优化留队列 |
 | 2026-09-13 10:02 +08:00 | Codex | 推送今日页 P1 修复至 GitHub main | 提交 `038ae00` 已推送至 `origin/main`；工作区清洁，后续部署可拉取 `latest` 对应的新构建 |
+| 2026-09-13 10:10 +08:00 | Codex | 开始 DOC-011 全产品细节体验审核 | 以产品经理视角动态检查登录至“我的”的桌面核心流程；计划记录当前截图/AX、逐步健康度、P0/P1/P2 发现和独立任务映射，不修改业务代码 |
+| 2026-09-13 10:13 +08:00 | Codex | 完成 DOC-011 全产品细节体验审核 | 11 步实测与 8 节报告完成；M3-014 日期偏移确认为发布阻断，其他问题映射既有任务并新增 M3-028～031/DOC-012；文档门禁和 diff check 通过，下一步独立执行 M3-014 |
+| 2026-09-13 10:44 +08:00 | Codex | 开始 M3-014 日期选择、历史补录与时区 | 根因已定位为浏览器本地日期转 ISO 后被资料时区再次解释；决定手工录入直接提交业务 localDate，measuredAt 保留给导入/兼容调用；计划先补跨时区、互斥与非法日期 RED 回归 |
+| 2026-09-13 10:53 +08:00 | Codex | M3-014 实现完成但验收受 BLK-008 阻塞 | 日期 contract 5 项 RED→GREEN，3 files/15 focused、183 files/1088 full、lint/typecheck/integration/build/API smoke、专项 E2E 通过；完整 E2E 连续两次 10/11，失败为有体重趋势时首餐入口超出 1280×720 首屏，转 M3-029 独立处理，M3-014 不提前标记 DONE |
+| 2026-09-13 11:55 +08:00 | Codex | 开始 M3-029 今日首屏信息密度修正 | 按 BLK-008 独立建任务；先补“今日饮食记录优先于可选体重趋势”结构回归，计划在不改变 API/数据库和不缩小点击区的前提下调整首屏信息层级 |
+| 2026-09-13 12:03 +08:00 | Codex | 完成 M3-029，解除 BLK-008；关闭 M3-014/ISSUE-120 | 结构回归先 RED 后 GREEN；趋势卡移至饮食记录之后；focused 16/16、专项 Playwright 1/1、完整 E2E 11/11、全量 183 files/1089 tests 与 lint/typecheck/build/integration/API smoke/diff check 全部通过；M3-014 完整复验通过并标记 DONE，ISSUE-120 RESOLVED，下一步 M3-013 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要、M3-010 今日页体重趋势摘要、M3-011 今日饮食记录功能区、M3-024 热量与宏量合并、M3-025 分餐添加弹窗化，以及 DOC-010/M3-026/M3-027 今日页 P1 修复已完成。后续接手者应：
+M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要、M3-010 今日页体重趋势摘要、M3-011 今日饮食记录功能区、M3-024 热量与宏量合并、M3-025 分餐添加弹窗化、M3-029 今日首屏信息密度修正、M3-014 日期选择/历史补录/时区，以及 DOC-010/M3-026/M3-027 今日页 P1 修复已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
-4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果；今日页 P2 优化（选择结果后自动聚焦份量、无结果恢复、移动端餐次控件）仍在审计队列。
+4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果；下一任务为 M3-013 写入状态与幂等重试；今日页 P2 优化（选择结果后自动聚焦份量、无结果恢复、移动端餐次控件）仍在审计队列。
 
 ## 12. 更新模板
 

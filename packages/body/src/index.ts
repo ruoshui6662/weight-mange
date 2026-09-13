@@ -17,7 +17,8 @@ export type Weight = {
 
 export type CreateWeightInput = {
   userId: string;
-  measuredAt: string;
+  measuredAt?: string;
+  localDate?: string;
   weightKg: number;
   source?: WeightSource;
   note?: string | null;
@@ -169,19 +170,22 @@ export function createBodyService(sqlite: DatabaseSync, options: Options = {}) {
     return row.timezone;
   }
 
-  function normalizeInput(input: { userId: string; measuredAt: string; weightKg: number; source?: WeightSource; note?: string | null }) {
+  function normalizeInput(input: CreateWeightInput) {
     if (!input || typeof input.userId !== "string" || input.userId.length === 0 || !positiveWeight(input.weightKg)) throw new BodyError("BODY_INVALID_INPUT");
-    const epoch = measuredAtEpoch(input.measuredAt);
     const source = input.source ?? "manual";
     if (!SOURCES.has(source)) throw new BodyError("BODY_INVALID_INPUT");
+    const hasMeasuredAt = typeof input.measuredAt === "string";
+    const hasLocalDate = typeof input.localDate === "string";
+    if (hasMeasuredAt === hasLocalDate) throw new BodyError("BODY_INVALID_INPUT");
+    if (hasLocalDate) {
+      if (!validDate(input.localDate!)) throw new BodyError("BODY_INVALID_INPUT");
+      return { epoch: Date.parse(`${input.localDate}T12:00:00Z`), localDate: input.localDate!, source, note: input.note ?? null };
+    }
+    const epoch = measuredAtEpoch(input.measuredAt!);
     const timezone = userTimezone(input.userId);
     let localDate: string;
-    try {
-      localDate = localDateFromEpoch(epoch, timezone);
-    } catch (error) {
-      void error;
-      throw new BodyError("BODY_INVALID_INPUT");
-    }
+    try { localDate = localDateFromEpoch(epoch, timezone); }
+    catch { throw new BodyError("BODY_INVALID_INPUT"); }
     return { epoch, localDate, source, note: input.note ?? null };
   }
 

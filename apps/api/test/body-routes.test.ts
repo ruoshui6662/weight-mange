@@ -19,6 +19,9 @@ it("records, lists, updates and deletes authenticated body weights", async () =>
     const headers = { "content-type": "application/json", cookie: cookie(boot) };
     const profile = await fetch(`${base}/api/v1/profile`, { method: "PATCH", headers, body: JSON.stringify({ timezone: "Asia/Shanghai" }) });
     expect(profile.status).toBe(200);
+    const historical = await fetch(`${base}/api/v1/body/weights`, { method: "POST", headers, body: JSON.stringify({ localDate: "2026-08-01", weightKg: 54.9 }) });
+    expect(historical.status).toBe(201);
+    expect(await json(historical)).toMatchObject({ data: { measuredAt: "2026-08-01T12:00:00.000Z", localDate: "2026-08-01", weightKg: 54.9 } });
     const first = await fetch(`${base}/api/v1/body/weights`, { method: "POST", headers, body: JSON.stringify({ measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 }) });
     expect(first.status).toBe(201);
     const firstBody = await json(first);
@@ -39,5 +42,24 @@ it("records, lists, updates and deletes authenticated body weights", async () =>
     expect(conflict.status).toBe(409);
     const deleted = await fetch(`${base}/api/v1/body/weights/${id}`, { method: "DELETE", headers, body: JSON.stringify({ version: 1 }) });
     expect(deleted.status).toBe(204);
+  } finally { await runtime.close(); }
+});
+
+it("rejects ambiguous or invalid body-weight date inputs", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "body-api-date-")); directories.push(directory);
+  const runtime = await startApiServer({ dbPath: join(directory, "app.sqlite"), port: 0 });
+  try {
+    const base = `http://127.0.0.1:${runtime.port}`;
+    const boot = await fetch(`${base}/api/v1/auth/bootstrap`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ displayName: "Owner", password: "correct horse battery staple", timezone: "Asia/Shanghai" }) });
+    const headers = { "content-type": "application/json", cookie: cookie(boot) };
+    for (const payload of [
+      { localDate: "2026-02-30", weightKg: 55 },
+      { localDate: "2026-09-08", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 },
+      { weightKg: 55 },
+    ]) {
+      const response = await fetch(`${base}/api/v1/body/weights`, { method: "POST", headers, body: JSON.stringify(payload) });
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({ error: { code: "BODY_INVALID_INPUT" } });
+    }
   } finally { await runtime.close(); }
 });

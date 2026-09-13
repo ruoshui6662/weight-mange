@@ -614,6 +614,12 @@ PRIMARY KEY(entry_id, nutrient_id)
 | created_at | INTEGER |
 | updated_at | INTEGER |
 
+日期语义：
+
+- `local_date` 是页面、列表、趋势和分析使用的权威业务日；手工历史补录直接使用用户选择的账户时区日历日。
+- `measured_at` 对带真实时间的导入记录保存规范化 UTC epoch；仅提供日期的手工记录使用该日 `12:00:00Z` 作为稳定排序哨兵，不代表真实测量时刻。
+- API 必须拒绝同时提供 `localDate` 与 `measuredAt` 的创建请求，避免两个日期来源冲突。
+
 索引：
 ```sql
 INDEX(user_id, measured_at)

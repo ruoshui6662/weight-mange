@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { WeightRecord, WeightTrend } from "../src/api";
-import { persistWeightRecord, weightSaveErrorMessage, weightSaveSuccessMessage, WeightPage } from "../src/ui/WeightPage";
+import { buildManualWeightInput, persistWeightRecord, weightSaveErrorMessage, weightSaveSuccessMessage, WeightPage } from "../src/ui/WeightPage";
 
 const noopAsync = async () => undefined;
 
@@ -16,6 +16,11 @@ const baseProps = {
 };
 
 describe("WeightPage", () => {
+  it("submits the selected calendar date without converting it through browser timezone", () => {
+    expect(buildManualWeightInput("2026-09-10", 68.4, "晨起")).toEqual({ localDate: "2026-09-10", weightKg: 68.4, note: "晨起" });
+    expect(buildManualWeightInput("2026-09-10", 68.4, "  ")).toEqual({ localDate: "2026-09-10", weightKg: 68.4 });
+  });
+
   it("explains insufficient data without manufacturing zero points", () => {
     const html = renderToStaticMarkup(<WeightPage {...baseProps} />);
 
@@ -50,8 +55,8 @@ describe("WeightPage", () => {
   it("propagates failed saves so the page can keep form values and show recovery copy", async () => {
     const onAdd = vi.fn(async () => { throw new Error("service unavailable"); });
 
-    await expect(persistWeightRecord(onAdd, { measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4, note: "晨起" })).rejects.toThrow("service unavailable");
-    expect(onAdd).toHaveBeenCalledWith({ measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4, note: "晨起" });
+    await expect(persistWeightRecord(onAdd, { localDate: "2026-09-10", weightKg: 68.4, note: "晨起" })).rejects.toThrow("service unavailable");
+    expect(onAdd).toHaveBeenCalledWith({ localDate: "2026-09-10", weightKg: 68.4, note: "晨起" });
     expect(weightSaveErrorMessage).toContain("保存未完成");
     expect(weightSaveErrorMessage).toContain("输入内容已保留");
   });
@@ -59,7 +64,7 @@ describe("WeightPage", () => {
   it("exposes explicit success feedback copy after a successful save path", async () => {
     const onAdd = vi.fn(async () => undefined);
 
-    await expect(persistWeightRecord(onAdd, { measuredAt: "2026-09-10T12:00:00.000Z", weightKg: 68.4 })).resolves.toBeUndefined();
+    await expect(persistWeightRecord(onAdd, { localDate: "2026-09-10", weightKg: 68.4 })).resolves.toBeUndefined();
     expect(weightSaveSuccessMessage).toContain("保存成功：已记录这次体重");
   });
 });

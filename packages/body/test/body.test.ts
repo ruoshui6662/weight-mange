@@ -34,6 +34,18 @@ describe("body weight records", () => {
     sqlite.close();
   });
 
+  it("keeps a manually selected local calendar date independent of machine timezone", () => {
+    const { sqlite, body } = createService();
+    try {
+      const created = body.createWeight({ userId: "user-1", localDate: "2026-09-08", weightKg: 55 });
+
+      expect(created).toMatchObject({ localDate: "2026-09-08", measuredAt: "2026-09-08T12:00:00.000Z", weightKg: 55 });
+      expect(body.listWeights({ userId: "user-1", from: "2026-09-08", to: "2026-09-08" })).toHaveLength(1);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it("updates and deletes with optimistic version checks", () => {
     const { sqlite, body } = createService();
     const created = body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 });
@@ -48,11 +60,17 @@ describe("body weight records", () => {
 
   it("rejects invalid timestamps, weights and cross-user access", () => {
     const { sqlite, body } = createService();
-    expect(() => body.createWeight({ userId: "user-1", measuredAt: "2026-09-08", weightKg: 55 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
-    expect(() => body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 0 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
-    const created = body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 });
-    expect(() => body.updateWeight({ userId: "other-user", id: created.id, weightKg: 54, version: 0 })).toThrow(new BodyError("BODY_NOT_FOUND"));
-    sqlite.close();
+    try {
+      expect(() => body.createWeight({ userId: "user-1", measuredAt: "2026-09-08", weightKg: 55 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
+      expect(() => body.createWeight({ userId: "user-1", localDate: "2026-02-30", weightKg: 55 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
+      expect(() => body.createWeight({ userId: "user-1", localDate: "2026-09-08", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
+      expect(() => body.createWeight({ userId: "user-1", weightKg: 55 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
+      expect(() => body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 0 })).toThrow(new BodyError("BODY_INVALID_INPUT"));
+      const created = body.createWeight({ userId: "user-1", measuredAt: "2026-09-08T06:20:00+08:00", weightKg: 55 });
+      expect(() => body.updateWeight({ userId: "other-user", id: created.id, weightKg: 54, version: 0 })).toThrow(new BodyError("BODY_NOT_FOUND"));
+    } finally {
+      sqlite.close();
+    }
   });
 
   it("samples same-day observations without inventing missing dates", () => {
