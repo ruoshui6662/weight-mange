@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { AnalyticsPanel, DashboardView, FoodSearchCard, WeightPanel } from "../src/App";
+import { AnalyticsPanel, DashboardView, FoodSearchCard, FoodSearchModal, WeightPanel } from "../src/App";
 
 const noopAsync = async () => undefined;
 
@@ -73,6 +73,32 @@ describe("dashboard interaction feedback", () => {
     expect(html).toContain("加入晚餐");
   });
 
+  it("opens the shared food search flow as an accessible meal dialog", () => {
+    const html = renderToStaticMarkup(React.createElement(FoodSearchModal, {
+      query: "",
+      setQuery: vi.fn(),
+      results: [],
+      selected: null,
+      setSelected: vi.fn(),
+      amount: "100",
+      setAmount: vi.fn(),
+      meal: "lunch",
+      setMeal: vi.fn(),
+      busy: false,
+      searchStatus: "idle",
+      showImportGuide: false,
+      setShowImportGuide: vi.fn(),
+      onSearch: noopAsync,
+      onAddEntry: noopAsync,
+      onClose: vi.fn(),
+    }));
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain("添加午餐");
+    expect(html).toContain('data-active-meal="lunch"');
+    expect(html).toContain("搜索食物");
+  });
+
   it("renders explicit empty and insufficient-data states for M2 panels", () => {
     const weightHtml = renderToStaticMarkup(React.createElement(WeightPanel, { records: [], trend: null, loading: false, error: "", onRetry: noopAsync, onAdd: noopAsync }));
     expect(weightHtml).toContain("暂无体重记录");
@@ -104,6 +130,7 @@ describe("dashboard interaction feedback", () => {
     }));
     expect(html).toContain("编辑");
     expect(html).toContain("删除");
-    expect(html).toContain("复制昨日早餐");
+    expect(html).toContain("复制昨日整天");
+    expect(html).not.toContain("复制昨日早餐");
   });
 });

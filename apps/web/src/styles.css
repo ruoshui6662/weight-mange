@@ -54,6 +54,12 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .add-card { margin-top: 12px; padding: 20px; }
 .search-row { align-items: stretch; margin-top: 14px; }
 .search-row input { flex: 1; }
+.food-modal-backdrop { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: 24px; background: rgb(24 43 34 / 44%); }
+.food-modal { width: min(100%, 560px); max-height: min(720px, calc(100vh - 32px)); overflow: auto; padding: 24px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); box-shadow: 0 24px 64px rgb(21 57 40 / 22%); }
+.food-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+.food-modal-header h2 { margin: 0; color: var(--color-text); font-size: 22px; }
+.food-modal-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-secondary); background: var(--color-surface-soft); font-size: 24px; line-height: 1; }
+.food-modal .today-active-meal { margin-top: 8px; }
 .results { display: grid; gap: 7px; margin-top: 12px; }
 .food-result { display: flex; justify-content: space-between; align-items: center; width: 100%; color: #2c4438; background: #f6faf7; text-align: left; }
 .food-result small { color: #718278; }
@@ -151,28 +157,34 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .dg-workspace-single { grid-template-columns: minmax(0, 1248px); }
 .today-page { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 24px; align-items: start; }
 .today-page-main { display: grid; min-width: 0; gap: 20px; }
-.today-calorie-hero { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 240px; overflow: hidden; padding: 32px; background: linear-gradient(135deg, #fff 0%, #f0fbf5 100%); }
-.today-hero-copy { min-width: 0; }
+.today-calorie-hero { container-type: inline-size; position: relative; display: grid; gap: 16px; min-height: 240px; overflow: hidden; padding: 24px; background: linear-gradient(135deg, #fff 0%, #f0fbf5 100%); }
+.today-hero-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .today-kicker { display: block; margin-bottom: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
 .today-calorie-hero h2 { margin: 0 0 4px; font-size: 18px; }
-.today-remaining-label { margin: 0 0 8px; color: var(--color-text-secondary); font-size: 15px; font-weight: 700; }
-.today-remaining-value { display: block; color: var(--color-primary-strong); font-size: clamp(44px, 7vw, 72px); font-variant-numeric: tabular-nums; letter-spacing: -.07em; line-height: 1; }
+.today-energy-overview { display: grid; grid-template-columns: minmax(0, 1fr) 180px minmax(0, 1fr); align-items: center; gap: 24px; }
+.today-energy-stat { display: grid; justify-items: center; min-width: 0; color: var(--color-text-secondary); text-align: center; }
+.today-energy-stat span { font-size: 14px; font-weight: 700; }
+.today-energy-stat b { display: block; margin-top: 8px; color: var(--color-text); font-size: clamp(24px, 3vw, 36px); font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.today-remaining-label { margin: 0 0 6px; color: var(--color-text-secondary); font-size: 13px; font-weight: 700; }
+.today-remaining-value { display: block; color: var(--color-primary-strong); font-size: 28px; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1; white-space: nowrap; }
 .today-muted { color: var(--color-text-secondary); font-size: 13px; line-height: 1.55; }
-.today-budget-context { display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0 14px; color: var(--color-text-secondary); font-size: 13px; }
-.today-budget-context b { margin-left: 4px; color: var(--color-text); font-variant-numeric: tabular-nums; }
-.today-progress { width: min(100%, 460px); height: 10px; overflow: hidden; border-radius: 999px; background: #e4eee9; }
-.today-progress span { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width .15s ease; }
-.today-progress-label { display: block; margin-top: 6px; color: var(--color-text-secondary); font-size: 12px; }
-.today-hero-ring { display: grid; flex: 0 0 148px; place-items: center; width: 148px; height: 148px; margin-left: 24px; border: 14px solid #dff2e8; border-right-color: var(--color-primary); border-radius: 50%; color: var(--color-primary-strong); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.today-macro-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.today-macro-row { display: grid; gap: 10px; min-width: 0; padding: 20px; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); }
-.today-macro-row .dg-metric strong { font-size: 30px; }
+.today-progress-label { color: var(--color-text-secondary); font-size: 12px; }
+.today-hero-ring { position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; width: 160px; height: 160px; border-radius: 50%; background: conic-gradient(var(--color-primary) var(--today-progress), #dff2e8 0); text-align: center; }
+.today-hero-ring::before { position: absolute; inset: 12px; border-radius: 50%; background: #f8fdfa; content: ""; }
+.today-hero-ring > * { position: relative; z-index: 1; }
+.today-hero-ring small { margin-top: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+.today-energy-note { margin: -8px 0 0; color: var(--color-text-secondary); font-size: 12px; text-align: center; }
+.today-macro-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; padding-top: 22px; border-top: 1px solid var(--color-border); }
+.today-macro-item { display: grid; gap: 8px; min-width: 0; }
+.today-macro-label { color: var(--color-text-secondary); font-size: 13px; font-weight: 700; }
+.today-macro-value { color: var(--color-text); font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .today-macro-track { height: 8px; overflow: hidden; border-radius: 99px; background: #edf1ef; }
 .today-macro-track span { display: block; height: 100%; border-radius: inherit; }
 .today-macro-coral .today-macro-track span { background: var(--color-macro-protein); }
 .today-macro-sunflower .today-macro-track span { background: var(--color-macro-fat); }
 .today-macro-mint .today-macro-track span { background: var(--color-macro-carb); }
 .today-macro-goal { color: var(--color-text-secondary); font-size: 12px; }
+@container (max-width: 560px) { .today-energy-overview { grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr); gap: 8px; } .today-energy-stat span { font-size: 12px; } .today-energy-stat b { margin-top: 5px; font-size: 20px; } .today-hero-ring { width: 132px; height: 132px; } .today-hero-ring::before { inset: 10px; } .today-remaining-value { font-size: 21px; } .today-macro-strip { gap: 12px; padding-top: 18px; } .today-macro-label { font-size: 12px; } .today-macro-value { font-size: 12px; } .today-macro-track { height: 6px; } .today-macro-goal { font-size: 11px; } }
 .today-weight-trend { display: grid; gap: 18px; padding: 24px; }
 .today-weight-trend-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .today-weight-trend-heading h2 { margin: 0 0 4px; color: var(--color-text); font-size: 20px; }
@@ -191,7 +203,7 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .today-empty-record strong { color: var(--color-text); }
 .today-empty-record p { margin: 0; font-size: 13px; }
 .today-active-meal { margin: 0 0 12px; color: var(--color-primary-strong); font-size: 13px; font-weight: 700; }
-.today-meals, .today-quick-record { padding: 24px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
+.today-meals { padding: 24px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
 .today-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .today-section-heading h2 { margin: 0; color: var(--color-text); font-size: 20px; }
 .today-meal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
@@ -209,15 +221,13 @@ h2 { margin-bottom: 0; font-size: 18px; }
 .today-entry-edit input { min-height: 44px; width: 100%; border: 1px solid var(--color-border); border-radius: 12px; padding: 0 12px; background: #fff; }
 .today-weekly-summary { padding: 20px; }
 .today-weekly-summary p { margin: 12px 0 0; }
-.today-quick-record { display: grid; gap: 10px; }
-.today-quick-record p { margin: 0; }
 .today-context-rail { display: grid; align-content: start; gap: 16px; min-width: 0; }
 .today-rail-card { display: grid; gap: 10px; }
 .today-rail-card h2 { margin: 0; font-size: 18px; }
 .today-rail-card p { margin: 0; }
 .today-rail-card .dg-button { justify-self: start; text-decoration: none; }
 @media (max-width: 1199px) { .today-page { grid-template-columns: minmax(0, 1fr); } .today-context-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 719px) { .dg-workspace-single { grid-template-columns: minmax(0, 1fr); } .today-calorie-hero { min-height: 0; padding: 24px; } .today-hero-ring { flex-basis: 92px; width: 92px; height: 92px; border-width: 9px; font-size: 16px; } .today-remaining-value { font-size: 48px; } .today-macro-overview, .today-meal-grid, .today-context-rail { grid-template-columns: minmax(0, 1fr); } .today-meals, .today-quick-record { padding: 18px; } .today-section-heading { align-items: flex-start; flex-direction: column; } .today-section-heading > .dg-button { align-self: stretch; } .today-meal-actions { width: 100%; justify-content: stretch; } .today-meal-actions .dg-button { flex: 1; } }
+@media (max-width: 719px) { .dg-workspace-single { grid-template-columns: minmax(0, 1fr); } .today-calorie-hero { min-height: 0; gap: 20px; padding: 20px; } .today-energy-overview { grid-template-columns: minmax(0, 1fr) 132px minmax(0, 1fr); gap: 8px; } .today-energy-stat span { font-size: 12px; } .today-energy-stat b { margin-top: 5px; font-size: 20px; } .today-hero-ring { width: 132px; height: 132px; } .today-hero-ring::before { inset: 10px; } .today-remaining-value { font-size: 21px; } .today-macro-strip { gap: 12px; padding-top: 18px; } .today-macro-label { font-size: 12px; } .today-macro-value { font-size: 12px; } .today-macro-track { height: 6px; } .today-macro-goal { font-size: 11px; } .today-meal-grid, .today-context-rail { grid-template-columns: minmax(0, 1fr); } .today-meals { padding: 18px; } .today-section-heading { align-items: flex-start; flex-direction: column; } .today-section-heading > .dg-button { align-self: stretch; } .today-meal-actions { width: 100%; justify-content: stretch; } .today-meal-actions .dg-button { flex: 1; } .food-modal-backdrop { align-items: end; padding: 0; } .food-modal { width: 100%; max-height: calc(100vh - 12px); padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; } }
 @media (max-width: 719px) { .today-weight-trend { padding: 18px; } .today-weight-trend-heading { display: grid; gap: 16px; } .today-weight-summary { justify-items: start; text-align: left; } }
 @media (max-width: 1199px) { .dg-workspace { grid-template-columns: minmax(0, 1fr); } .dg-context-rail { order: 2; } }
 @media (min-width: 720px) and (max-width: 899px) { .dg-shell { grid-template-columns: 72px minmax(0, 1fr); } .dg-sidebar { padding: 28px 12px; } .dg-brand > span:last-child, .dg-sidebar .dg-nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .dg-sidebar nav button { justify-content: center; padding: 0; } }

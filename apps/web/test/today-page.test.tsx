@@ -1,4 +1,6 @@
 import React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { TodayPage } from "../src/ui/TodayPage";
@@ -31,9 +33,7 @@ const props = {
   dashboard,
   diary,
   profile: { id: "u1", displayName: "ruoshui", timezone: "Asia/Shanghai", body: null },
-  onAddFood: <button type="button">记录饮食</button>,
   onCopyDay: vi.fn(async () => undefined),
-  onCopyMeal: vi.fn(async () => undefined),
   onStartMealAdd: vi.fn(),
   onEdit: vi.fn(),
   onDelete: vi.fn(async () => undefined),
@@ -72,6 +72,7 @@ describe("TodayPage", () => {
     expect(html).toContain("还可以吃");
     expect(html).toContain("1800 kcal");
     expect(html).toContain("已完成 0%");
+    expect(html).toContain('style="--today-progress:0%"');
   });
 
   it("shows a recent weight trend card when the last week has records", () => {
@@ -119,8 +120,12 @@ describe("TodayPage", () => {
 
   it("answers remaining calories with a readable hero and macro semantics", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, props));
+    expect(html).toContain('data-calorie-summary="combined"');
+    expect(html).toContain('data-macro-layout="inline"');
+    expect(html).not.toContain('class="today-macro-overview"');
     expect(html).toContain("还可以吃");
     expect(html).toContain("1545 kcal");
+    expect(html).toContain('style="--today-progress:14%"');
     expect(html).toContain("已摄入");
     expect(html).toContain("目标");
     expect(html).toContain("蛋白质");
@@ -131,27 +136,58 @@ describe("TodayPage", () => {
     expect(html).toContain("mint");
   });
 
-  it("renders the four meal groups and an independent quick-record rail", () => {
+  it("keeps all three macro metrics in one compact responsive row", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, props));
+    expect(html.match(/class="today-macro-item /g)?.length).toBe(3);
+    expect(html).toContain("18 / 120 g");
+    expect(html).toContain("9 / 60 g");
+    expect(html).toContain("34 / 210 g");
+  });
+
+  it("keeps the macro strip at three columns across the narrow breakpoint", () => {
+    const styles = readFileSync(resolve(process.cwd(), "apps/web/src/styles.css"), "utf8");
+    expect(styles).toContain(".today-macro-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));");
+    expect(styles).toContain("@container (max-width: 560px)");
+    expect(styles).not.toContain(".today-macro-overview, .today-meal-grid");
+  });
+
+  it("renders the four meal groups without a duplicate quick-record rail", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, props));
     expect(html).toContain("早餐");
     expect(html).toContain("午餐");
     expect(html).toContain("晚餐");
     expect(html).toContain("加餐");
-    expect(html).toContain("快速记录");
-    expect(html).toContain("记录饮食");
+    expect(html).toContain("数据说明");
+    expect(html).not.toContain("快速记录");
+    expect(html).not.toContain("前往记录区");
     expect(html).toContain("本周概览");
     expect(html).toContain('data-today-layout="dashboard"');
   });
 
-  it("renders an actionable today food record card with four meal add buttons", () => {
+  it("keeps whole-day copy but removes per-meal yesterday copy actions", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, props));
+    expect(html).toContain("复制昨日整天");
+    expect(html).not.toContain("复制昨日早餐");
+    expect(html).not.toContain("复制昨日午餐");
+    expect(html).not.toContain("复制昨日晚餐");
+    expect(html).not.toContain("复制昨日加餐");
+  });
+
+  it("renders four meal add buttons as the only food-record entry point", () => {
     const html = renderToStaticMarkup(React.createElement(TodayPage, { ...props, diary: { ...diary, entries: [] } }));
     expect(html).toContain("今日饮食记录");
-    expect(html).toContain("记录饮食");
+    expect(html).not.toContain("记录饮食");
     expect(html).toContain('data-meal-add="breakfast"');
     expect(html).toContain('data-meal-add="lunch"');
     expect(html).toContain('data-meal-add="dinner"');
     expect(html).toContain('data-meal-add="snack"');
     expect(html).toContain('data-today-empty-state="visible"');
+  });
+
+  it("guides an empty meal from its add button instead of an absent lower panel", () => {
+    const html = renderToStaticMarkup(React.createElement(TodayPage, { ...props, diary: { ...diary, entries: [] } }));
+    expect(html).toContain("点击对应餐次的“添加”按钮开始记录");
+    expect(html).not.toContain("从下方快速添加一项");
   });
 
   it("removes the empty state once any meal has a diary entry", () => {

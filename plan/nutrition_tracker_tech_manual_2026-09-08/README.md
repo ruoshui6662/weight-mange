@@ -23,6 +23,7 @@
 14. [M3-003 recipe UI/E2E design](../../docs/superpowers/specs/2026-09-10-recipe-ui-e2e-design.md)：菜谱前端流程、状态、事实边界和浏览器验收设计。
 
 15. [FUNCTION_AUDIT_AND_REMEDIATION.md](./FUNCTION_AUDIT_AND_REMEDIATION.md)：2026-09-12 功能与操作逻辑源码审核、风险排序及独立修正任务。最新建议先补记录可靠性，再扩展运动功能；顶部旧阶段摘要待 DOC-007 统一校正。
+16. [BROWSER_FUNCTION_AUDIT_2026-09-12.md](./BROWSER_FUNCTION_AUDIT_2026-09-12.md)：从首页开始的真实浏览器功能与操作体验审核，记录可用链路、两项数据级缺陷、用户习惯偏差及逐任务修复顺序。
 
 ## 2. 文档职责与优先级
 

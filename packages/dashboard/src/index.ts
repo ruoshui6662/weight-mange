@@ -4,6 +4,7 @@ import { createDiaryService, type DiaryError } from "@nutrition-tracker/diary";
 const DASHBOARD_CALC_VERSION = "dashboard_v1";
 type Options = { now?: () => number };
 type NutrientSummary = { amount: number; coverage: number; hasTrace: boolean; hasEstimated: boolean };
+type MealTotals = { nutrients?: Record<string, NutrientSummary> };
 type Goal = { kcal: number; proteinG: number | null; fatG: number | null; carbG: number | null; fiberG: number | null };
 export type Dashboard = {
   date: string;
@@ -12,7 +13,7 @@ export type Dashboard = {
   coverage: Record<string, Omit<NutrientSummary, "amount">>;
   exercise: { burnKcal: number; creditKcal: number; available: false };
   remainingKcal: number | null;
-  meals: Array<{ key: string; totals: unknown }>;
+  meals: Array<{ key: string; displayName: string; totals: { kcal: number } }>;
 };
 
 export class DashboardError extends Error { constructor(readonly code: string, readonly details?: Record<string, unknown>) { super(code); } }
@@ -46,7 +47,10 @@ export function createDashboardService(sqlite: DatabaseSync, options: Options = 
       const totals = day.dailyTotal.nutrients as Record<string, NutrientSummary>;
       const intake = { kcal: numeric(totals, "energy_kcal"), proteinG: numeric(totals, "protein_g"), fatG: numeric(totals, "fat_g"), carbG: numeric(totals, "carbohydrate_g"), fiberG: nullableFiber(totals) };
       const coverage = Object.fromEntries(Object.entries(totals).map(([id, value]) => [id, { coverage: value.coverage, hasTrace: value.hasTrace, hasEstimated: value.hasEstimated }]));
-      const meals = day.mealSlots.map((slot) => ({ key: slot.key, totals: day.mealTotals[slot.key] }));
+      const meals = day.mealSlots.map((slot) => {
+        const mealTotals = day.mealTotals[slot.key] as MealTotals | undefined;
+        return { key: slot.key, displayName: slot.displayName, totals: { kcal: numeric(mealTotals?.nutrients ?? {}, "energy_kcal") } };
+      });
       const remainingKcal = goal ? goal.kcal - intake.kcal : null;
       sqlite.prepare("INSERT INTO analytics_daily_summary (user_id,local_date,intake_kcal,exercise_kcal,protein_g,fat_g,carb_g,fiber_g,weight_kg,goal_kcal,computed_at,calc_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,local_date) DO UPDATE SET intake_kcal=excluded.intake_kcal,exercise_kcal=excluded.exercise_kcal,protein_g=excluded.protein_g,fat_g=excluded.fat_g,carb_g=excluded.carb_g,fiber_g=excluded.fiber_g,weight_kg=excluded.weight_kg,goal_kcal=excluded.goal_kcal,computed_at=excluded.computed_at,calc_version=excluded.calc_version").run(input.userId, input.date, intake.kcal, 0, intake.proteinG, intake.fatG, intake.carbG, intake.fiberG, null, goal?.kcal ?? null, now(), DASHBOARD_CALC_VERSION);
       return { date: input.date, goal, intake, coverage, exercise: { burnKcal: 0, creditKcal: 0, available: false }, remainingKcal, meals };

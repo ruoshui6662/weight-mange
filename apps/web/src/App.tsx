@@ -164,6 +164,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   const [m2Error, setM2Error] = useState("");
   const [editingEntry, setEditingEntry] = useState<EditableDiaryEntry | null>(null);
   const [entryBusy, setEntryBusy] = useState<string | null>(null);
+  const [foodModalOpen, setFoodModalOpen] = useState(false);
   const panelEpoch = useRef(0);
   const todayRequest = useRef(0);
   const weightRequest = useRef(0);
@@ -199,6 +200,7 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
     try {
       await api.createDiaryEntry(today, { mealSlotId: meal, foodId: selected, amount: Number(amount), unit: "g", source: "manual" });
       setSelected(null); setQuery(""); setResults([]); setSearchStatus("idle");
+      setFoodModalOpen(false);
       await props.loadDashboard();
     } catch (caught) { props.setError(errorText(caught)); } finally { setBusy(false); }
   }
@@ -223,13 +225,6 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   async function copyDay() {
     setEntryBusy("copy-day"); props.setError("");
     try { await api.copyDiaryDay(today, daysAgo(today, 1)); await props.loadDashboard(); }
-    catch (caught) { props.setError(errorText(caught)); }
-    finally { setEntryBusy(null); }
-  }
-
-  async function copyMeal(mealSlotId: string) {
-    setEntryBusy(`copy-meal:${mealSlotId}`); props.setError("");
-    try { await api.copyDiaryMeal(today, { fromDate: daysAgo(today, 1), fromMealSlotId: mealSlotId, toMealSlotId: mealSlotId }); await props.loadDashboard(); }
     catch (caught) { props.setError(errorText(caught)); }
     finally { setEntryBusy(null); }
   }
@@ -295,28 +290,65 @@ export function DashboardView(props: { today: string; dashboard: Dashboard | nul
   };
   const logout = async () => { await props.onLogout(); };
 
-  const searchCard = <FoodSearchCard query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} />;
+  const searchCardProps: FoodSearchCardProps = { query, setQuery, results, selected, setSelected, amount, setAmount, meal, setMeal, busy, searchStatus, showImportGuide, setShowImportGuide, onSearch: search, onAddEntry: addEntry };
   const startMealAdd = (mealSlotId: string) => {
     setMeal(mealSlotId); setSelected(null); setAmount("100"); props.setError("");
     window.requestAnimationFrame(() => {
-      document.getElementById("today-quick-record")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       document.getElementById("today-food-search")?.focus();
     });
   };
-  return <AppShell activeTab={activeTab} onNavigate={navigate} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void logout()}>退出</button>}>
-    {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} weightRecords={todayWeightRecords} weightTrend={todayWeightTrend} onAddFood={searchCard} onStartMealAdd={startMealAdd} onCopyDay={copyDay} onCopyMeal={copyMeal} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
-    {activeTab === "diary" ? <DiaryPage today={today} dashboard={props.dashboard} diary={props.diary} query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} searchError={searchStatus === "error" ? props.error : undefined} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} onStartMealAdd={startMealAdd} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyDay={copyDay} onCopyMeal={copyMeal} /> : null}
+  const startTodayMealAdd = (mealSlotId: string) => {
+    setMeal(mealSlotId); setSelected(null); setAmount("100"); setQuery(""); setResults([]); setSearchStatus("idle"); setShowImportGuide(false); props.setError(""); setFoodModalOpen(true);
+  };
+  const closeFoodModal = useCallback(() => setFoodModalOpen(false), []);
+  return <><AppShell activeTab={activeTab} onNavigate={navigate} eyebrow={`${activeTab.toUpperCase()} · ${today}`} title={`你好，${props.profile?.displayName ?? "朋友"}`} headerAction={<button type="button" className="text-button" onClick={() => void logout()}>退出</button>}>
+    {activeTab === "today" ? <TodayPage today={today} dashboard={props.dashboard} diary={props.diary} profile={props.profile} weightRecords={todayWeightRecords} weightTrend={todayWeightTrend} onStartMealAdd={startTodayMealAdd} onCopyDay={copyDay} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} editingEntry={editingEntry} busyEntry={entryBusy} /> : null}
+    {activeTab === "diary" ? <DiaryPage today={today} dashboard={props.dashboard} diary={props.diary} query={query} setQuery={setQuery} results={results} selected={selected} setSelected={setSelected} amount={amount} setAmount={setAmount} meal={meal} setMeal={setMeal} busy={busy} searchStatus={searchStatus} searchError={searchStatus === "error" ? props.error : undefined} showImportGuide={showImportGuide} setShowImportGuide={setShowImportGuide} onSearch={search} onAddEntry={addEntry} onStartMealAdd={startMealAdd} mealEntries={mealEntries} editingEntry={editingEntry} busyEntry={entryBusy} onEdit={setEditingEntry} onDelete={removeEntry} onSave={saveEntry} onCancelEdit={() => setEditingEntry(null)} onCopyDay={copyDay} /> : null}
     {activeTab === "recipe" ? <RecipePanel today={today} client={api} onDiaryReload={() => props.loadDashboard(today)} onOpenDiary={() => navigate("diary")} /> : null}
     {activeTab === "profile" ? <ProfilePage profile={props.profile} showImportGuide={showImportGuide} onToggleImportGuide={() => setShowImportGuide(!showImportGuide)} onOpenSetup={props.onOpenSetup} onLogout={() => void logout()} /> : null}
     {activeTab === "weight" ? <WeightPage today={today} records={weights} trend={weightTrend} loading={m2Loading} error={m2Error} onRetry={loadWeightPanel} onAdd={async (input) => { const epoch = panelEpoch.current; await api.createWeight(input); if (epoch === panelEpoch.current) await loadWeightPanel(); }} /> : null}
     {activeTab === "analytics" ? <AnalyticsPage overview={analyticsOverview} tdee={tdee} periodDays={analyticsPeriod} onPeriodChange={(periodDays) => { if (periodDays !== analyticsPeriod) { ++panelEpoch.current; setAnalyticsPeriod(periodDays); } }} loading={m2Loading} error={m2Error} onRetry={loadAnalyticsPanel} /> : null}
     {props.error ? <p className="error page-error" role="alert">{props.error}</p> : null}
-  </AppShell>;
+  </AppShell>{foodModalOpen ? <FoodSearchModal {...searchCardProps} onClose={closeFoodModal} /> : null}</>;
 }
 
 type EditableDiaryEntry = { id: string; displayName: string; amount: number; unit: string; mealSlotId: string; version: number };
 
-export function FoodSearchCard(props: { query: string; setQuery: (value: string) => void; results: Array<{ id: string; name: string; summary: { energyKcal: number | null } }>; selected: string | null; setSelected: (value: string) => void; amount: string; setAmount: (value: string) => void; meal: string; setMeal: (value: string) => void; busy: boolean; searchStatus: FoodSearchStatus; showImportGuide: boolean; setShowImportGuide: (value: boolean) => void; onSearch: (event: React.FormEvent) => Promise<void>; onAddEntry: (event: React.FormEvent) => Promise<void> }) {
+export type FoodSearchCardProps = { query: string; setQuery: (value: string) => void; results: Array<{ id: string; name: string; summary: { energyKcal: number | null } }>; selected: string | null; setSelected: (value: string) => void; amount: string; setAmount: (value: string) => void; meal: string; setMeal: (value: string) => void; busy: boolean; searchStatus: FoodSearchStatus; showImportGuide: boolean; setShowImportGuide: (value: boolean) => void; onSearch: (event: React.FormEvent) => Promise<void>; onAddEntry: (event: React.FormEvent) => Promise<void> };
+
+export function FoodSearchModal(props: FoodSearchCardProps & { onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])') ?? []);
+    if (focusable.length === 0) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
+  useEffect(() => {
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const shell = document.querySelector<HTMLElement>(".dg-shell");
+    const previousAriaHidden = shell?.getAttribute("aria-hidden") ?? null;
+    if (shell) { shell.inert = true; shell.setAttribute("aria-hidden", "true"); }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { props.onClose(); return; }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    window.requestAnimationFrame(() => document.getElementById("today-food-search")?.focus());
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (shell) { shell.inert = false; if (previousAriaHidden === null) shell.removeAttribute("aria-hidden"); else shell.setAttribute("aria-hidden", previousAriaHidden); }
+      previousFocus.current?.focus();
+    };
+  }, [props.onClose]);
+  const mealLabels: Record<string, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" };
+  return <div className="food-modal-backdrop"><div ref={dialogRef} onKeyDown={trapFocus} className="food-modal" data-modal-focus-trap="true" role="dialog" aria-modal="true" aria-labelledby="food-modal-title"><div className="food-modal-header"><div><p className="eyebrow">QUICK RECORD</p><h2 id="food-modal-title">添加{mealLabels[props.meal] ?? "饮食"}</h2></div><button type="button" className="food-modal-close" aria-label="关闭记录饮食" onClick={props.onClose}>×</button></div><FoodSearchCard {...props} /></div></div>;
+}
+
+export function FoodSearchCard(props: FoodSearchCardProps) {
   const mealLabels: Record<string, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" };
   return <><p className="today-active-meal" data-active-meal={props.meal}>当前添加到：{mealLabels[props.meal] ?? props.meal}</p><form className="search-row" onSubmit={(event) => void props.onSearch(event)}><input id="today-food-search" aria-label="搜索食物" placeholder="搜索馒头、鸡蛋…" value={props.query} onChange={(event) => props.setQuery(event.target.value)} /><button className="soft-button" disabled={props.searchStatus === "loading"}>{props.searchStatus === "loading" ? "搜索中…" : "搜索"}</button></form>{props.searchStatus === "loading" ? <p className="loading" role="status">正在搜索本地食物目录…</p> : null}{props.searchStatus === "empty" ? <div className="empty-state" role="status"><strong>没有找到匹配食物</strong><p>当前只搜索本地食物目录。如果目录尚未导入，请先完成受控离线导入。</p><button type="button" className="soft-button" onClick={() => props.setShowImportGuide(!props.showImportGuide)}>{props.showImportGuide ? "收起导入说明" : "查看导入说明"}</button></div> : null}{props.showImportGuide ? <div className="import-guide" role="note"><strong>本地目录导入</strong><p>请在服务端使用仓库中的 <code>tools/food-import</code> 导入受控 JSON 数据，然后重新搜索；浏览器不会连接外部食品库。</p></div> : null}{props.searchStatus === "success" ? <div className="results">{props.results.map((food) => <button type="button" className={`food-result ${props.selected === food.id ? "selected" : ""}`} key={food.id} onClick={() => props.setSelected(food.id)}><span>{food.name}</span><small>{food.summary.energyKcal ?? "—"} kcal / 100g</small></button>)}</div> : null}{props.selected ? <form className="add-form" onSubmit={(event) => void props.onAddEntry(event)}><label className="field"><span>餐次</span><select value={props.meal} onChange={(event) => props.setMeal(event.target.value)}><option value="breakfast">早餐</option><option value="lunch">午餐</option><option value="dinner">晚餐</option><option value="snack">加餐</option></select></label><Field label="份量（g）" name="amount" type="number" min="1" value={props.amount} onChange={props.setAmount} /><button className="primary" disabled={props.busy}>{props.busy ? "保存中…" : `加入${mealLabels[props.meal] ?? "饮食"}`}</button></form> : null}</>;
 }

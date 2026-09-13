@@ -3,7 +3,7 @@
 > 这是项目状态的单一事实源。  
 > 更新模式：事件驱动——任务开始、阻塞、恢复、完成和交接时立即更新。  
 > 项目时区：Asia/Shanghai（UTC+08:00）  
-> 最后更新：2026-09-12 16:31 +08:00
+> 最后更新：2026-09-13 09:52 +08:00
 
 ## 1. 当前快照
 
@@ -12,11 +12,11 @@
 | 项目阶段 | M3 菜谱、运动与预算策略实施 |
 | 总体状态 | `IN_PROGRESS` |
 | 当前里程碑 | M3 — 菜谱、运动与预算策略 |
-| 当前焦点 | M3-013 写入状态与幂等重试（待开始） |
-| 下一步 | 按审核修正队列独立执行 M3-013；原运动计划保留 |
+| 当前焦点 | DOC-010、M3-026、M3-027 今日页 P1 修复（已完成） |
+| 下一步 | 独立进入 M3-014；P2 选择结果聚焦、无结果恢复和移动端餐次控件优化留在审计队列 |
 | 当前阻塞 | 无环境阻塞；本机 Docker CLI 仍缺失，仅影响容器实测，不影响 CI buildx |
-| 业务代码 | 既有功能基础上，M3-012 会话恢复与统一加载已完成；M3-013～020 为审核修正队列 |
-| Git | `main` 已 fast-forward 合并并推送至 `origin/main`，当前提交 `44faac8` |
+| 业务代码 | M3-025 已移除首页重复“记录饮食”区并把各餐添加统一为弹窗流程；DOC-010、M3-026、M3-027 已完成今日页 P1 修复；M3-024、M3-012、M3-021、M3-023 已完成；M3-013～020、M3-022 为审核修正队列 |
+| Git | `main` 上游基线为 `652ae04`；本次 P1 修复及前序文档/业务变更均保留在工作区，尚未提交或推送 |
 
 > “实时”表示每次状态事件即时写入本文件，不表示后台定时器自动采集。后续接手者应先读本页，再执行任何任务。
 
@@ -33,6 +33,18 @@
 | M5 | 稳定化与 v1.0 发布 | `PLANNED` | 0/8 | 安装、升级、回滚、恢复和多架构发布演练通过 |
 
 ## 3. 当前任务
+
+### DOC-008 — 浏览器功能与操作体验审核
+
+- 状态：`DONE`
+- 开始时间：2026-09-12 16:34 +08:00
+- 操作者：Codex
+- 范围：从首次设置和首页开始，以真实浏览器模拟食物搜索、分餐添加、编辑、菜谱、体重、分析、资料编辑及桌面/移动端响应式；只记录审核证据与修复设计，不在设计获批前修改业务代码。
+- 计划验收：浏览器逐步操作与截图、控制台错误检查、源码根因映射、报告必需章节检查、任务 ID 唯一性及 `git diff --check`。
+- 完成时间：2026-09-12 16:46 +08:00
+- 当前进展：首次设置、首页、饮食加入/编辑、菜谱、体重、分析、资料和两档响应式动态操作完成；确认餐次汇总 contract 与体重跨时区日期两项数据级缺陷，另记录写入反馈、资料编辑、菜谱前置条件和移动端主路径等体验问题。业务代码未改。
+- 验收结果（EVD-DOC-008）：浏览器控制台 error/warning 为 0；1440 与 390 viewport 均无横向溢出；报告 6 个必需章节、关键任务映射和 README 链接检查通过；`git diff --check` 退出码 0，仅提示 LF/CRLF 转换警告。
+- 下一步：详见 `BROWSER_FUNCTION_AUDIT_2026-09-12.md`；待用户批准后，以 TDD 独立执行 M3-021，不与 M3-014 或体验增强混批。
 
 ### DOC-006 — 功能与操作逻辑审核及修改规划
 
@@ -64,6 +76,137 @@
 | M3-020 | `PLANNED` | 分析语义、热量环与真实状态 |
 | M5-009 | `PLANNED` | 备份恢复入口及 NAS 升级演练 |
 | DOC-007 | `PLANNED` | 状态治理与需求验收矩阵 |
+| DOC-008 | `DONE` | 浏览器功能与操作体验审核 |
+| M3-021 | `DONE` | 餐次汇总 contract 修复 |
+| M3-022 | `PLANNED` | 菜谱详情文案与加入前置条件 |
+| M3-023 | `DONE` | 移除分餐复制昨日入口 |
+| M3-024 | `DONE` | 今日热量与宏量营养卡合并 |
+| M3-025 | `DONE` | 分餐添加弹窗化 |
+| DOC-009 | `DONE` | 今日页浏览器可用性审计 |
+| DOC-010 | `DONE` | 今日页空餐引导文案修正 |
+| M3-026 | `DONE` | 饮食添加弹窗焦点隔离与键盘闭环 |
+| M3-027 | `DONE` | 今日页首屏餐次入口可见性 |
+
+### M3-024 — 今日热量与宏量营养卡合并
+
+- 状态：`DONE`
+- 开始时间：2026-09-12 17:07 +08:00
+- 操作者：Codex
+- 依赖：M3-009、M3-007
+- 决策：按用户确认的参考图，将蛋白质、脂肪、碳水从三张独立卡合并到“今日热量”卡底部；桌面与窄屏均保持三列紧凑信息带，不再在 719px 以下改成三张纵向卡。当前无运动消耗数据 contract，不新增或伪造运动数据。
+- 变更范围：`apps/web/src/ui/TodayPage.tsx`、`apps/web/src/styles.css`、`apps/web/test/today-page.test.tsx`、今日页产品/UI 规范与本文件；不改 API、数据库或营养计算。
+- 计划验收：focused TodayPage 测试先 RED 后 GREEN；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；内置浏览器核验桌面与窄屏结构、无横向溢出、控制台无错误；完成参考图与实现截图对比并更新 `design-qa.md`。
+- 完成时间：2026-09-12 17:23 +08:00
+- 当前进展：已将碳水、蛋白质、脂肪合并进今日热量卡底部；桌面与窄屏保持三列，显示当前/目标值、比例和统一颜色；热量环绑定真实完成度，0% 不再显示固定绿色弧段；无目标继续显示“暂无目标”。PRODUCT_SPEC、UI_DESIGN_SYSTEM 与 Design QA 已同步。
+- 验收结果（EVD-M3-024-A）：focused TodayPage 测试先以 2 项结构断言 RED，再 GREEN 至 14/14；最终 `pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1080 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）。E2E 在 1440/1024/430/390/360 验证三项宏量始终为 3 个计算列且页面无横向溢出；内置浏览器桌面卡宽 768px、内部 scrollWidth 766px、控制台日志 0；`design-qa.md` 最终结果 `passed`。
+- 阻塞/风险：无；参考图中的“运动消耗”和饮食评分不在当前数据范围，本任务保持事实边界。
+- 下一步：独立进入 M3-014；不在本任务顺带实现运动消耗或饮食评分。
+
+### M3-025 — 分餐添加弹窗化
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 08:06 +08:00
+- 操作者：Codex
+- 依赖：M3-008、M3-017、M3-024
+- 决策：移除首页重复的“记录饮食”快捷区、空状态记录按钮和顶部总入口；早餐/午餐/晚餐/加餐的“添加”按钮直接打开同一个模态窗口。弹窗复用既有本地食物搜索、选择、克数、餐次和 `createDiaryEntry` 写入链路；成功后关闭并刷新，失败时保留弹窗和输入。饮食页独立搜索工作区保持不变。
+- 变更范围：`apps/web/src/App.tsx`、`apps/web/src/ui/TodayPage.tsx`、`apps/web/src/styles.css`、Web/E2E 测试、PRODUCT_SPEC、UI_DESIGN_SYSTEM 与本文件；不改 API、数据库或营养计算。
+- 计划验收：focused Today/App tests 先 RED 后 GREEN；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；浏览器验证四个添加按钮打开同一弹窗、默认餐次正确、搜索输入自动聚焦、Esc/关闭按钮可退出、写入后刷新且无横向溢出。
+- 完成时间：2026-09-13 08:36 +08:00
+- 当前进展：Today 页移除重复快捷记录区、空状态记录按钮和总入口；四个餐次添加按钮打开同一共享弹窗，默认餐次并自动聚焦搜索框；成功写入后关闭并刷新，失败保留输入；Esc 与关闭按钮可退出。饮食页原有独立搜索工作区保持不变。
+- 验收结果（EVD-M3-025-A）：focused Today/App 测试先暴露旧入口断言并修正后通过 2 files/21 tests；`pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1081 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）。E2E 覆盖首页弹窗可见性、默认早餐、自动聚焦、Esc 关闭，以及饮食页四餐入口、写入后编辑与无横向溢出。
+- 阻塞/风险：无；弹窗仅改变入口和呈现，不新增第二套搜索/写入状态机。
+- 下一步：独立进入 M3-014；不在本任务顺带实现日期选择或历史补录。
+
+### DOC-009 — 今日页浏览器可用性审计
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 08:52 +08:00
+- 操作者：Codex
+- 范围：使用当前 Codex In-app Browser 从首页首次设置开始，验证今日热量、宏量营养、今日饮食记录、四餐添加弹窗、搜索、份量写入、汇总刷新、Esc/关闭和焦点恢复；记录桌面视觉、可用性、无障碍风险和待修复项。
+- 计划验收：每个关键步骤有当前运行截图与 AX 状态证据；问题按 P0/P1/P2 排序并映射到修复任务；不修改业务代码。
+- 完成时间：2026-09-13 09:06 +08:00
+- 当前进展：首次设置、今日空态、早餐写入 80g 馒头、午餐默认餐次、晚餐无结果搜索、弹窗关闭和焦点恢复均已验证；报告已写入 `BROWSER_TODAY_AUDIT_2026-09-13.md`，并拆出 DOC-010、M3-026、M3-027 与 P2 优化项。
+- 验收结果（EVD-DOC-009）：当前 In-app Browser 捕获 6 个关键状态截图并逐一检查 AX 树；今日热量 0 值、四餐入口映射、弹窗默认餐次、搜索结果/无结果、写入刷新和 Esc/关闭焦点恢复均有现场证据。报告列出步骤、优点、P1/P2 问题、修复映射与证据限制；`git diff --check` 通过（仅 CRLF 转换警告）。
+- 阻塞/风险：当前浏览器运行时无法切换 viewport 或导出截图文件；移动端不能声称完整视觉审计，控制台日志需后续 E2E/API 证据补充。
+- 下一步：按报告优先级独立执行 DOC-010 或 M3-026；不在本审计任务内直接修改业务代码。
+
+### DOC-010 — 今日页空餐引导文案修正
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 09:42 +08:00
+- 操作者：Codex
+- 依赖：DOC-009
+- 决策：空餐状态必须指向当前可见的餐次“添加”按钮，不再暗示页面底部存在已移除的快捷记录区。
+- 变更范围：`apps/web/src/ui/TodayPage.tsx`、`apps/web/test/today-page.test.tsx`；不改 API、数据库或数据计算。
+- 计划验收：focused TodayPage 测试先 RED 后 GREEN；全量 lint/typecheck/test/build/api smoke/e2e 与 `git diff --check`。
+- 完成时间：2026-09-13 09:48 +08:00
+- 当前进展：空餐提示已改为“还没有记录 · 点击‘添加’开始记录”，与当前餐次卡右侧入口一致，不再引用已移除的下方快捷区。
+- 验收结果（EVD-DOC-010-A）：旧文案断言先 RED，修正后 TodayPage focused 15/15；全量 `pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1082 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）。
+- 活动日志：2026-09-13 09:42 +08:00，Codex 开始并记录验收命令；已观察旧文案测试 RED，完成实现后 focused 测试 GREEN。
+- 阻塞/风险：无。
+- 下一步：进入 M3-014；P2 交互优化仍保留在审计队列。
+
+### M3-026 — 饮食添加弹窗焦点隔离与键盘闭环
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 09:42 +08:00
+- 操作者：Codex
+- 依赖：M3-025、DOC-009
+- 决策：添加弹窗打开后，Today 背景容器设为 inert/aria-hidden；Tab 与 Shift+Tab 在弹窗内循环，Escape/关闭按钮退出并恢复打开前焦点。弹窗继续复用现有搜索和写入状态机。
+- 变更范围：`apps/web/src/App.tsx`、`e2e/ui-regression.spec.ts`；不改 API、数据库或营养计算。
+- 计划验收：焦点循环 E2E 先 RED 后 GREEN；全量 lint/typecheck/test/build/api smoke/e2e 与 `git diff --check`。
+- 完成时间：2026-09-13 09:48 +08:00
+- 当前进展：添加弹窗打开时对 Today 背景设置 inert/aria-hidden；Tab/Shift+Tab 在弹窗内循环；Escape/关闭按钮退出并恢复触发按钮焦点；`onClose` 使用稳定引用避免输入时 effect 重置。
+- 验收结果（EVD-M3-026-A）：焦点循环断言先在旧实现上 RED，重建最新 dist 后专项 E2E GREEN；全量 `pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1082 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）。
+- 活动日志：2026-09-13 09:42 +08:00，Codex 开始并记录验收命令；首次 E2E 因旧 dist 失败，重建后同一场景 GREEN。
+- 阻塞/风险：无；弹窗仍复用原搜索/写入状态机。
+- 下一步：进入 M3-014；P2 选择结果后聚焦份量等优化另行排期。
+
+### M3-027 — 今日页首屏餐次入口可见性
+
+- 状态：`DONE`
+- 开始时间：2026-09-13 09:42 +08:00
+- 操作者：Codex
+- 依赖：M3-024、DOC-009
+- 决策：在不改变信息层级和移动端断点的前提下，压缩桌面今日热量卡的间距与环形图尺寸，确保 1280×720 首屏能看到第一餐“添加”按钮。
+- 变更范围：`apps/web/src/styles.css`、`e2e/ui-regression.spec.ts`；移动端继续使用既有 132px 环形图和断点布局。
+- 计划验收：1280×720 首屏可见性 E2E 先 RED 后 GREEN；全量 lint/typecheck/test/build/api smoke/e2e 与 `git diff --check`。
+- 完成时间：2026-09-13 09:48 +08:00
+- 当前进展：桌面热量卡 padding/gap 与环形图由 180px 紧凑到 160px，1280×720 首屏可见第一餐“添加”按钮；719px 以下断点继续使用既有移动尺寸。
+- 验收结果（EVD-M3-027-A）：1280×720 首屏可见性断言先 RED，CSS 调整后专项 E2E GREEN；全量 `pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1082 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）。
+- 活动日志：2026-09-13 09:42 +08:00，Codex 开始并记录验收命令；先观察首屏可见性 RED，再完成 CSS 调整并 GREEN。
+- 阻塞/风险：无；移动端三列宏量和单列餐次布局由全量 E2E 继续覆盖。
+- 下一步：进入 M3-014；P2 移动端餐次选择控件优化另行排期。
+
+### M3-023 — 移除分餐复制昨日入口
+
+- 状态：`DONE`
+- 开始时间：2026-09-12 17:02 +08:00
+- 操作者：Codex
+- 依赖：M3-021、DOC-008
+- 决策：按用户确认，移除首页和饮食页早餐/午餐/晚餐/加餐的“复制昨日”按钮及前端调用路径；保留顶部“复制昨日整天”，后端 copy-meal endpoint 暂不删除，以免破坏已有 API 兼容性。
+- 变更文件：`apps/web/src/ui/TodayPage.tsx`、`apps/web/src/ui/DiaryPage.tsx`、`apps/web/src/App.tsx`、`apps/web/test/dashboard-view.test.ts`、相关产品/UI 规范与本文件。
+- 计划验收：focused web tests 先 RED 后 GREEN；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；浏览器首页/饮食页不再出现任一分餐复制按钮，整天复制仍可见。
+- 完成时间：2026-09-12 17:02 +08:00
+- 当前进展：首页和饮食页四个餐次卡仅保留“添加食物”，顶部“复制昨日整天”保持可用；前端移除分餐复制调用路径，后端 endpoint 为兼容性暂保留；PRODUCT_SPEC 与 UI_DESIGN_SYSTEM 已同步。
+- 验收结果（EVD-M3-023-A）：focused 3 files/25 tests 先 RED 后 GREEN；`pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1078 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）、`git diff --check` 均退出码 0（仅 CRLF 转换警告）；浏览器首页和饮食页均未出现“复制昨日早餐/午餐/晚餐/加餐”，仍显示“复制昨日整天”。
+- 阻塞/风险：无；后端 copy-meal contract 保留但不再由当前 Web UI 暴露。
+- 下一步：独立进入 M3-014 体重日期/时区修复。
+
+### M3-021 — 餐次汇总 contract 修复
+
+- 状态：`DONE`
+- 开始时间：2026-09-12 16:48 +08:00
+- 操作者：Codex
+- 依赖：DOC-008、M1-005、M1-006
+- 决策：Dashboard 服务边界负责把 Diary nutrient snapshot 转成稳定页面模型；每个餐次固定返回 `key`、`displayName`、`totals.kcal`，空餐为 0；前端不理解内部 nutrient snapshot，也不重复计算。
+- 变更文件：`packages/dashboard/src/index.ts`、`packages/dashboard/test/dashboard.test.ts`、`plan/nutrition_tracker_tech_manual_2026-09-08/API_SPEC.md`。
+- 计划验收：focused Dashboard/API tests；`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm api:smoke`、`pnpm test:e2e`、`git diff --check`；浏览器确认有记录餐次不再显示“暂无数据”，空餐仍为 0。
+- 完成时间：2026-09-12 16:53 +08:00
+- 当前进展：RED 已观察；GREEN 已实现。Dashboard 现在在服务边界输出固定餐次页面模型，前端可直接读取 `totals.kcal`；API 规范已同步，未改数据库和营养快照。
+- 验收结果（EVD-M3-021-A）：focused Dashboard/API `2 files/4 tests` 通过；`pnpm lint`、`pnpm typecheck`、`pnpm test`（183 files/1076 tests）、`pnpm build`、`pnpm api:smoke`（home/health/ready 均 200）、`pnpm test:e2e`（11/11）均退出码 0；内置浏览器重新创建测试用户并加入 100 g 馒头后首页与饮食页午餐均显示 `223 kcal`、空餐显示 `0 kcal`；控制台 error/warning 为 0；`git diff --check` 退出码 0（仅 CRLF 转换警告）。
+- 阻塞/风险：无；M3-014 的跨时区日期问题不在本任务范围。
+- 下一步：独立进入 M3-014 体重日期/时区修复；M3-013 写入反馈仍按队列保留。
 
 ### M3-012 — 会话恢复与统一加载
 
@@ -627,6 +770,7 @@ result: 42 passed, 0 failed
 | EVD-M3-009-A | M3-009 | 2026-09-10 22:50 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现超预算负数展示；GREEN 完成“今日热量”卡、空日 `0 kcal`/完整剩余预算、超预算 `0 kcal`/超出说明和无目标不可用语义；focused 6 tests、全量 183 files/1070 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0 |
 | EVD-M3-010-A | M3-010 | 2026-09-10 23:20 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx apps/web/test/weight-page.test.tsx`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现趋势卡缺失；GREEN 完成最近 7 天真实记录门禁、最新体重/变化摘要、服务端趋势共享图表和移动端样式；focused 2 files/14 tests、全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；趋势请求失败时隐藏可选摘要，不阻塞今日主流程 |
 | EVD-M3-011-A | M3-011 | 2026-09-10 23:45 +08:00 | `pnpm vitest run apps/web/test/today-page.test.tsx apps/web/test/dashboard-view.test.ts`; `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check` | RED 先复现今日页缺少饮食卡/四餐入口/空状态；GREEN 完成四餐“＋ 添加”、总入口、无记录空状态、目标餐次映射、搜索面板聚焦和动态“加入餐次”按钮；focused 2 files/17 tests、全量 183 files/1076 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed（含首页按钮与午餐聚焦回归）、diff check 均 exit 0 |
+| EVD-M3-024-A | M3-024 | 2026-09-12 17:23 +08:00 | `pnpm exec vitest run apps/web/test/today-page.test.tsx`; `pnpm lint`; `pnpm typecheck`; `pnpm test`; `pnpm build`; `pnpm api:smoke`; `pnpm test:e2e`; `git -c safe.directory='D:/AI编程/体重管理' diff --check`; IAB 截图/控制台/布局测量；`design-qa.md` | focused 14/14、全量 183 files/1080 tests、E2E 11/11 和其余门禁均 exit 0；1440/1024/430/390/360 均保持 3 个宏量计算列且无横向溢出；IAB 桌面卡无内部溢出、控制台日志 0；参考图与实现组合对比复核后 Design QA `passed` |
 
 ## 9. 问题队列
 
@@ -652,6 +796,10 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 `ISSUE-117 | 2026-09-10 04:45 +08:00 | M3-002 | P1 | 浏览器 UTC 日期与用户时区 localDate 不一致，且日期加载回调捕获初始日期，导致体重/饮食新增后列表为空但趋势可见 | 使用 profile timezone 计算本地日期，补依赖与回归测试，并重建 E2E dist | RESOLVED，见 EVD-M3-002-F`
 
 `ISSUE-118 | 2026-09-10 11:37 +08:00 | M1-011 | P1 | 飞牛以局域网 HTTP 地址访问时，饮食加入动作调用不可用的 `crypto.randomUUID()`，请求未发出即显示“网络连接失败” | 增加非安全上下文幂等键回退并补回归测试；发布新镜像后强制 pull/recreate | RESOLVED，见 EVD-M1-011-A`
+
+`ISSUE-119 | 2026-09-12 16:38 +08:00 | M3-021 | P0 | 浏览器实测午餐已有 268 kcal 记录、全天汇总也为 268 kcal，但首页与饮食页全部餐次仍显示“暂无数据”；Dashboard 透传 nutrient snapshot，Web 错读 totals.kcal | 在 Dashboard 边界输出稳定 totals.kcal 页面模型，同步 Web 类型并补真实 API/E2E contract 回归 | RESOLVED，见 EVD-M3-021-A`
+
+`ISSUE-120 | 2026-09-12 16:39 +08:00 | M3-014 | P0 | 浏览器选择 2026-09-12 记录体重，用户时区 Asia/Shanghai 下落为 2026-09-13，导致近期列表和截至 9/12 的分析缺失 | 禁止以浏览器时区解释业务日期，按资料时区构造或由 API 接收 localDate，补跨时区/夏令时/历史补录回归 | OPEN`
 
 ## 10. 活动日志
 
@@ -776,15 +924,29 @@ ISSUE-<三位序号> | 发现时间 | 影响任务 | 严重度 | 现象 | 建议
 | 2026-09-10 23:20 +08:00 | Codex | 完成 M3-010 今日页体重趋势摘要 | 今日页接入可选最近 7 天体重趋势卡；旧记录/无记录完全隐藏，变化值与图表使用真实服务端点；抽取共享 WeightTrendChart，补响应式样式与 14 个 focused tests；全量 183 files/1073 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；下一步 M3-004 |
 | 2026-09-10 23:25 +08:00 | Codex | 开始 M3-011 今日饮食记录功能区 | 用户确认按第一性原理方案执行；复用现有搜索/日记写入链路，先补四餐入口、记录饮食入口和无记录空状态 RED 测试 |
 | 2026-09-10 23:45 +08:00 | Codex | 完成 M3-011 今日饮食记录功能区 | 今日页新增完整饮食记录卡、四餐添加按钮、总入口、无记录空状态、目标餐次联动、搜索聚焦和动态提交文案；全量 183 files/1076 tests、lint/typecheck/build/API smoke、Playwright E2E 2 passed、diff check 均 exit 0；下一步 M3-004 |
+| 2026-09-12 16:34 +08:00 | Codex | 开始 DOC-008 浏览器功能与操作体验审核 | 从首次设置和首页开始，以隔离临时库模拟搜索、分餐添加、编辑、菜谱、体重、分析、资料与桌面/移动端；计划保存操作证据并映射源码根因，不在设计确认前修改业务代码 |
+| 2026-09-12 16:46 +08:00 | Codex | 完成 DOC-008 浏览器功能与操作体验审核 | 核心链路可运行；确认 ISSUE-119 餐次汇总和 ISSUE-120 体重跨时区日期两项 P0；控制台无错误、两档无横向溢出、文档门禁通过；下一步等待批准后独立执行 M3-021 |
+| 2026-09-12 16:48 +08:00 | Codex | 开始 M3-021 餐次汇总 contract 修复 | 采用服务端稳定页面模型；先补真实 nutrient snapshot RED 测试，确认前端消费 `totals.kcal`，不混入时区和交互改造 |
+| 2026-09-12 16:53 +08:00 | Codex | 完成 M3-021 餐次汇总 contract 修复 | Dashboard 返回 `key/displayName/totals.kcal`，API 规范同步；focused 4 tests、全量 1076 tests、lint/typecheck/build/API smoke/E2E 11/11、浏览器首页/饮食页回归与控制台检查均通过；ISSUE-119 关闭，下一步 M3-014 |
+| 2026-09-12 17:02 +08:00 | Codex | 开始 M3-023 移除分餐复制昨日入口 | 用户确认分餐复制无用；按最小范围移除首页/饮食页四个餐次卡按钮与 Web 调用路径，保留顶部整天复制和后端兼容 endpoint；先补缺失断言观察 RED |
+| 2026-09-12 17:10 +08:00 | Codex | 完成 M3-023 移除分餐复制昨日入口 | focused 3 files/25 tests RED→GREEN；全量 lint/typecheck/test/build/API smoke/E2E/diff check 通过；浏览器两页确认仅保留整天复制；规范同步，下一步 M3-014 |
+| 2026-09-12 17:07 +08:00 | Codex | 开始 M3-024 今日热量与宏量营养卡合并 | 用户确认参考图方案；先以结构测试固定单卡、三列宏量和窄屏不拆列，不改 API/数据库，不伪造运动数据 |
+| 2026-09-12 17:23 +08:00 | Codex | 完成 M3-024 今日热量与宏量营养卡合并 | 三项宏量合并到热量卡且 360–1440px 保持三列；热量环绑定真实进度；全量 1080 tests、E2E 11/11、其余门禁及 Design QA 通过；下一步 M3-014 |
+| 2026-09-13 08:06 +08:00 | Codex | 开始 M3-025 分餐添加弹窗化 | 用户确认将记录功能直接放入餐次添加按钮；先记录移除重复入口的决策并补首页结构与弹窗 contract RED 测试，复用既有搜索/写入状态机 |
+| 2026-09-13 08:36 +08:00 | Codex | 完成 M3-025 分餐添加弹窗化 | 共享弹窗、焦点管理、Esc/关闭、成功关闭后刷新和移动端 Sheet 样式完成；2 files/21 focused tests、183 files/1081 full tests、lint/typecheck/build/API smoke/11 E2E/diff check 全部通过；下一步 M3-014 |
+| 2026-09-13 08:52 +08:00 | Codex | 开始 DOC-009 今日页浏览器可用性审计 | 使用当前 In-app Browser 从首次设置开始，验证今日页核心闭环并捕获现场截图/AX 证据；计划只审计不改业务代码 |
+| 2026-09-13 09:06 +08:00 | Codex | 完成 DOC-009 今日页浏览器可用性审计 | 现场验证首次设置、热量空态、四餐弹窗、搜索/无结果、80g 早餐写入、汇总刷新、Esc/关闭焦点恢复；发现空态文案、首屏主任务可见性、弹窗焦点隔离等 P1/P2 项，报告已写入并映射 DOC-010/M3-026/M3-027 |
+| 2026-09-13 09:42 +08:00 | Codex | 开始 DOC-010、M3-026、M3-027 | 按 DOC-009 P1 顺序执行；分别记录空餐文案、弹窗焦点隔离和 1280×720 首屏可见性验收，均先补 RED 再实现 |
+| 2026-09-13 09:48 +08:00 | Codex | 完成 DOC-010、M3-026、M3-027 | 文案、inert/aria-hidden 焦点循环与桌面紧凑布局完成；全量 183 files/1082 tests、lint/typecheck/build/API smoke/E2E 11/11/diff check 全部通过；下一步 M3-014，P2 优化留队列 |
 
 ## 11. 交接摘要
 
-M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要、M3-010 今日页体重趋势摘要与 M3-011 今日饮食记录功能区已完成。后续接手者应：
+M0 基础代码已完成；M1 10/10 与 M2 6/6 已完成；M1-007 已通过首次设置、登录、搜索、添加、编辑、复制、删除和响应式浏览器门禁；M1-010 已接入测试期远程食物目录 bootstrap（默认用户 fork，可用 `FOOD_DATA_REMOTE_ENABLED=false` 关闭）；M1-011 已修复局域网 HTTP 下饮食记录幂等键兼容；M3-001 决策、M3-002 菜谱计算/API、M3-003 菜谱 UI/E2E、M3-007 全站 UI 重构、M3-008 分餐快捷添加、M3-009 今日热量摘要、M3-010 今日页体重趋势摘要、M3-011 今日饮食记录功能区、M3-024 热量与宏量合并、M3-025 分餐添加弹窗化，以及 DOC-010/M3-026/M3-027 今日页 P1 修复已完成。后续接手者应：
 
 1. 开始 M3-004 前先读取运动产品/技术规范，定义运动记录、MET 计算和历史 snapshot 边界；
 2. 审阅 `ADR-0002-recipe-snapshot.md`、`docs/superpowers/plans/2026-09-09-recipe-calculation-api.md` 和 `docs/superpowers/plans/2026-09-10-recipe-ui-e2e.md`，保持 ingredient snapshot、显式刷新、cache 失效、recipe-to-diary 与客户端不重算边界；
 3. 复用 `overview`、`weight_trend_v1`、`adaptive_tdee_v1`，保持不足数据不估算且不自动改目标；
-4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果。
+4. 开始任务前按根目录 `AGENTS.md` 更新本文件，并记录验收命令、退出码和关键结果；今日页 P2 优化（选择结果后自动聚焦份量、无结果恢复、移动端餐次控件）仍在审计队列。
 
 ## 12. 更新模板
 

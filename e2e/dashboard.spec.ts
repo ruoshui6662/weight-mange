@@ -135,6 +135,8 @@ test("首次设置、食物搜索、体重写入和分析不足状态在目标 v
   await expect(page.locator('[data-active-meal="lunch"]')).toContainText("当前添加到：午餐");
   await expect(page.getByLabel("搜索食物")).toBeFocused();
   await expect(page.getByText("馒头 · 100g", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "添加午餐" })).toBeHidden();
 
   await page.getByRole("button", { name: "编辑馒头", exact: true }).click();
   await page.locator('input[name^="edit-amount-"]').fill("120");

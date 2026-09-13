@@ -68,7 +68,6 @@ export const api = {
   createDiaryEntry: (date: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries`, { method: "POST", headers: { "idempotency-key": createIdempotencyKey() }, body: JSON.stringify(input) }),
   updateDiaryEntry: (date: string, entryId: string, input: Record<string, unknown>) => request<Record<string, unknown>>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "PATCH", body: JSON.stringify(input) }),
   deleteDiaryEntry: (date: string, entryId: string) => request<{ ok: boolean }>(`/api/v1/diary/${encodeURIComponent(date)}/entries/${encodeURIComponent(entryId)}`, { method: "DELETE" }),
-  copyDiaryMeal: (date: string, input: { fromDate: string; fromMealSlotId: string; toMealSlotId: string }) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-meal`, { method: "POST", body: JSON.stringify(input) }),
   copyDiaryDay: (date: string, fromDate: string) => request<Record<string, unknown>[]>(`/api/v1/diary/${encodeURIComponent(date)}/copy-day`, { method: "POST", body: JSON.stringify({ fromDate }) }),
   getWeights: (from: string, to: string) => request<WeightRecord[]>(`/api/v1/body/weights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   createWeight: (input: { measuredAt: string; weightKg: number; note?: string }) => request<WeightRecord>("/api/v1/body/weights", { method: "POST", body: JSON.stringify(input) }),

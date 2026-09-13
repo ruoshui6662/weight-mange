@@ -36,7 +36,10 @@ it("builds a goal-bound dashboard from stored snapshots and rebuilds a deleted c
   const first = dashboard.getDashboard({ userId: "user-1", date: "2026-09-09" });
   expect(first).toMatchObject({ date: "2026-09-09", goal: { kcal: 250, proteinG: 50, fatG: 60, carbG: 70, fiberG: null }, intake: { kcal: 100, proteinG: 15, fatG: 7.5, carbG: 30, fiberG: null }, remainingKcal: 150, exercise: { burnKcal: 0, creditKcal: 0, available: false } });
   expect(first.coverage.energy_kcal.coverage).toBeCloseTo(100 / 150);
-  expect(first.meals).toEqual(expect.arrayContaining([expect.objectContaining({ key: "breakfast" }), expect.objectContaining({ key: "lunch" })]));
+  expect(first.meals).toEqual(expect.arrayContaining([
+    { key: "breakfast", displayName: "早餐", totals: { kcal: 100 } },
+    { key: "lunch", displayName: "午餐", totals: { kcal: 0 } },
+  ]));
   sqlite.prepare("DELETE FROM analytics_daily_summary WHERE user_id='user-1' AND local_date='2026-09-09'").run();
   expect(dashboard.getDashboard({ userId: "user-1", date: "2026-09-09" })).toEqual(first);
   sqlite.prepare("UPDATE profile_nutrition_goal SET effective_to='2026-09-09' WHERE id='goal-old'").run();

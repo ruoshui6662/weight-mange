@@ -36,7 +36,6 @@ export type DiaryPageProps = {
   onSave: (entry: DiaryEntryForPage) => Promise<void>;
   onCancelEdit: () => void;
   onCopyDay: () => Promise<void>;
-  onCopyMeal: (mealSlotId: string) => Promise<void>;
 };
 
 const mealLabels: Record<string, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" };
@@ -93,7 +92,7 @@ function MealGroup(props: DiaryPageProps & { mealKey: string }) {
   const group = props.mealEntries.get(props.mealKey);
   const label = group?.mealSlot.displayName ?? mealLabels[props.mealKey] ?? props.mealKey;
   const total = props.dashboard?.meals.find((meal) => meal.key === props.mealKey)?.totals.kcal;
-  return <section className="diary-meal-group"><div className="diary-meal-heading"><div><h3>{label}</h3><span>{total === undefined ? "暂无数据" : `${Math.round(total)} kcal`}</span></div><div className="diary-meal-actions"><Button variant="secondary" type="button" data-meal-add={props.mealKey} aria-label={`添加${label}食物`} onClick={() => props.onStartMealAdd(props.mealKey)}>添加食物</Button><Button variant="tertiary" type="button" busy={props.busyEntry === `copy-meal:${group?.mealSlot.key ?? props.mealKey}`} onClick={() => void props.onCopyMeal(group?.mealSlot.key ?? props.mealKey)}>复制昨日{label}</Button></div></div>{group?.entries.length ? <div className="diary-entry-list">{group.entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={entry} />)}</div> : <p className="diary-empty-meal">还没有记录</p>}</section>;
+  return <section className="diary-meal-group"><div className="diary-meal-heading"><div><h3>{label}</h3><span>{total === undefined ? "暂无数据" : `${Math.round(total)} kcal`}</span></div><div className="diary-meal-actions"><Button variant="secondary" type="button" data-meal-add={props.mealKey} aria-label={`添加${label}食物`} onClick={() => props.onStartMealAdd(props.mealKey)}>添加食物</Button></div></div>{group?.entries.length ? <div className="diary-entry-list">{group.entries.map((entry) => <DiaryEntry key={entry.id} {...props} entry={entry} />)}</div> : <p className="diary-empty-meal">还没有记录</p>}</section>;
 }
 
 function DiaryEntry(props: DiaryPageProps & { entry: DiaryEntryForPage }) {

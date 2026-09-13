@@ -46,15 +46,43 @@ test("Data Garden all-page responsive and keyboard regression contract", async (
   await page.setViewportSize(viewports[0]);
   await bootstrap(page);
 
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole("button", { name: "今日", exact: true }).first().click();
+  const firstTodayMealAdd = page.getByRole("button", { name: "添加早餐食物", exact: true });
+  const firstTodayMealAddInViewport = await firstTodayMealAdd.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top < window.innerHeight && rect.bottom > 0;
+  });
+  expect(firstTodayMealAddInViewport).toBe(true);
+
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.getByRole("button", { name: "今日", exact: true }).first().click();
     await expectNoHorizontalOverflow(page);
     await expectNavigationContract(page);
+    const macroStrip = page.locator('[data-macro-layout="inline"]');
+    await expect(macroStrip).toBeVisible();
+    await expect(macroStrip.locator(".today-macro-item")).toHaveCount(3);
+    const macroColumns = await macroStrip.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean));
+    expect(macroColumns).toHaveLength(3);
 
     const navButton = page.locator('nav[aria-label="主导航"]:visible').first().getByRole("button", { name: "今日" });
     await navButton.focus();
     await expect(navButton).toBeFocused();
+
+    const todayBreakfastAdd = page.getByRole("button", { name: "添加早餐食物", exact: true });
+    await todayBreakfastAdd.click();
+    const todayFoodDialog = page.getByRole("dialog", { name: "添加早餐" });
+    await expect(todayFoodDialog).toBeVisible();
+    await expect(page.getByLabel("搜索食物")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByRole("button", { name: "关闭记录饮食" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByRole("button", { name: "搜索", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "关闭记录饮食" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(todayFoodDialog).toBeHidden();
 
     for (const tab of tabs.slice(1)) {
       await page.getByRole("button", { name: tab, exact: true }).first().click();

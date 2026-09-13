@@ -54,10 +54,17 @@ const props = {
   onSave: vi.fn(async () => undefined),
   onCancelEdit: vi.fn(),
   onCopyDay: vi.fn(async () => undefined),
-  onCopyMeal: vi.fn(async () => undefined),
 };
 
 describe("DiaryPage", () => {
+  it("keeps whole-day copy but removes per-meal yesterday copy actions", () => {
+    const html = renderToStaticMarkup(React.createElement(DiaryPage, props));
+    expect(html).toContain("复制昨日整天");
+    expect(html).not.toContain("复制昨日早餐");
+    expect(html).not.toContain("复制昨日午餐");
+    expect(html).not.toContain("复制昨日晚餐");
+    expect(html).not.toContain("复制昨日加餐");
+  });
   it("renders a desktop search-and-summary workspace with a selectable full-row result", () => {
     const html = renderToStaticMarkup(React.createElement(DiaryPage, props));
     expect(html).toContain('data-diary-layout="workspace"');

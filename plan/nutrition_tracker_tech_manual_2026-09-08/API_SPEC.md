@@ -250,10 +250,17 @@ API 采用 JSON，上传图片/备份使用 multipart。
       "creditKcal": 0
     },
     "remainingKcal": 1545,
-    "meals": []
+    "meals": [
+      { "key": "breakfast", "displayName": "早餐", "totals": { "kcal": 0 } },
+      { "key": "lunch", "displayName": "午餐", "totals": { "kcal": 0 } },
+      { "key": "dinner", "displayName": "晚餐", "totals": { "kcal": 0 } },
+      { "key": "snack", "displayName": "加餐", "totals": { "kcal": 0 } }
+    ]
   }
 }
 ```
+
+`meals` 是 Dashboard 的稳定页面模型。每个餐次始终返回 `key`、`displayName` 和 `totals.kcal`；空餐的热量为 `0`。营养快照内部的 `nutrients` 结构不向 Dashboard 消费者透传，前端不得自行从日记快照重算餐次。
 
 这个 API 是首页 read model，不允许前端为了首页连续请求 12 个 endpoint。
 
